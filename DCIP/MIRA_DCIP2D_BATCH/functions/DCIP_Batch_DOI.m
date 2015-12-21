@@ -1,0 +1,296 @@
+function DCIP_Batch_DOI(Cond_model,Charg_model,work_directory,argin)
+% Inversion for the Depth of Investigation
+% Extract observation files from each DCIP lines and create a new directory 
+% for the inversion of depth of investigation.
+% Need to perform the invertion for two reference models. The IP and conductivity 
+% reference models are specified by the user. Two new inversions must be 
+% done for the conductivity models. See 
+% 
+% Author: D Fournier
+% Last update : April 10th, 2013
+
+% Author: D Fournier
+% Last Update: April 10th, 2013
+
+home_dir = pwd;
+%% CHANGE DIRECTORY HERE AND SPECIFY REFERENCE MODELS, THEN RUN >>>>>>>>>>
+
+cd (work_directory)
+
+%% Driver
+DCline_list=ls;
+
+line_range = argin;
+
+switch line_range 
+    case 'all'
+       range = 1:size(DCline_list,1)-2;
+       
+    otherwise
+        range = str2num(argin);
+
+end
+
+% Cycle through all the DC lines
+for oo=range
+    
+    
+    cd (DCline_list(oo+2,:))
+    
+    folder_list=ls;
+    
+    % Cycle through all the observations within each DC lines
+    for ff = 1:size(folder_list,1)-2
+        
+        cd (folder_list(ff+2,:))
+        
+        % Find the IP observation file
+        file_list = ls;
+         
+        ip_obs_file={};
+
+            for ii = 1:size(file_list,1)-2;
+
+                look_at = strtrim(file_list(ii+2,:));
+            
+                if strcmp(look_at(1:3),'ip_')==1 && strcmp(look_at(end-8:end),'UTM2D.obs')==1
+                    
+                ip_obs_file=look_at;
+                
+                end
+
+
+            end
+            
+            if isempty(ip_obs_file)==1
+
+                fprintf(['Program could not find the IP file for line ' DCline_list(oo+2,:) folder_list(ff+2,:) '\n'])
+                fprintf('Make sure that the file has right format (ip_XXXX.dat)\n')
+                cd ..
+                break
+
+            end
+        
+         %Find the DC observation file
+         dc_obs_file={};
+
+            for ii = 1:size(file_list,1)-2;
+
+                look_at = strtrim(file_list(ii+2,:));
+            
+                if strcmp(look_at(1:3),'dc_')==1 && strcmp(look_at(end-8:end),'UTM2D.obs')==1
+                    
+                dc_obs_file=look_at;
+                
+                end
+
+
+            end
+            
+            if isempty(dc_obs_file)==1
+
+                fprintf(['Program could not find the DC file for line ' DCline_list(oo+2,:) folder_list(ff+2,:) '\n'])
+                fprintf('Make sure that the file has right format (dc_XXXX.dat)\n')
+                cd ..
+                break
+
+            end
+            
+%% Create  new directories for DC and IP inversions for Depth Of Investigation
+
+        dos ('mkdir DOI\IP');
+        dos (['copy ' ip_obs_file ' DOI\IP']);
+        dos ('copy dcinv2d.msh DOI\IP /y');
+        dos ('copy dcinv2d.con DOI\IP /y');    
+
+        
+        dos ('mkdir DOI\DC1');
+        dos ('copy dcinv2d.msh DOI\DC1 /y');
+        dos (['copy ' dc_obs_file ' DOI\DC1']);    
+
+        dos ('mkdir DOI\DC2');
+        dos ('copy dcinv2d.msh DOI\DC2 /y');
+        dos (['copy ' dc_obs_file ' DOI\DC2']);
+        
+
+% fprintf('\nReady for inversions -  This might take a while\n')
+% fprintf('TIME FOR COFFEE --- Press any key to launch\n')
+% pause  
+
+%% Go in the new DOI directory and procede with the inversions
+
+     
+        
+%% Conductivity model 1    
+    cd DOI\DC1
+    file_list=ls;
+    
+    % Find the Obs file
+        
+        dc_obs_file={};
+
+            for ii = 1:size(file_list,1)-2;
+
+                look_at = strtrim(file_list(ii+2,:));
+            
+                if strcmp(look_at(1:3),'dc_')==1 && strcmp(look_at(end-8:end),'UTM2D.obs')==1
+                    
+                dc_obs_file=look_at;
+                
+                end
+
+
+            end
+            
+        if isempty(dc_obs_file)==1
+            
+            fprintf(['Program could not find the DC file for line ' DCline_list(oo+2,:) folder_list(ff+2,:) '\n'])
+            fprintf('Make sure that the file has the right format (dc_XXXX.dat)\n')
+            cd ..
+            break
+            
+        end
+        
+        % Write UBC control file
+        fid=fopen('DC.inp','w');
+
+        fprintf(fid,'0 60  ! niter, irest\n');
+        fprintf(fid,'1  ! chifact\n');
+        fprintf(fid,[(dc_obs_file) '\n']);
+        fprintf(fid,'NULL  ! mesh\n');
+        fprintf(fid,'NULL  ! topography\n');
+        fprintf(fid,'NULL  ! initial model\n');
+        fprintf(fid,'%8.4f  ! reference model\n',Cond_model(1));
+        fprintf(fid,'NULL  ! alpha\n');
+        fprintf(fid,'NULL  ! w.dat\n');
+
+        fclose(fid);
+
+        dos ('dcinv2d DC.inp')
+        
+        dos ('copy dcinv2d.con  dcinv2d_refmodel_1.con');
+        dos ('copy dcinv2d_refmodel_1.con ..\..\');
+        
+        dos ('copy dcinv2d.con ..\IP');
+        dos ('copy dcinv2d.msh ..\IP');
+        
+        cd ..
+        
+
+        
+%% Conductivity model 2    
+    cd DC2
+    file_list=ls;
+    
+    % Find the Obs file
+        dc_obs_file={};
+
+            for ii = 1:size(file_list,1)-2;
+
+                look_at = strtrim(file_list(ii+2,:));
+            
+                if strcmp(look_at(1:3),'dc_')==1 && strcmp(look_at(end-8:end),'UTM2D.obs')==1
+                    
+                dc_obs_file=look_at;
+                
+                end
+
+
+            end
+            
+        if isempty(dc_obs_file)==1
+            
+            fprintf(['Program could not find the DC file for line ' DCline_list(oo+2,:) folder_list(ff+2,:) '\n'])
+            fprintf('Make sure that the file has the right format (dc_XXXX.dat)\n')
+            cd ..
+            break
+            
+        end
+        
+        % Write UBC control file
+        fid=fopen('DC.inp','w');
+
+        fprintf(fid,'0 60  ! niter, irest\n');
+        fprintf(fid,'1  ! chifact\n');
+        fprintf(fid,[(dc_obs_file) '\n']);
+        fprintf(fid,'NULL  ! mesh\n');
+        fprintf(fid,'NULL  ! topography\n');
+        fprintf(fid,'NULL  ! initial model\n');
+        fprintf(fid,'%8.4f  ! reference model\n',Cond_model(2));
+        fprintf(fid,'NULL  ! alpha\n');
+        fprintf(fid,'NULL  ! w.dat\n');
+
+        fclose(fid);
+
+        dos ('dcinv2d DC.inp')
+        
+        dos ('copy dcinv2d.con  dcinv2d_refmodel_2.con');
+        dos ('copy dcinv2d_refmodel_2.con ..\..\');
+
+        cd ..
+        
+        % Chargeability
+        cd IP
+        file_list = ls;
+       % Find the IP observation file
+       
+        
+        ip_obs_file={};
+
+            for ii = 1:size(file_list,1)-2;
+
+                look_at = strtrim(file_list(ii+2,:));
+            
+                if strcmp(look_at(1:3),'ip_')==1 && strcmp(look_at(end-8:end),'UTM2D.obs')==1
+                    
+                ip_obs_file=look_at;
+                
+                end
+
+
+            end
+            
+            if isempty(ip_obs_file)==1
+
+                fprintf(['Program could not find the IP file for line ' DCline_list(oo+2,:) folder_list(ff+2,:) '\n'])
+                fprintf('Make sure that the file has the right format (ip_XXXX.dat)\n')
+                cd ..
+                break
+
+            end
+        
+        % Write UBC control file
+        fid=fopen('IP.inp','w');
+
+        fprintf(fid,'0 50  ! niter, irest\n');
+        fprintf(fid,'1  ! chifact\n');
+        fprintf(fid,[(ip_obs_file) '\n']);
+        fprintf(fid,'dcinv2d.con  ! conductivity file\n');
+        fprintf(fid,'dcinv2d.msh  ! mesh\n');
+        fprintf(fid,'NULL  ! topography\n');
+        fprintf(fid,'NULL  ! initial model\n');
+        fprintf(fid,'%8.4f  ! reference model\n',Charg_model(1));
+        fprintf(fid,'NULL  ! alpha\n');
+        fprintf(fid,'NULL  ! w.dat\n');
+
+        fclose(fid);
+
+        dos ('ipinv2d IP.inp')
+        
+        dos ('copy ipinv2d.chg  ipinv2d_refmodel.chg');
+        dos ('copy ipinv2d_refmodel.chg ..\..\');
+        
+        
+        cd ..\..\..\
+        
+
+        
+    end
+    
+    cd ..
+    
+end
+
+fprintf('\nDONE ! !\n')
+
+cd(home_dir);

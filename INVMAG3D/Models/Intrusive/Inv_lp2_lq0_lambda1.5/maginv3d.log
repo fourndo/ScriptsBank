@@ -1,0 +1,66 @@
+
+Parallelized with OpenMP.  # of threads:  1
+
+MAG3D - Version 4.0 BETA 20100108:  MAGINV3D new bounds
+
+Developed by University of British Columbia 
+Geophysical Inversion Facility  (UBC-GIF)
+
+(C) Copyright 1992 - 2010, UBC-GIF,
+Department of Earth and Ocean Sciences, UBC
+http://www.eos.ubc.ca/research/ubcgif/
+
+This program is licensed to:
+
+Mira Geoscience Limited
+
+
+MAGINV3D started on:  5/15/2013  11:44:27
+
+Running with the following parameters:
+
+          Input file: inv_ctrl.dat
+                mode: 2  (fixed multiplier)
+     lag. multiplier:   7.74    
+   Observations file: D:\Dom\3796_Compactness\Intrusive\Obs_Model_Intrusive_2pc.obs
+    Sensitivity file: D:\Dom\3796_Compactness\Intrusive\maginv3d.mtx
+       Initial Model: D:\Dom\3796_Compactness\Intrusive\Workspace2\maginv3d_001.sus
+     Reference Model: null
+        Model bounds: null
+   3D weighting file: input_w.dat
+
+ *** Model norm DOES NOT contain reference model.
+
+           # of data:      992
+ # of cells in model:    48384
+ # of cells in  mesh:    52992
+
+
+
+----------------------------------------
+ input file specifies length scales:
+             Le, Ln, Lz:   60.0      60.0      60.0    
+ corresponding alpha values:
+     alpha (s, e, n, z):  2.778E-04  1.00      1.00      1.00    
+----------------------------------------
+
+
+--- Setup the preliminaries for the inversion ---
+init cpu time:   0:00:00.23
+     initial misfit:  1.112588E+03
+       initial norm:  1.017256E+02
+
+          Iteration:   1
+         multiplier:  7.737810E+00
+  # truncated cells:    22344
+      CG iterations:    63
+  # truncated cells:    23309
+        data misfit:  9.273989E+02
+         model norm:  1.195225E+02
+    total objective:  1.852242E+03
+beta cpu time:   0:00:04.14
+
+
+TOTAL cpu time:   0:00:04.38
+
+MAGINV3D ended on:  5/15/2013  11:44:31

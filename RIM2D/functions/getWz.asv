@@ -1,0 +1,20 @@
+function [Wz]=getWz(mcell,nX,nZ,dX,dZ)
+%Build the derivative weighting matrix
+%Takes care of the fact that model is a m-by-n matrix converted to a
+%m*n-by-1
+
+
+Wz = zeros((nZ-1)*nX+1,mcell);
+count=2;
+for ii=1:nX
+    
+    for jj=1:nZ
+        
+        if (jj < nZ)
+            Wz(count,count+nZ) = sqrt(dZ(jj)/dX(ii+1)); 
+            Wz(count,count) = -sqrt(dZ(jj)/dX(ii));
+
+        end
+        count=count+1;
+    end
+end

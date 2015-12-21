@@ -1,0 +1,12 @@
+Cenozoic
+Mesozoic
+Paleozoic
+Proterozoic
+Archean
+Neo-proterozoic
+Meso-proterozoic
+Paleo-proterozoic
+Neo-archean
+Meso-archean
+Paleo-archean
+Eo-archean

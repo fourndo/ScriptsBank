@@ -1,0 +1,152 @@
+
+Parallelized with OpenMP.  # of threads:  4
+
+MAGES - Version 1.0 :  MAGINVES
+
+Developed by University of British Columbia 
+Geophysical Inversion Facility  (UBC-GIF)
+
+(C) Copyright 1992 - 2014, UBC-GIF,
+Department of Earth and Ocean Sciences, UBC
+http://gif.eos.ubc.ca/
+
+
+Reading input file: inv.inp
+
+----------------------------------------------------------------
+
+1
+1, 0.02
+obs.mag
+maginves.mtx
+-10.0
+10.0
+100 100
+null !flat_full.mtx
+
+----------------------------------------------------------------
+
+
+MAGINVES started on:  3/20/2014  13:35:07
+
+
+Running with the following parameters:
+
+           Input file: inv.inp
+                 mode: 1  (fixed target misfit)
+              chifact:   1.00    
+    Observations file: obs.mag
+     Sensitivity file: maginves.mtx
+Full Sensitivity file: null
+
+
+                    # of data:     1102
+
+                   # of cells: 109 x 86
+             total # of cells:    9374
+        # of cells below topo:    9374
+
+      lower bounds was set to: -1.0000E+01
+      upper bounds was set to:  1.0000E+01
+
+
+----------------------------------------
+ length scales:
+                 Le, Ln:   100.      100.    
+ corresponding alpha values:
+        alpha (s, e, n):  1.000E-04  1.00      1.00    
+----------------------------------------
+
+      init cpu time:   0:00:00.10
+ 
+     initial misfit:  1.474862E+05
+ target data misfit:  1.102000E+03
+
+          Iteration:   1
+               beta:  4.107381E+10
+        data misfit:  6.906873E+04
+      beta cpu time:   0:00:01.57
+
+          Iteration:   2
+               beta:  2.053691E+10
+        data misfit:  6.898256E+04
+      beta cpu time:   0:00:01.57
+
+          Iteration:   3
+               beta:  1.026845E+10
+        data misfit:  6.873178E+04
+      beta cpu time:   0:00:01.25
+
+          Iteration:   4
+               beta:  5.134227E+09
+        data misfit:  6.824180E+04
+      beta cpu time:   0:00:01.27
+
+          Iteration:   5
+               beta:  2.567113E+09
+        data misfit:  6.730464E+04
+      beta cpu time:   0:00:01.16
+
+          Iteration:   6
+               beta:  1.283557E+09
+        data misfit:  6.557943E+04
+      beta cpu time:   0:00:01.38
+
+          Iteration:   7
+               beta:  6.417783E+08
+        data misfit:  6.259531E+04
+      beta cpu time:   0:00:01.31
+
+          Iteration:   8
+               beta:  3.208892E+08
+        data misfit:  5.786968E+04
+      beta cpu time:   0:00:01.16
+
+          Iteration:   9
+               beta:  1.604446E+08
+        data misfit:  5.113427E+04
+      beta cpu time:   0:00:01.37
+
+          Iteration:  10
+               beta:  8.022229E+07
+        data misfit:  4.252507E+04
+      beta cpu time:   0:00:01.45
+
+          Iteration:  11
+               beta:  4.011115E+07
+        data misfit:  3.266219E+04
+      beta cpu time:   0:00:01.83
+
+          Iteration:  12
+               beta:  2.005557E+07
+        data misfit:  2.263934E+04
+      beta cpu time:   0:00:02.65
+
+          Iteration:  13
+               beta:  1.002779E+07
+        data misfit:  1.379013E+04
+      beta cpu time:   0:00:02.57
+
+          Iteration:  14
+               beta:  5.013893E+06
+        data misfit:  7.181225E+03
+      beta cpu time:   0:00:02.80
+
+          Iteration:  15
+               beta:  2.506947E+06
+        data misfit:  3.133918E+03
+      beta cpu time:   0:00:03.45
+
+          Iteration:  16
+               beta:  1.253473E+06
+        data misfit:  1.148804E+03
+      beta cpu time:   0:00:05.62
+
+   Target misfit reached.
+
+
+
+     TOTAL cpu time:   0:00:32.60
+
+MAGINVES ended on:  3/20/2014  13:35:39
+

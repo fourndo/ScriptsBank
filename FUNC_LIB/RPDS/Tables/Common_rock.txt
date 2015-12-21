@@ -1,0 +1,286 @@
+Mudstone
+Pelite
+Mudrock
+Claystone
+Siltstone
+Shale
+Mudshale
+Clayshale
+Conglomerate
+Sandstone
+SST
+Arenite
+Quartz Arenite
+Lithic Arenite
+Arkose
+Lithic Arkose
+Subarkose
+Wacke
+Greywacke
+Lithic wacke
+Feldspathic wacke
+Quartz wacke
+GWKE
+Siliciclastic
+Turbidite
+Limestone
+Travertine
+Aragonite
+Dolostone
+Dolomite
+Carbonate
+Calcite
+Lime
+Wackestone
+Packstone
+Grainstone
+Floatstone
+Rudstone
+Boundstone
+Bafflestone
+Bindstone
+Framestone
+Rock Salt
+Halite
+Gypsum
+Anhydrite
+Trona
+Potash
+Evaporite
+Diatomite
+Diatomaceous Earth
+Chert
+Jasper
+Chalcedony
+Flint
+Porcellanite
+Chemical Silicate
+Iron Formation
+IF
+Banded Iron Formation
+Banded Iron
+BIF
+Ironstone
+Iron Rich
+Coal
+Peat
+Oil Shale
+Oil Sand
+Petroliferous Sandstone
+Organic
+Mud
+Clay
+Silt
+Sand
+Gravel
+Boulders
+Cobbles
+Pebbles
+Rubble
+Till
+Overburden
+Tailings
+Sediment
+Sediments
+Sedimentary
+Rhyolite
+Alkali-Feldspar Rhyolite
+Rhyodacite
+Dacite
+Trachyte
+Trachydacite
+Trachyandesite
+Trachybasalt
+Quartz alkali feldspar trachyte
+Alkali feldspar trachyte
+Quartz trachyte
+Quartz latite
+Latite
+Andesite
+Basaltic andesite
+Boninite
+Basalt
+Tholeiite
+Komatiite
+Picrite
+Meimechite
+Pillow
+Flow
+Lava
+Volcanics
+Volcanic
+Tuff
+Lapillistone
+Lapillituff
+Dust Tuff
+Ash Tuff
+Ash Lapilli Tuff
+Lapilli Tuff
+Tuffite
+Pumice
+Scoria
+Obsidian
+Tephra
+Block
+Bomb
+Lapilli
+Ash
+Pyroclastic
+Volcanosediments
+Volcaniclastic
+Granite
+Granodiorite
+Tonalite
+Trondhjemite
+Syenogranite
+Monzogranite
+Alkali feldspar granite
+Syenite
+Alkali feldspar syenite
+Quartz syenite
+Monzonite
+Quartz monzonite
+Quartz alkali feldspar syenite
+Diorite
+Monzodiorite
+Syenodiorite
+Quartz monzodiorite
+Quartz diorite
+Gabbro
+Gabbronorite
+Norite
+Troctolite
+Malignite
+Leucogabbro
+Melanogabbro
+Melagabbro
+Leucogabbronorite
+Anorthosite
+Peridotite
+Dunite
+Harzburgite
+Lherzolite
+Wehrlite
+Pyroxenite
+Hornblendite
+Websterite
+Carbonatite
+Intrusion
+Pluton
+Batholith
+Plutonic
+Diabase
+Porphyry
+QFP
+Granophyre
+Pegmatite
+Aplite
+Lamprophyre
+Kimberlite
+Hypabyssal
+Felsic Dyke
+Felsic Sill
+Intermediate Dyke
+Intermediate Sill
+Mafic Dyke
+Mafic Sill
+Ultramafic Dyke
+Ultramafic Sill
+Sill
+Dyke
+Dike
+Igneous
+Felsic
+Intermediate
+Mafic
+Ultramafic
+Rodingite
+Skarn
+Hornfels
+Paragneiss
+Paraschist
+Argillite
+Marl
+Psammite
+Phyllite
+Slate
+Quartzite
+Marble
+Meta-Sediment
+Metasediment
+Meta-Carbonate
+Calc Silicate
+Calcosilicate
+Meta-Conglomerate
+Orthogneiss
+Orthoschist
+Amphibolite
+Serpentinite
+Soapstone
+Meta-Felsic
+Meta-Intermediate
+Meta-Mafic
+Meta-Ultramafic
+Meta-Volcanic
+Metavolcanic
+Gneiss
+Schist
+Eclogite
+Granulite
+Greenstone
+Migmatite
+Diatexite
+Mylonite
+Phyllonite
+Metamorphic
+Ore
+Ore Zone
+Cu
+Pb
+Zn
+Ag
+Au
+Sulphide
+Pyrite
+Pentlandite
+Pyrrhotite
+Chalcopyrite
+Sphalerite
+Galena
+Millerite
+Arsenopyrite
+PY
+PO
+PN
+CPY
+ASPY
+Barite
+Massive Sulphide
+Disseminated Sulphide
+Oxide
+Hematite
+Hematized
+Mineralized Zone
+Alteration Zone
+Graphite
+Fault
+Faulted
+Fault Zone
+Fault gouge
+Gouge
+Fracture
+Fractured
+Shear
+Sheared
+Shear Zone
+Shearing
+Brecciated
+Breccia
+Agglomerate
+Diatreme
+Hyaloclastite
+Veined
+Vein
+Cataclastite
+Casing
+Unknown

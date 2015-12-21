@@ -1,0 +1,9 @@
+C:\Projects\3796_AGIC_Research\MAG3D\Scott !HOME DIRECTORY
+C:\Projects\3796_AGIC_Research\MAG3D\Scott\UBC_results  ! UBC results directory
+1 	! Starting Iteration # from the UBC inversion 
+0.8	! Target chi-factor
+2 	! Value or array of lp-norms to be computed in range [0 2]
+1.0 1.5 1.75	! Value or array of lq-norms to be computed in range [0 2]
+1.5	! Scaling between lp and lq norms in range [0 2]
+0.5	! Cooling schedule of trade-off parameter (0.5 default)
+20	! Maximum number of iterations

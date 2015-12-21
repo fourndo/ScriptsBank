@@ -1,0 +1,33 @@
+function [mesh]=get_UBCmesh2D(meshfile)
+% Read UBC mesh file and extract parameters
+% Works for the condenced version (20 * 3) --> [20 20 20] 
+fid=fopen(meshfile,'rt');
+
+
+% Go through the log file and extract data and the last achieved misfit
+         	
+line=fgets(fid);
+    
+% First line: number of cells X 
+mesh(1,1) = str2num(line);
+    
+    
+% Second line: origin coordinate (X,Y,Z)
+    for jj= 1 : mesh(1,1)
+        line=fgets(fid);
+        
+        numstring = str2num(line);
+        
+        if jj==1
+        mesh(2,1) =  numstring(1);
+        dX = numstring(1) - numstring(2);
+        xin = numstring(2);
+        end
+        
+        dx = 
+        
+        dX = [dX dx];
+    % Other lines for the dX, dY ,dZ
+    
+    
+end

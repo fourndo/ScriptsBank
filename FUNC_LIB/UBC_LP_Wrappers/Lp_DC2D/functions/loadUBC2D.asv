@@ -1,0 +1,22 @@
+function [model] = loadUBC2D(model_file,nX,nZ)
+% Load a UBC-DCIP2D file and reformat in vector
+
+fid=fopen(model_file,'rt');
+line=fgets(fid);
+model = zeros(nZ,nX);
+countx=0;
+countz=1;
+% Go through the log file and extract data and the last achieved misfit
+while countz<=nZ
+    line=fgets(fid); %gets next line 
+    
+    m_line = str2num(line);
+    
+    
+    model(
+    
+    
+end
+        
+    
+    

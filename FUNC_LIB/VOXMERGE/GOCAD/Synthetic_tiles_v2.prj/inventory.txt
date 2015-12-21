@@ -1,0 +1,23 @@
+# Inventory file written by GOCAD Suite 2.6.3
+# Archive version: 2.6.3
+# This file is for troubleshooting purposes only.
+data	-1	
+datastore_01e3428e-9a64bf90-f2cc-f7b3a8796340	12000	sgridpoints	Tile1
+datastore_01e3428e-9a65a9f0-f2cc-f7b3a8796340	4000	sgridflags	Tile1
+datastore_01e3428e-9a669450-f2cc-f7b3a8796340	2916	prop	Tile1
+datastore_01e3428e-9a681af0-f2cc-f7b3a8796340	12000	sgridpoints	Tile2
+datastore_01e3428e-9a692c60-f2cc-f7b3a8796340	4000	sgridflags	Tile2
+datastore_01e3428e-9a69efb0-f2cc-f7b3a8796340	2916	prop	Tile2
+datastore_01e3428e-9a6b2830-f2cc-f7b3a8796340	12000	sgridpoints	Tile3
+datastore_01e3428e-9a6c39a0-f2cc-f7b3a8796340	4000	sgridflags	Tile3
+datastore_01e3428e-9a6cd5e0-f2cc-f7b3a8796340	2916	prop	Tile3
+datastore_01e342c5-c6056640-0eb9-8a2785fb53d0	2916	Weight	Tile3
+datastore_01e342c5-c6076210-0eb9-8a2785fb53d0	32256	sgridpoints	Final
+datastore_01e342c5-c6089a90-0eb9-8a2785fb53d0	10752	sgridflags	Final
+datastore_01e342c5-c609ac00-0eb9-8a2785fb53d0	8580	prop	Final
+datastore_01e342c5-c60ba7d0-0eb9-8a2785fb53d0	26880	sgridpoints	Final2
+datastore_01e342c5-c60cb940-0eb9-8a2785fb53d0	8960	sgridflags	Final2
+datastore_01e342c5-c60da3a0-0eb9-8a2785fb53d0	7020	prop	Final2
+control	-1	
+project	-1	
+inventory.txt	-1	

@@ -1,0 +1,6 @@
+                   # of cells: 23 x 23 x 11
+             total # of cells:    5819
+        # of cells below topo:    5685
+          # of inactive cells:     134
+
+              model was read from file: cube.sus

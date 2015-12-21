@@ -1,0 +1,6 @@
+#PBS -l nodes=1:ppn=4
+cd $PBS_O_WORKDIR
+#cat $PBS_NODEFILE >nodes.txt
+#mpiexec -f $PBS_NODEFILE -n 12 TDoctreeinv
+export OMP_NUM_THREADS=4
+TDoctreeinv TD_octree_inv.inp

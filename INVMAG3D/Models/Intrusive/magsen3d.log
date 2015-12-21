@@ -1,0 +1,71 @@
+
+Parallelized with OpenMP.  # of threads:  4
+
+MAG3D - Version 5.0 :  MAGSEN3D
+
+Developed by University of British Columbia 
+Geophysical Inversion Facility  (UBC-GIF)
+
+(C) Copyright 1992 - 2013, UBC-GIF,
+Department of Earth and Ocean Sciences, UBC
+http://gif.eos.ubc.ca/
+
+This program is licensed to:
+
+Mira Geoscience Ltd.
+
+
+Reading input file: UBC_sns.inp
+
+----------------------------------------------------------------
+
+Mesh_40m_noair.msh  ! mesh
+Obs_loc.dat  ! observations file
+Flat.topo ! topography
+distance_weight.txt  ! beta, znot
+daub2  ! wavelet
+null  ! itol eps
+0
+
+----------------------------------------------------------------
+
+
+MAGSEN3D started on:  9/12/2013  07:50:31
+
+with the following parameters:
+
+          Input file: UBC_sns.inp
+   Observations file: Obs_loc.dat
+           Mesh file: Mesh_40m_noair.msh
+     Topography file: Flat.topo
+ Wavelet compression: daub2
+ Wavelet   threshold: default
+ 
+                   # of cells: 23 x 23 x 11
+             total # of cells:    5819
+        # of cells below topo:    5685
+          # of inactive cells:     134
+
+           # of surface  data:     289
+           # of borehole data:       0
+ 
+          weighting was read from file: distance_weight.txt
+      init cpu time:   0:00:00.04
+
+    Sensitivity of surface  data:
+
+ At the relative  accuracy of:  5.0000E-02
+ Estimated relative threshold:  6.8332E-03
+ Predicted compression  ratio:  3.1920E+00
+
+
+          Number of non-zeros:    581971
+          Compression   ratio:  2.8231E+00
+
+      achieved relative error:  2.1392E-01
+
+      sens cpu time:   0:00:00.33
+     TOTAL cpu time:   0:00:00.39
+
+MAGSEN3D ended on:  9/12/2013  07:50:31
+

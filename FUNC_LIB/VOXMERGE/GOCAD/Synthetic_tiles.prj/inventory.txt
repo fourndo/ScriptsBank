@@ -1,0 +1,17 @@
+# Inventory file written by GOCAD Suite 2.6.3
+# Archive version: 2.6.3
+# This file is for troubleshooting purposes only.
+data	-1	
+datastore_01e3428e-9a64bf90-f2cc-f7b3a8796340	12000	sgridpoints	Tile1
+datastore_01e3428e-9a65a9f0-f2cc-f7b3a8796340	4000	sgridflags	Tile1
+datastore_01e3428e-9a669450-f2cc-f7b3a8796340	2916	prop	Tile1
+datastore_01e3428e-9a681af0-f2cc-f7b3a8796340	12000	sgridpoints	Tile2
+datastore_01e3428e-9a692c60-f2cc-f7b3a8796340	4000	sgridflags	Tile2
+datastore_01e3428e-9a69efb0-f2cc-f7b3a8796340	2916	prop	Tile2
+datastore_01e3428e-9a6b2830-f2cc-f7b3a8796340	12000	sgridpoints	Tile3
+datastore_01e3428e-9a6c39a0-f2cc-f7b3a8796340	4000	sgridflags	Tile3
+datastore_01e3428e-9a6cd5e0-f2cc-f7b3a8796340	2916	prop	Tile3
+control	-1	
+project	-1	
+inventory.txt	-1	
+history.gsc	-1	

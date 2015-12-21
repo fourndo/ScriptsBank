@@ -1,0 +1,15 @@
+H 14 1 Mira Geoscience - AGIC
+D 0 1p
+L 10 0 C Title: Observed and Predicted data
+D 0 1p
+L 10 0 C Project: Synthetic example
+D 0 1p
+N 2
+V 0 1p
+L 10 0 C Scale: 1:10 000
+L 10 0 C Date (YYYY-MM-DD): 2013-06-28
+V 0 1p
+D 0 1p
+L 10 0 C Note: This is a test
+G -0.15i
+I Mira-Logo.eps 1i RT

@@ -1,0 +1,9 @@
+#PBS -l nodes=cluster:ppn=10:gold
+# the first line requests cluster node, 12 cores on the gold cluster
+
+cd $PBS_O_WORKDIR
+
+
+export OMP_NUM_THREADS=10
+
+python /home/MIRAGEOSCIENCE/Compact_Inv/lp_DC3D/lp_DC3D_UNIX.py

@@ -1,0 +1,189 @@
+% EOSC 555 - Forward MT
+% 
+% Author : Dominique Fournier
+% Date: April 4th, 2013
+%
+% SUMMARY
+% Script creating the GRAD, DIV and CURL operators for nodal
+% discretization. The code has been tested on a simple vector field
+% function:
+% E = A + GRAD(phi)
+% where A is a divergence-free vector function, 
+% A = < -y^3 , x^3 >
+% and phi is a curl-free scalar function, 
+% phi = 3x + x^2*y - y^4 + z^2
+%
+% Both have a simple analytical solution and can be used seperately to test
+% the GRAD, DIV and CURL operators.
+% 
+% The model space is 1 x 1 x 1 cube discretized by n x (n+1) x (n+2) cells.
+% A solution is computed using the operators and compared to the
+% analytical solution. Figure 1 shows that the error on the operators
+% is approximatively of order h^2.
+%
+% The following properties have also been tested: 
+% CURLxGRAD(phi) ==0 (Concervative fields are curl-free)
+% DIV ( CURL x (E)) == 0 (Divergence of the B-field is 0)
+
+
+addpath functions
+
+clear all
+close all
+
+for kk=1%:5
+n=3*kk;   
+% h = 1/n;
+% nodal grid
+% tF = linspace(0,1,n+1); tF = tF(:);
+% tC = linspace(0,1,n); tC = tC(:);
+
+%% Create mesh for center and faces
+X0 = 0; Y0 = 0; Z0 = 0; %Origin
+
+% %Uniform mesh
+% %Create mesh position (faces)
+% xf = linspace(-pi,pi,n+1); xf=xf(:); 
+% yf = linspace(-pi,pi,n+2); yf=yf(:);
+% zf = linspace(-pi,pi,n+3); zf=zf(:);
+% 
+% % Create mesh size
+% dx = abs(xf(2:end) - xf(1:end-1));
+% dy = abs(yf(2:end) - yf(1:end-1));
+% dz = abs(zf(2:end) - zf(1:end-1));
+%
+%Tensor mesh
+expanx = get_factor(n,0.1,pi);
+dx = [0.1*expanx .^[(n-1):-1:0]';0.1*expanx .^[0:(n-1)]'] ;
+
+expany = get_factor((n+1),0.1,pi);
+dy = [0.1*expany .^[(n):-1:0]';0.1*expany .^[0:(n)]'] ;
+
+expanz = get_factor((n+2),0.1,pi);
+dz = [0.1*expanz .^[(n+1):-1:0]';0.1*expanz .^[0:(n+1)]'] ;
+
+xf = [0;cumsum(dx)]; xf=xf(:); 
+yf = [0;cumsum(dy)]; yf=yf(:);
+zf = [0;cumsum(dz)]; zf=zf(:);
+
+
+% Create center-center mesh size (hmid)
+dxm = dx(1:end-1)/2 + dx(2:end)/2; dxm=[dxm(1);dxm;dxm(end)];
+dym = dy(1:end-1)/2 + dy(2:end)/2; dym=[dym(1);dym;dym(end)];
+dzm = dz(1:end-1)/2 + dz(2:end)/2; dzm=[dzm(1);dzm;dzm(end)];
+
+% Compute number of faces and cells in 3D
+nxm = length(dxm); nym = length(dym) ; nzm = length(dzm);
+
+nx = length(dx); ny = length(dy) ; nz = length(dz);
+
+nfx = (nx+1) * (ny) * (nz);
+nfy = (nx) * (ny+1) * (nz);
+nfz = (nx) * (ny) * (nz+1);
+
+nface = nfx + nfy + nfz;
+
+mcell = nx * ny *nz;
+
+% Create diagonal matrices for hmid dimensions
+dXm = spdiags(1./dxm,0,nxm,nxm);
+dYm = spdiags(1./dym,0,nym,nym);
+dZm = spdiags(1./dzm,0,nzm,nzm);
+
+% Create cell-center dimension matrix
+dX = spdiags(1./dx,0,nx,nx); dXxl=spdiags([1./dx(1);1./dx;1./dx(end)],0,nx+2,nx+2);
+dY = spdiags(1./dy,0,ny,ny); dYxl=spdiags([1./dy(1);1./dy;1./dy(end)],0,ny+2,ny+2);
+dZ = spdiags(1./dz,0,nz,nz); dZxl=spdiags([1./dz(1);1./dz;1./dz(end)],0,nz+2,nz+2);
+
+Xif = kron( kron( ones(nz,1) , ones(ny,1) ), xf );
+Yif = kron( kron( ones(nz,1) , yf ), ones(nx,1) );
+Zif = kron( kron( zf ,ones(ny,1) ), ones(nx,1) );
+
+% nhx = (nx) * (ny+1) * (nz+1);
+% nhy = (nx+1) * (ny) * (nz+1);
+% nhz = (nx+1) * (ny+1) * (nz);
+
+ddx = @(n) spdiags (ones (n+1,1)*[-1,1],[0,1],n+1,n+2);
+
+%% Model parameters
+uo = 4*pi*10^-7;
+
+s_p = ones(mcell,1) * 1e-2; % Background conductivity [S/m]
+s_s = ones(mcell,1) * 1e-2; % Anomaly conductivity [S/m]
+
+
+%% Laplacian operator for primary field
+% Second partial Derivative in 3 directions
+% %Partial derivatives for x-component
+d_dx=  dXxl * ddx(nx+1); d_dx=d_dx(:,2:end-1); dd_dx= d_dx'*d_dx; dd_dx([1,end],:)=0;
+DDxx = kron( kron( speye(nz) , speye(ny) ), dd_dx );
+
+d_dy= dYm * ddx(ny); d_dy=d_dy(:,2:end-1); dd_dy= d_dy'*d_dy; dd_dy([1,end],:)=0;% dd_dy([1,end])=dd_dy([1,end])/2;
+DDyx = kron( kron( speye(nz) , dd_dy ), speye(nx+1) );
+
+%Boundary Conditions: Derichlet on top and Robin at bottom
+%Will eventually need to compute kappa for individual cells since
+%conductivity will change at every location
+d_dz= dZm * ddx(nz); d_dz=d_dz(:,2:end-1); dd_dz= d_dz'*d_dz; dd_dz([1,end],:)=0;
+DDzx = kron( kron( dd_dz , speye(ny) ), speye(nx+1) );
+
+% %%Partial derivatives for y-component
+d_dx= dXm * ddx(nx); d_dx=d_dx(:,2:end-1); dd_dx= d_dx'*d_dx; dd_dx([1,end],:)=0;% dd_dx([1,end])=dd_dx([1,end])/2;
+DDxy = kron( kron( speye(nz) , speye(ny+1) ), dd_dx );
+
+d_dy= dYxl * ddx(ny+1); d_dy=d_dy(:,2:end-1); dd_dy= d_dy'*d_dy; dd_dy([1,end],:)=0;
+DDyy = kron( kron( speye(nz) , dd_dy ), speye(nx) );
+
+%Boundary Conditions: Derichlet on top and Robin at bottom
+%Will eventually need to compute kappa for individual cells since
+%conductivity will change at every location
+d_dz= dZm * ddx(nz); d_dz=d_dz(:,2:end-1); dd_dz= d_dz'*d_dz; dd_dz([1,end],:)=0;
+DDzy = kron( kron( dd_dz , speye(ny+1) ), speye(nx) );
+
+
+% %%Partial derivatives for z-component
+d_dx= dXm * ddx(nx); d_dx=d_dx(:,2:end-1); dd_dx= d_dx'*d_dx; dd_dx([1,end],:)=0;% dd_dx([1,end])=dd_dx([1,end])/2;
+DDxz = kron( kron( speye(nz+1) , speye(ny) ), dd_dx );
+
+d_dy= dYm * ddx(ny); d_dy=d_dy(:,2:end-1); dd_dy= d_dy'*d_dy; dd_dy([1,end],:)=0;% dd_dy([1,end])=dd_dy([1,end])/2;
+DDyz = kron( kron( speye(nz+1) , dd_dy ), speye(nx) );
+
+d_dz= dZxl * ddx(nz+1); d_dz=d_dz(:,2:end-1); dd_dz= d_dz'*d_dz; dd_dz([1,end],:)=0;
+DDzz = kron( kron( dd_dz , speye(ny) ), speye(nx) );
+
+Oyx = sparse ( nfx , nfy );
+Ozx = sparse ( nfx , nfz );
+
+Oxy = sparse ( nfy , nfx );
+Ozy = sparse ( nfy , nfz );
+
+Oxz = sparse ( nfz , nfx );
+Oyz = sparse ( nfz , nfy );
+
+L_p = [DDxx+DDyx+DDzx Oyx Ozx;
+     Oxy DDxy+DDyy+DDzy Ozy;%
+     Oxz Oyz DDxz+DDyz+DDzz];
+
+%% Create test function
+% Function is f(x) = cos(x/2)*sin(2*x).
+% First derivative = -sin(x/2)*sin(2*x) + cos(x/2)*cos(2*x)
+% Second derivative = 
+% -cos(x/2)*sin(2*x) - sin(x/2)*cos(2*x) -
+% sin(x/2)*cos(2*x)
+    Aif = sin(Xif) ;
+    Ajf = sin(Yif) ;
+    Akf = sin(Zif) ;
+    
+    Af = [Aif(:); Ajf(:); Akf(:)];
+    Af = L_p*Af;
+    
+    Bif = -sin(Xif);
+    Bjf = -sin(Yif);
+    Bkf = -sin(Zif);
+
+    Bf = [Bif(:); Bjf(:); Bkf(:)];
+    
+    
+   residual(kk,1)= n; 
+   residual(kk,2)= norm(abs(Af) - abs(Bf), 'inf');
+end

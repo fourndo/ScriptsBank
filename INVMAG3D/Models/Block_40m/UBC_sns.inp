@@ -1,0 +1,7 @@
+Mesh_40m.msh  ! mesh
+MAG3D_3C.obs  ! observations file
+Flat.topo ! topography
+distance_weight.txt  ! beta, znot
+daub2  ! wavelet
+null  ! itol eps
+0

@@ -1,0 +1,178 @@
+Pelite
+Claystone
+Siltstone
+Shale
+Conglomerate
+Sandstone
+Arenite
+Arkose
+Wacke
+Unspecified Siliciclastic
+V Breccia
+V Conglomerate
+V Sandstone
+V Siltstone
+Unspecified Volcano Clastic
+Limestone
+Dolostone
+Unspecified Carbonate
+Rock Salt
+Gypsum
+Anhydrite
+Trona
+Potash
+Unspecified Evaporite
+Diatomite
+Chert
+Porcellanite
+Unspecified Chem Silicate
+Iron Formation
+Ironstone
+Unspecified Iron-Rich
+Coal
+Peat
+Oil Shale
+Oil Sand
+Petrolif Sandstone
+Unspecified Organic
+Mud
+Clay
+Silt
+Sand
+Gravel
+Till
+Overburden
+Tailings
+Unspecified Sediment
+Unspecified Sedimentary
+Rhyolite
+Dacite
+Trachyte
+Andesite
+Basalt
+Komatiite
+Unspecified Volcanic
+Tuff/Lapillistone
+Pumice
+Scoria
+Obsidian
+Tephra
+Unspecified Pyroclastic
+IGN V Breccia
+Granite
+Syenite
+Diorite
+Gabbro
+Anorthosite
+Peridotite
+Pyxenite/Hbndite
+Carbonatite
+Unspecified Plutonic
+Diabase
+Porphyry
+Granophyre
+Pegmatite
+Aplite
+Lamprophyre
+Kimberlite
+Unspecified Hypabyssal
+Felsic Dyke/Sill
+Intermidiate Dyke/Sill
+Mafic Dyke/Sill
+Ultramafic Dyke/Sill
+Unspecified Dyke/Sill
+Unspecified Igneous
+Rodingite
+Skarn
+Fenite
+Fenite
+Hornfels
+Paragneiss
+Paraschist
+Argillite
+Psammite
+Phyllite
+Slate
+Quartzite
+Marble
+Meta-Sediment
+Meta-Carbonate
+Meta-Conglomerate
+Orthogneiss
+Orthoschist
+Amphibolite
+Serpentinite
+Soapstone
+Soapstone
+Meta-Felsic
+Meta-Intermediate
+Meta-Mafic
+Meta-Ultramafic
+Meta-Volcanic
+Gneiss
+Schist
+Eclogite
+Granulite
+Greenstone
+Migmatite
+Mylonite
+Unspecified Metamorphic
+Ore
+Metals
+Sulphide
+Massive Sulphide
+Disseminated Sulphide
+Oxide
+Mineralized Zone
+Alteration Zone
+Alteration Zone
+Exhalite
+Graphite
+Fault
+Fracture
+Shear
+Breccia
+Vein
+Cataclasite
+Pseudotachylite
+Spodumene
+Asbestos
+Muscovite
+Lepidolite
+Siderite
+Fuchsite
+Unknown
+Siliciclastic
+Volcaniclastic
+Carbonate
+Evaporite
+Chemical Silicate
+Iron-Rich
+Organic
+Unconsolidated
+Unspecified Sedimentary
+Volcanic
+Volcanic Pyroclastic
+Volcaniclastic IGN
+Plutonic
+Hypabyssal
+Dyke/Sill
+Unspecified Igneous
+Metasomatic
+Contact
+Sedimentry Protolith
+Igneous Protolith
+Unknown Protolith
+Unspecified Metamorphic
+Ore
+Metals
+Sulphide
+Oxide
+Mineralized
+Alteration
+Structure
+Tectonic
+Mineral
+Igneous
+Metamorphic
+Sedimentary

@@ -1,0 +1,21 @@
+
+Parallelized with OpenMP.  # of threads:  4
+
+MAGES - Version 1.0 :  MAGSENES
+
+Developed by University of British Columbia 
+Geophysical Inversion Facility  (UBC-GIF)
+
+(C) Copyright 1992 - 2014, UBC-GIF,
+Department of Earth and Ocean Sciences, UBC
+http://gif.eos.ubc.ca/
+
+
+Sample magsenes input file: (! must precede comments)
+
+mesh         ! mesh file
+obs.mag      ! data file
+topo.dat     ! topography
+daub2        ! wavelet: daubx, symmx, NONE
+1  0.05      ! itol, eps | null
+

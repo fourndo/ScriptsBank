@@ -1,0 +1,64 @@
+
+Parallelized with OpenMP.  # of threads:  4
+
+MAGES - Version 1.0 :  MAGSENES
+
+Developed by University of British Columbia 
+Geophysical Inversion Facility  (UBC-GIF)
+
+(C) Copyright 1992 - 2014, UBC-GIF,
+Department of Earth and Ocean Sciences, UBC
+http://gif.eos.ubc.ca/
+
+
+Reading input file: sens.inp
+
+----------------------------------------------------------------
+
+mesh.msh
+obs.mag
+topo.dat !null
+daub2
+null
+
+----------------------------------------------------------------
+
+
+MAGSENES started on:  3/20/2014  13:34:53
+
+with the following parameters:
+
+          Input file: sens.inp
+   Observations file: obs.mag
+           Mesh file: mesh.msh
+     Topography file: topo.dat
+ Wavelet compression: daub2
+ Wavelet   threshold: default
+ 
+Warning: Topography region is not large enough.
+                   # of cells: 109 x 86
+             total # of cells:    9374
+        # of cells below topo:    9374
+
+           # of surface  data:    1102
+           # of borehole data:       0
+ 
+      init cpu time:   0:00:00.10
+
+    Sensitivity of surface  data:
+
+ At the relative  accuracy of:  5.0000E-02
+ Estimated relative threshold:  1.3545E-02
+ Predicted compression  ratio:  3.7951E+01
+
+
+          Number of non-zeros:    310286
+          Compression   ratio:  3.3292E+01
+
+      achieved relative error:  6.7312E+01
+
+      sens cpu time:   0:00:06.33
+     TOTAL cpu time:   0:00:06.63
+
+MAGSENES ended on:  3/20/2014  13:35:00
+

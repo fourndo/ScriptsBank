@@ -1,0 +1,28 @@
+
+Parallelized with OpenMP.  # of threads:  4
+
+MAG3D - Version 5.0 :  MAGFOR3D
+
+Developed by University of British Columbia 
+Geophysical Inversion Facility  (UBC-GIF)
+
+(C) Copyright 1992 - 2013, UBC-GIF,
+Department of Earth and Ocean Sciences, UBC
+http://gif.eos.ubc.ca/
+
+This program is licensed to:
+
+Mira Geoscience Ltd.
+
+
+MAGFOR3D started on:  1/23/2014  16:10:59
+
+
+magfor3d  Mesh_40m.msh Obs_loc.dat cube.sus Flat.topo
+
+              model was read from file: cube.sus
+ 
+     TOTAL cpu time:   0:00:00.15
+
+MAGFOR3D ended on:  1/23/2014  16:10:59
+

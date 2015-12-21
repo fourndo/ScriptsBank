@@ -1,0 +1,79 @@
+function [nullcell,topocell,ztopo_n] = topocheck(xn,yn,topo)
+% [nullcell,topocell,toponode] = topocheck(Xn,Yn,Zn,topo)
+% Create active cell matrix from discretized topography and topocell for
+% all cells intersected by the toposurface
+%
+% Inputs//
+% Xn, Yn, Zn: 3D arrays for the X, Y and Z location of all nodes in mesh
+% topo: Topography array 3-by-points [x(:) y(:) z(:)]
+%
+% Output//
+% nullcell: 1D vector, in UBC format, of binary values 1 (active) or
+% 0(inactive) depending if below or above topography
+% 
+% topocell: 1D vector, in UBC format, of binary values 1 (yes) or 0 (no)
+% if cell is intersected by topo surface
+% 
+
+%% FOR DEV
+% clear all
+% close all
+% 
+% work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Documents\Projects\Research\Modelling\Topo_adjust';
+% 
+% meshfile = 'Mesh_5m.msh';
+% topofile = 'Gaussian.topo';
+
+%% SCRIPT START HERE
+nxn = length(xn);
+nyn = length(yn);
+nzn = length(zn);
+
+nx = nxn-1;
+ny = nyn-1;
+nz = nzn-1;
+
+[Xn,Yn] = ndgrid(xn,yn);
+% Xn = Xn(:);
+% Yn = Yn(:);
+
+% Create topo surface
+ztopo_n = griddata( topo(:,1) , topo(:,2) , topo(:,3),Xn,Yn,'nearest' );
+
+% Look at 8 corner of each cell and form a logical matrices 
+% depending on their location with respect to topography
+% below=1 , above = 0;
+nullcell = ones(nz,nx,ny);
+
+for ii = 1 : nx
+    
+    for jj = 1 : ny
+        
+        count = 1;
+        flag = 0;
+        while count <= nz && flag == 0;
+
+            if sum(ztopo_n(ii:ii+1,jj:jj+1) > zn(count+1)) == 1
+                
+                nullcell(count,ii,jj) = 0;    
+                count = count + 1;
+                
+            else
+                
+                flag = 1;
+                
+            end
+            
+        end
+        
+    end
+    
+end
+
+% Create nullcell and topocell
+% If N==8, then all nodes of cell are below topo
+% If N~=8 && N~=0, then topo intersect cell
+nullcell = (N==8)*1; 
+topocell = find((N~=8)&(N~=0));
+    
+nullcell = reshape(nullcell,nx*ny*nz,1);

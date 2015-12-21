@@ -1,0 +1,11 @@
+0   ! irest
+1  ! mode
+1  0.01   ! par tolc
+UBC_obs_2pct.obs  ! observations file
+gzinv3d.mtx
+null  ! initial model
+null  ! reference model
+null  ! lower, upper bounds
+4 4 4  ! Le, Ln, Lz
+null  ! weighting file
+0

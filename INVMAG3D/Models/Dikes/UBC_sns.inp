@@ -1,0 +1,7 @@
+Mesh_20m.msh  ! mesh
+Obs_model_Fold_2pc.obs  ! observations file
+Flat.topo ! topography
+2  ! iwt
+null  ! beta, znot
+daub2  ! wavelet
+null  ! itol eps

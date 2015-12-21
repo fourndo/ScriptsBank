@@ -1,0 +1,12 @@
+1 ! mode
+1 0.1   ! par tolc
+Obs_Intrusive_2pc.obs  ! observations file
+maginv3d.mtx 
+VALUE 1e-6  ! initial model
+VALUE 0  ! reference model
+NULL  ! active cell file
+VALUE 0  ! lower bounds
+VALUE 1  ! upper bounds
+60 60 60  ! Le, Ln, Lz
+SMOOTH_MOD
+NULL  ! weighting file

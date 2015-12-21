@@ -1,0 +1,180 @@
+
+Parallelized with OpenMP.  # of threads:  4
+
+MAG3D - Version 4.0 BETA 20100108:  MAGINV3D new bounds
+
+Developed by University of British Columbia 
+Geophysical Inversion Facility  (UBC-GIF)
+
+(C) Copyright 1992 - 2010, UBC-GIF,
+Department of Earth and Ocean Sciences, UBC
+http://www.eos.ubc.ca/research/ubcgif/
+
+This program is licensed to:
+
+Mira Geoscience Limited
+
+
+MAGINV3D started on:  5/13/2013  11:15:31
+
+Running with the following parameters:
+
+          Input file: UBC_inv.inp
+                mode: 1  (fixed target misfit)
+             chifact:   1.00    
+   Observations file: Obs_Model_Intrusive_2pc.obs
+    Sensitivity file: maginv3d.mtx
+       Initial Model: null
+     Reference Model: null
+        Model bounds: null
+   3D weighting file: null
+
+ *** Model norm DOES NOT contain reference model.
+
+           # of data:      992
+ # of cells in model:    48384
+ # of cells in  mesh:    52992
+
+
+
+----------------------------------------
+ input file specifies length scales:
+             Le, Ln, Lz:   60.0      60.0      60.0    
+ corresponding alpha values:
+     alpha (s, e, n, z):  2.778E-04  1.00      1.00      1.00    
+----------------------------------------
+
+
+--- Setup the preliminaries for the inversion ---
+init cpu time:   0:00:00.11
+     initial misfit:  2.642884E+05
+       initial norm:  1.222428E-02
+
+          Iteration:   1
+         multiplier:  9.893226E+03
+      CG iterations:    26
+  # truncated cells:    25936
+        data misfit:  7.096449E+04
+         model norm:  2.328849E+00
+    total objective:  9.400431E+04
+beta cpu time:   0:00:01.35
+
+          Iteration:   2
+         multiplier:  4.946613E+03
+      CG iterations:    26
+  # truncated cells:    21262
+        data misfit:  4.255102E+04
+         model norm:  5.341314E+00
+    total objective:  6.897243E+04
+beta cpu time:   0:00:01.45
+
+          Iteration:   3
+         multiplier:  2.473306E+03
+      CG iterations:    27
+  # truncated cells:    20065
+        data misfit:  2.862994E+04
+         model norm:  8.994328E+00
+    total objective:  5.087567E+04
+beta cpu time:   0:00:01.41
+
+          Iteration:   4
+         multiplier:  1.236653E+03
+      CG iterations:    29
+  # truncated cells:    22176
+        data misfit:  1.842976E+04
+         model norm:  1.479721E+01
+    total objective:  3.672878E+04
+beta cpu time:   0:00:01.52
+
+          Iteration:   5
+         multiplier:  6.183266E+02
+      CG iterations:    27
+  # truncated cells:    18925
+        data misfit:  1.101146E+04
+         model norm:  2.317717E+01
+    total objective:  2.534252E+04
+beta cpu time:   0:00:01.38
+
+          Iteration:   6
+         multiplier:  3.091633E+02
+      CG iterations:    33
+  # truncated cells:     9654
+        data misfit:  6.442176E+03
+         model norm:  3.350386E+01
+    total objective:  1.680034E+04
+beta cpu time:   0:00:01.63
+
+          Iteration:   7
+         multiplier:  1.545817E+02
+      CG iterations:    47
+  # truncated cells:    17898
+  1.0000E+00  1.3085E+04  1.1621E+04
+  # truncated cells:    15818
+  5.0000E-01  1.1637E+04  1.1621E+04
+  # truncated cells:    14457
+        data misfit:  5.869241E+03
+         model norm:  3.594342E+01
+    total objective:  1.142543E+04
+beta cpu time:   0:00:02.33
+
+          Iteration:   8
+         multiplier:  7.729083E+01
+      CG iterations:    39
+  # truncated cells:    19304
+        data misfit:  2.902460E+03
+         model norm:  5.786281E+01
+    total objective:  7.374724E+03
+beta cpu time:   0:00:02.03
+
+          Iteration:   9
+         multiplier:  3.864541E+01
+      CG iterations:    43
+  # truncated cells:     6462
+  1.0000E+00  5.6260E+03  5.1386E+03
+  # truncated cells:     6096
+        data misfit:  1.977130E+03
+         model norm:  6.360782E+01
+    total objective:  4.435281E+03
+beta cpu time:   0:00:02.08
+
+          Iteration:  10
+         multiplier:  1.932271E+01
+      CG iterations:   102
+  # truncated cells:    18697
+  1.0000E+00  1.0216E+04  3.2062E+03
+  # truncated cells:    15797
+  5.0000E-01  4.8023E+03  3.2062E+03
+  # truncated cells:    14032
+  2.5000E-01  3.4907E+03  3.2062E+03
+  # truncated cells:    12253
+  1.2500E-01  3.2122E+03  3.2062E+03
+  # truncated cells:     9522
+        data misfit:  1.920308E+03
+         model norm:  6.458274E+01
+    total objective:  3.168222E+03
+beta cpu time:   0:00:04.92
+
+          Iteration:  11
+         multiplier:  9.661353E+00
+      CG iterations:    97
+  # truncated cells:    19362
+  1.0000E+00  3.1349E+03  2.5443E+03
+  # truncated cells:    17793
+        data misfit:  1.538280E+03
+         model norm:  8.108079E+01
+    total objective:  2.321630E+03
+beta cpu time:   0:00:04.85
+
+          Iteration:  12
+         multiplier:  5.918856E+00
+      CG iterations:    74
+  # truncated cells:    16403
+        data misfit:  8.499518E+02
+         model norm:  1.218296E+02
+    total objective:  1.571043E+03
+beta cpu time:   0:00:03.61
+
+
+TOTAL cpu time:   0:00:28.73
+
+MAGINV3D ended on:  5/13/2013  11:15:59

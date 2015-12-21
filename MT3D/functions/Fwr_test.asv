@@ -1,0 +1,165 @@
+function Fwr_test()
+% EOSC 555 - Test forward operator
+% 
+% Test from:
+% Haber 2000 Fast Simulation of 3D Electromagnetic Problems Using Potential
+% Date: April 13th, 2013
+%
+% INTRO:
+% J = (iwu)^-1 * curl x curl x E - u * s * E
+% 
+% With the right boundary matrix
+
+%% Discretization Iterations
+fprintf('**FORWARD OPERATOR TEST**\n')
+fprintf('n^3\t\t\t|A_num - A_ana|\t|phi_num - phi_ana|\t|DIV A|\t\t\t|E_num - E_ana|\n')
+for ii = 2:4
+   
+n = 2 ^ ii;
+
+%% Create mesh for center and faces
+X0 = -2; Y0 = -2; Z0 = -2; %Origin
+Xmax = 2; Ymax = 2; Zmax = 2; %Origin
+
+%Create mesh size (cell center)
+xf = linspace(X0,Xmax,n+1); xf=xf(:); 
+yf = linspace(Y0,Ymax,n+1); yf=yf(:);
+zf = linspace(Z0,Zmax,n+1); zf=zf(:);
+
+% Create cell size
+dx = abs(xf(2:end) - xf(1:end-1));
+dy = abs(yf(2:end) - yf(1:end-1));
+dz = abs(zf(2:end) - zf(1:end-1));
+
+% Compute number of cells
+nx=length(dx) ; ny=length(dy) ; nz=length(dz);
+
+% Create tensor mesh
+% dx = (XYZmax(1) - XYZo(1))/nx; dx = [dx*1.2.^[3:-1:1]';ones(nx,1)*dx;dx*1.2.^[1:3]'];
+% dy = (XYZmax(2) - XYZo(2))/ny; dy = [dy*1.2.^[3:-1:1]';ones(ny,1)*dy;dy*1.2.^[1:3]'];
+% dz = (XYZmax(3) - XYZo(2))/nz; dz = [ones(nz,1)*dz;dz*1.4.^[1:3]'];
+
+% Create hmid vectors
+dxn = dx(1:end-1)/2 + dx(2:end)/2; %dxn=[dx(1);dxn;dx(end)];
+dyn = dy(1:end-1)/2 + dy(2:end)/2; %dyn=[dy(1);dyn;dy(end)];
+dzn = dz(1:end-1)/2 + dz(2:end)/2; %dzn=[dz(1);dzn;dz(end)];
+
+% Create cell-center location
+xc = X0 + dx(1)/2 + [0;cumsum(dxn)]; xc=xc(:); 
+yc = Y0 + dy(1)/2 + [0;cumsum(dyn)]; yc=yc(:);
+zc = Z0 + dz(1)/2 + [0;cumsum(dyn)]; zc=zc(:);
+
+% Edge location matrix
+[Xie, Yie, Zie] = ndgrid(xc, yf, zf);
+[Xje, Yje, Zje] = ndgrid(xf, yc, zf);
+[Xke, Yke, Zke] = ndgrid(xf, yf, zc);
+
+% Face location matrix
+[Xif, Yif, Zif] = ndgrid(xf, yc, zc);
+[Xjf, Yjf, Zjf] = ndgrid(xc, yf, zc);
+[Xkf, Ykf, Zkf] = ndgrid(xc, yc, zf);
+
+% Cell-center location matrix
+[Xc, Yc, Zc] = ndgrid(xc, yc, zc);
+
+% Number of faces in every directions
+nfx = (nx+1) * (ny) * (nz);
+nfy = (nx) * (ny+1) * (nz);
+nfz = (nx) * (ny) * (nz+1);
+
+% Number of edges
+nhx = (nx) * (ny+1) * (nz+1);
+nhy = (nx+1) * (ny) * (nz+1);
+nhz = (nx+1) * (ny+1) * (nz);
+
+nfaces = nfx + nfy + nfz;
+ncells = nx * ny * nz;
+
+
+%% Eldad's test
+%% Constants
+
+para = 5;
+
+psi = @(x) tanh(para * (x + 1/4)) - tanh(para * (x - 1/4)) + 1/100;
+m = psi(Xc(:)) .* psi(Yc(:)) .* psi(Zc(:));
+
+uo = 4*pi*10^-7;
+w = 1e+1; % Frequency [hz]
+k = 1i * w * uo;
+skindepth = sqrt( 2/ (max(m) * uo * w));
+diffusion = w * uo * max(m);
+
+
+[L_p,L_s,DIV_p,DIV_s,GRAD,CURL_e,CURL_f,AVFsc,AVFvcz,AVC,AVHx,AVHy,dZm]=get_ops_test(dx,dy,dz,w,0);
+
+Ex = @(X,Y,Z) -Z .* Y .* exp(-5*(X.^2 + Y.^2 + Z.^2)) ./ psi(X);
+Ey = @(X,Y,Z) -X .* Z .* exp(-5*(X.^2 + Y.^2 + Z.^2)) ./ psi(Y);
+Ez = @(X,Y,Z) -X .* Y .* exp(-5*(X.^2 + Y.^2 + Z.^2)) ./ psi(Z);
+
+
+
+
+%%
+% A*u = b
+%
+% |L + iwuS  iwuSG |*| A   | = | -iwJ |
+% |    DS     DSG  | | phi |   | -DJ  |
+%
+% where Js = -(iwu)^(-1) C'C*E - S(m)*E
+% Harmonic averaging since m is discontinuous on the faces.
+
+
+
+S = @(m) spdiags( (AVF * (1./m)).^-1, 0, nfaces, nfaces ) ;
+
+E_x = Ex(Xif, Yif, Zif);
+E_y = Ex(Xjf, Yjf, Zjf);
+E_z = Ex(Xkf, Ykf, Zkf);
+
+E = [E_x(:); E_y(:); E_z(:)];
+
+% EM PDE Matrix
+A = @(m) [L_p + k*S(m), k*S(m)*GRAD
+          DIV_p * S(m)  , DIV_p*S(m)*GRAD]; 
+      
+Js = -1/k * (CURL_e * CURL_f * E)+ - S(m) * E;     
+% Js = S(m) * E;
+
+b = [ -k*Js; -DIV_p * Js];
+
+% Forward Operator -> Primary Fields
+u = A(m)\b;
+% Obtain fields from output
+% [a_n, phi_n] = vecsplit(u, nfaces, ncells);
+a_n = u(1:nfaces);
+phi_n = u(nfaces+1:end);
+
+%% Pseudo Analytic solution
+
+LHS = [speye(nfaces) GRAD;
+    DIV_p sparse(ncells,ncells)];
+
+u = LHS\[E;sparse(ncells,1)];
+% [a_r, phi_r] = vecsplit(u, nfaces, ncells);
+a_r = u(1:nfaces);
+phi_r = u(nfaces+1:end);
+E_n = a_n+GRAD*phi_n;
+
+dE(ii) = norm(E_n - E, 'inf');
+da(ii) = norm(a_n - a_r, 'inf'); 
+dphi(ii) = norm(phi_r - phi_n, 'inf');
+diva(ii) = norm(DIV_p * a_r, 'inf');
+
+
+fprintf('%2i\t\t\t%3.2e\t\t%3.2e\t\t\t%3.2e\t\t%3.2e\n',n,da(ii),dphi(ii),diva(ii),dE(ii))
+end 
+
+% figure;vecplot(E,AVC, dx, dy, dz)
+% title('\bfTrue E')
+% 
+% 
+% figure;vecplot(E_n,AVC, dx, dy, dz)
+% title('\bfNumerical E')
+
+fprintf('**end of test**\n\n')

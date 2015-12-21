@@ -1,0 +1,12 @@
+1  ! mode
+1.0  0.5   ! par tolc
+Obs_model_Fold_2pc.obs ! observations file
+maginv3d.mtx
+VALUE 0.00001  ! initial model
+VALUE 0.0  ! reference model
+null  !active cell file
+VALUE 0.0  ! lower, upper bounds
+VALUE 1.0  ! lower, upper bounds
+60 60 60  ! Le, Ln, Lz
+SMOOTH_MOD
+null  ! weighting file

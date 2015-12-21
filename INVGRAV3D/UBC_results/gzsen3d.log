@@ -1,0 +1,46 @@
+
+GRAV3D - Version 3.0:  GZSEN3D
+
+Developed by University of British Columbia 
+Geophysical Inversion Facility  (UBC-GIF)
+
+(C) Copyright 1992 - 2006, UBC-GIF,
+Department of Earth and Ocean Sciences, UBC
+http://www.eos.ubc.ca/research/ubcgif/
+
+Distributed by:
+Mira Geoscience Ltd.
+
+
+GZSEN3D started on:  6/04/2013  12:07:05
+with the following parameters:
+
+          Input file: inv_sen.inp
+   Observations file: UBC_obs.obs
+           Mesh file: UBC_mesh.msh
+     Topography file: null
+  distance weighting
+             exp, R0: null
+ Wavelet compression: daub1
+ Wavelet   threshold: default
+ 
+ 
+    default distange weighting parameters:
+      pwr=     2.00
+     rnot=    12.50
+ 
+    # of cells in  mesh:     6776
+    # of cells in model:     6776
+    # of data:                169
+ 
+    At the relative  accuracy of:   5.0000E-02
+    Estimated relative threshold:   9.0488E-03
+    Predicted compression  ratio:   6.5091E+00
+ 
+
+             Number of non-zeros:     190733
+             Compression   ratio:   6.0039E+00
+ 
+     total job cpu:   0:00:00.53
+
+GZSEN3D ended on:  6/04/2013  12:07:06

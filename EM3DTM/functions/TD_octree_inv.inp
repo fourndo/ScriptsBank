@@ -1,0 +1,28 @@
+octree_mesh_big.txt ! octree mesh file
+1 	 0 	 4
+octree_mesh_000001.txt ! octree mesh file
+L21440_Block8_PLM_edit_ZY_comp_h3d_format.obs ! observation file
+/data/Block8_Inv2/wave_2p5ms.txt ! waveform file
+VALUE 1.05000e+02 ! initial model
+VALUE 1.10000e+02 ! initial model
+VALUE 1.18000e+02 ! initial model
+VALUE 9.50000e+01 ! initial model
+VALUE 5.10000e+01 ! initial model
+VALUE 5.10000e+01 ! initial model
+VALUE 4.60000e+01 ! initial model
+VALUE 9.90000e+01 ! initial model
+VALUE 1.11000e+02 ! initial model
+VALUE 1.10000e+02 ! initial model
+VALUE 1.00000e-02 ! reference model
+active_cells.txt ! topo active cells file
+active_cells.txt ! user active cells file
+NO_WEIGHT ! weighting file
+NO_FACE_WEIGHT ! face weighting file
+1.00000e-35 1.00000e-60 1.00000e-01 ! core depth
+1.00000e-03 5.00000e+02 5.00000e+01 5.00000e+01 ! as, ax, ay, az
+1.00000e-04 
+1.e-2  1.e-3  3      ! tol_nl  mindm  iter_per_beta
+1.e-2  5            ! tol_ipcg  max_iter_ipcg
+CHANGE_MREF   ! | NOT_CHANGE_MREF
+SMOOTH_MOD_DIF   !SMOOTH_MOD | SMOOTH_MOD_DIF
+BOUNDS_NONE   ! | BOUNDS_CONST bl bu | BOUNDS_FILE file

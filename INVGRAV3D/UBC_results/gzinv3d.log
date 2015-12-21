@@ -1,0 +1,235 @@
+
+GRAV3D - Version 3.0:  GZINV3D
+
+Developed by University of British Columbia 
+Geophysical Inversion Facility  (UBC-GIF)
+
+(C) Copyright 1992 - 2006, UBC-GIF,
+Department of Earth and Ocean Sciences, UBC
+http://www.eos.ubc.ca/research/ubcgif/
+
+Distributed by:
+Mira Geoscience Ltd.
+
+
+GZINV3D started on:  6/04/2013  13:01:41
+
+Running with the following parameters:
+
+          Input file: UBC_inv_ctrl.inp
+                mode: 1  (fixed target misfit)
+             chifact:   1.00    
+   Observations file: UBC_obs_2pct.obs
+    Sensitivity file: gzinv3d.mtx
+       Initial Model: null
+     Reference Model: null
+        Model bounds: null
+   3D weighting file: null
+
+           # of data:     169
+ # of cells in model:    6776
+ # of cells in  mesh:    6776
+
+
+
+----------------------------------------
+ input file specifies length scales:
+             Le, Ln, Lz:   4.00      4.00      4.00    
+ corresponding alpha values:
+     alpha (s, e, n, z):  6.250E-02  1.00      1.00      1.00    
+----------------------------------------
+
+
+--- Setup the preliminaries for the inversion ---
+          cpu time:   0:00:00.04
+
+--- Begin line search without positivity ---
+ 
+        multiplier:   5.966368E+00
+     CG iterations:    15
+       data misfit:   5.550856E+03
+        model norm:   1.724274E+03
+   total objective:   1.583851E+04
+          cpu time:   0:00:00.04
+ 
+        multiplier:   1.193274E+00
+     CG iterations:    23
+       data misfit:   8.476749E+02
+        model norm:   3.319999E+03
+   total objective:   4.809342E+03
+          cpu time:   0:00:00.06
+ 
+        multiplier:   2.998720E-01
+     CG iterations:    22
+       data misfit:   1.498228E+02
+        model norm:   4.341866E+03
+   total objective:   1.451827E+03
+          cpu time:   0:00:00.06
+
+Summary of line search without positivity
+
+      Misfit  Model Norm  Multiplier
+  1.4982E+02  4.3419E+03  2.9987E-01
+  8.4767E+02  3.3200E+03  1.1933E+00
+  5.5509E+03  1.7243E+03  5.9664E+00
+
+--- Finished line search without positivity ---
+
+
+--- Begin logarithmic barrier iterations ---
+ 
+   lag. multiplier:   1.65041E-01
+   initial  misfit:   2.23080E+05
+   initial    norm:   0.00000E+00
+ initial total obj:   2.23080E+05
+ barrier parameter:   2.37483E+01
+ barrier      norm:   9.39353E+03
+ 
+         Iteration:     1
+ barrier parameter:   2.37483E+01
+     CG iterations:     7
+       step length:   1.00000E+00
+   achieved misfit:   8.53911E+03
+        model norm:   2.78240E+03
+   total objective:   8.99832E+03
+      barrier norm:   9.39387E+03
+          cpu time:   0:00:00.03
+ 
+         Iteration:     2
+ barrier parameter:   1.78112E+00
+     CG iterations:    16
+       step length:   1.00000E+00
+   achieved misfit:   3.64682E+02
+        model norm:   5.26524E+03
+   total objective:   1.23366E+03
+      barrier norm:   9.39400E+03
+          cpu time:   0:00:00.04
+ 
+         Iteration:     3
+ barrier parameter:   1.33584E-01
+     CG iterations:    45
+       step length:   1.00000E+00
+   achieved misfit:   7.30770E+01
+        model norm:   4.63501E+03
+   total objective:   8.38043E+02
+      barrier norm:   9.39377E+03
+          cpu time:   0:00:00.12
+ 
+         Iteration:     4
+ barrier parameter:   1.00188E-02
+     CG iterations:    56
+       step length:   1.00000E+00
+   achieved misfit:   6.06508E+01
+        model norm:   4.66050E+03
+   total objective:   8.29824E+02
+      barrier norm:   9.39376E+03
+          cpu time:   0:00:00.14
+ 
+         Iteration:     5
+ barrier parameter:   7.51410E-04
+     CG iterations:    56
+       step length:   1.00000E+00
+   achieved misfit:   5.98413E+01
+        model norm:   4.66498E+03
+   total objective:   8.29754E+02
+      barrier norm:   9.39376E+03
+          cpu time:   0:00:00.15
+ 
+         Iteration:     6
+ barrier parameter:   5.63558E-05
+     CG iterations:    56
+       step length:   1.00000E+00
+   achieved misfit:   5.97875E+01
+        model norm:   4.66530E+03
+   total objective:   8.29754E+02
+      barrier norm:   9.39376E+03
+          cpu time:   0:00:00.15
+
+--- Begin logarithmic barrier iterations ---
+ 
+   lag. multiplier:   4.66518E-01
+   initial  misfit:   5.97875E+01
+   initial    norm:   4.66530E+03
+ initial total obj:   2.23624E+03
+ barrier parameter:   2.38056E-01
+ barrier      norm:   9.39376E+03
+ 
+         Iteration:     1
+ barrier parameter:   2.38056E-01
+     CG iterations:    46
+       step length:   1.00000E+00
+   achieved misfit:   2.14709E+02
+        model norm:   4.13340E+03
+   total objective:   2.14302E+03
+      barrier norm:   9.39374E+03
+          cpu time:   0:00:00.18
+ 
+         Iteration:     2
+ barrier parameter:   1.78542E-02
+     CG iterations:    46
+       step length:   1.00000E+00
+   achieved misfit:   2.31125E+02
+        model norm:   4.09707E+03
+   total objective:   2.14248E+03
+      barrier norm:   9.39374E+03
+          cpu time:   0:00:00.12
+ 
+         Iteration:     3
+ barrier parameter:   1.33906E-03
+     CG iterations:    48
+       step length:   1.00000E+00
+   achieved misfit:   2.32359E+02
+        model norm:   4.09441E+03
+   total objective:   2.14248E+03
+      barrier norm:   9.39374E+03
+          cpu time:   0:00:00.15
+
+--- Begin logarithmic barrier iterations ---
+ 
+   lag. multiplier:   3.65617E-01
+   initial  misfit:   2.32359E+02
+   initial    norm:   4.09441E+03
+ initial total obj:   1.72934E+03
+ barrier parameter:   1.84095E-01
+ barrier      norm:   9.39374E+03
+ 
+         Iteration:     1
+ barrier parameter:   1.84095E-01
+     CG iterations:    50
+       step length:   1.00000E+00
+   achieved misfit:   1.70577E+02
+        model norm:   4.24198E+03
+   total objective:   1.72152E+03
+      barrier norm:   9.39374E+03
+          cpu time:   0:00:00.17
+ 
+         Iteration:     2
+ barrier parameter:   1.38072E-02
+     CG iterations:    50
+       step length:   1.00000E+00
+   achieved misfit:   1.66371E+02
+        model norm:   4.25336E+03
+   total objective:   1.72147E+03
+      barrier norm:   9.39374E+03
+          cpu time:   0:00:00.14
+ 
+         Iteration:     3
+ barrier parameter:   1.03554E-03
+     CG iterations:    48
+       step length:   1.00000E+00
+   achieved misfit:   1.66063E+02
+        model norm:   4.25420E+03
+   total objective:   1.72147E+03
+      barrier norm:   9.39374E+03
+          cpu time:   0:00:00.12
+
+Summary of line search with positivity
+
+      Misfit  Model Norm  Multiplier
+  5.9787E+01  4.6653E+03  1.6504E-01
+  1.6606E+02  4.2542E+03  3.6562E-01
+  2.3236E+02  4.0944E+03  4.6652E-01
+
+     total job cpu:   0:00:01.79
+
+GZINV3D ended on:  6/04/2013  13:01:43

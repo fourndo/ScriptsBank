@@ -1,0 +1,10 @@
+C:\Projects\3796_AGIC_Research\DCIP3D\Intrusive  !HOME DIRECTORY
+C:\Projects\3796_AGIC_Research\DCIP3D\Intrusive\IP_start  ! UBC results directory
+1 	! Starting Iteration # from the UBC inversion 
+1.0	! Target chi-factor
+2	! Value or array of lp-norms to be computed in range [0 2]
+0	! Value or array of lq-norms to be computed in range [0 2]
+1	! Scaling between lp and lq norms in range [0 2]
+0.5	! Cooling schedule of trade-off parameter (0.5 default)
+20	! Maximum number of iterations
+8 4 2 1	! Depth weights

@@ -1,0 +1,28 @@
+'dissem' 'disseminate'
+'cpy' 'chalcopyrite'
+'hb' 'hornblende'
+bio biotite
+kao kaolinite
+bn bornite
+Argillaceous argillic
+argillaceous argillic
+biotitetite biotite
+epidoteidote epidote
+carbonaceous carbonate
+ hb  hornblende
+ chl  chloritic
+ chl  chloritic
+bx breccia
+Qvns Quartz vein
+qvn Quartz vein
+k-spar potassium feldspar
+pyx pyroxen
+ aug  augite
+qtz quartz
+carb  carbonate
+SST sandstone
+GWKE gray wacke
+IF iron formation
+BIF banded iron formation
+Andes Andesite
+Monz Monzonite
