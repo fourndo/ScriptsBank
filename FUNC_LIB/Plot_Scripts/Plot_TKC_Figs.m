@@ -6,14 +6,14 @@ close all
 addpath ..\..\FUNC_LIB;
 
 %% Input Files
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\TKC\DIGHEM_TMI\25m';
+work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\TKC\DIGHEM_TMI\UTM_25m';
 
-meshfile = 'Mesh_25m.msh';
+meshfile = 'Mesh_25m_UTM.msh';
 
-model2 = 'MAG3D_TMI_iter_7.sus';
-model1 = 'MAG3D_TMI_iter_2.sus';
+model2 = 'Tile1_MAG3D_l2l2.sus';
+model1 = 'Tile1_MAG3D_Mix_iter5.sus';
 
-norm_vec = 'Lp_vec.txt';
+norm_vec = 'lpVec.dat';
 wmodel = 'Wvec.txt';
 
 zpanel = 5;
@@ -29,16 +29,16 @@ padT = 0;
 padB = 12;
 
 iso_cut = 0.00175;
-obsfile = '..\DIGHEM_Mag_2pc_floor10nt_25m_ROT.obs';
-predfile_l2 = 'MAG3D_TMI_iter_2.pre';
-predfile_lp = 'MAG3D_TMI_iter_7.pre';
+obsfile = 'DIGHEM_Mag_floor10nt_25m.obs';
+predfile_l2 = 'Tile1_MAG3D_lplq.pre';
+predfile_lp = 'Tile1_MAG3D_lplq.pre';
 
 cam_ang = [30 60];
 %% Load in model and plot
 set(figure, 'Position', [50 0 900 1000]); 
 
 % Load data
-[H, I, Dazm, D, obsx, obsy, obsz, d, wd] = read_MAG3D_obs([work_dir '\' obsfile]);
+[H, BI, BD, MI, MD, dtype, obsx, obsy, obsz, d, wd] = read_MAG3D_obs([work_dir '\' obsfile]);
 
 
 [xn,yn,zn] = read_UBC_mesh([work_dir '\' meshfile]);
@@ -327,11 +327,11 @@ text(0.4,1.35,'$norm$', 'interpreter', 'latex','FontSize',14)
 
 %% Plot Data
 % Load data
-[~, ~, ~, ~, ~, ~, ~, data, ~] = read_MAG3D_obs([work_dir '\' obsfile]);
+[~, ~, ~, ~, ~, ~, ~, ~,~, data, ~] = read_MAG3D_obs([work_dir '\' obsfile]);
 % Load predicted l2
-[~, ~, ~, ~, ~, ~, ~, dl2, ~] = read_MAG3D_obs([work_dir '\' predfile_l2]);
+[~, ~, ~, ~, ~, ~, ~, ~,~, dl2, ~] = read_MAG3D_obs([work_dir '\' predfile_l2]);
 % Load predicted lp
-[~, ~, ~, ~, ~, ~, ~, dlp, ~] = read_MAG3D_obs([work_dir '\' predfile_lp]);
+[~, ~, ~, ~, ~, ~, ~, ~,~, dlp, ~] = read_MAG3D_obs([work_dir '\' predfile_lp]);
 
 
 nx = 100;

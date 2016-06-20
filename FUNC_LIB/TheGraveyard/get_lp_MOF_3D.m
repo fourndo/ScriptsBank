@@ -1,4 +1,4 @@
-function [MOF,aVRWs,aVRWx,aVRWy,aVRWz] = get_lp_MOF_3D(m,mref,phim,nx,ny,nz,V,Ws,Vx,Wx,Vy,Wy,Vz,Wz,wr,alpha,p,q,r,FLAG1,FLAG2,delta)
+function [MOF,aVRWs,aVRWx,aVRWy,aVRWz] = get_lp_MOF_3D(m,mref,phim,Ws,Wx,Wy,Wz,Gx,Gy,Gz,s,t,alpha,LP,FLAG1,FLAG2,FLAG3,delta_s,delta_xyz)
 % Function get_lp_WRW(Ws,Wx,Wy,Wz,p,q,r)
 % Generates the elements of the model objective function for a specified
 % p-norm(m) and q-norm(grad m) and a ratio between the two (r)and for a
@@ -18,44 +18,29 @@ function [MOF,aVRWs,aVRWx,aVRWy,aVRWz] = get_lp_MOF_3D(m,mref,phim,nx,ny,nz,V,Ws
 % Wy :   Weighting matrix for the gradient y-component
 % Wz :   Weighting matrix for the gradient z-component
 % delta = 1e-5;
-mcell = nx*ny*nz;
+mcell = length(m);
 
-Wr = spdiags(wr,0,mcell,mcell);
+% Wr = spdiags(wr,0,mcell,mcell);
 
-% wrx = reshape(wr,nz,nx,ny); wrx = wrx(:,2:end,:); wrx = wrx(:);
-% wry = reshape(wr,nz,nx,ny); wry = wry(:,:,2:end); wry = wry(:);
-% wrz = reshape(wr,nz,nx,ny); wrz = wrz(2:end,:,:); wrz = wrz(:);
-% 
-% % V = spdiags((v),0,mcell,mcell);
-% Wrx = spdiags(wrx,0,length(wrx),length(wrx));
-% Wry = spdiags(wry,0,length(wry),length(wry));
-% Wrz = spdiags(wrz,0,length(wrz),length(wrz));
+%% MODIFICATION FOR TMVI
+% If LP is size(3*4), then the process is repeated for the three model
+% spaces
 
-% rs = 1./ ( abs(Ws * Wr *  (m - mref)) .^( 2.0 - p ) + delta );
-rs = 1./ ( abs( Ws * (m - mref)) .^( 2.0 - p ) + delta );
-Rs = spdiags( rs.^ 0.5 ,0,length(rs),length(rs));
 
+    
 switch FLAG1
     case 'SMOOTH_MOD'
-        % Compute gradients then compute magnitude 
-%         dmx = Wx * Wr * m;
-%         dmy = Wy * Wr * m;
-%         dmz = Wz * Wr * m;
-        
-        dmx = Wx * m;
-        dmy = Wy * m;
-        dmz = Wz * m;
+        % Compute gradients then compute magnitude         
+        dmx = Gx * m;
+        dmy = Gy * m;
+        dmz = Gz * m;
         
     case 'SMOOTH_MOD_DIF'
         
-        % Compute gradients then compute magnitude 
-%         dmx = Wx * Wr * (m - mref);
-%         dmy = Wy * Wr * (m - mref);
-%         dmz = Wz * Wr * (m - mref);
         
-        dmx = Wx * (m - mref);
-        dmy = Wy * (m - mref);
-        dmz = Wz * (m - mref);
+        dmx = Gx * (m - mref);
+        dmy = Gy * (m - mref);
+        dmz = Gz * (m - mref);
         
     otherwise
         fprintf('FLAG must be SMOOTH_MOD | SMOOTH_MOD_DIF\n')
@@ -63,38 +48,6 @@ switch FLAG1
         return
 end
 
-% % Create averaging operator center to face
-% acfx = spdiags (ones(nx+1,1)*[0.5,0.5],[0,1],nx-1,nx);
-% Acfx = kron( kron( speye(ny) , acfx ), speye(nz) );
-% 
-% acfy = spdiags (ones(ny+1,1)*[0.5,0.5],[0,1],ny-1,ny);
-% Acfy = kron( kron( acfy , speye(nx) ), speye(nz) );
-% 
-% acfz = spdiags (ones(nz+1,1)*[0.5,0.5],[0,1],nz-1,nz);
-% Acfz = kron( kron( speye(ny) , speye(nx) ), acfz );
-% 
-% % Create averaging operator face to center
-% afcz = spdiags (ones(nz+1,1)*[0.5,0.5],[0,1],nz,nz+1);afcz = afcz(:,2:end-1);
-% Afcz = kron( kron( speye(ny) , speye(nx) ), afcz );
-% 
-% afcy = spdiags (ones(ny+1,1)*[0.5,0.5],[0,1],ny,ny+1);afcy = afcy(:,2:end-1);
-% Afcy = kron( kron( afcy , speye(nx) ), speye(nz) );
-% 
-% afcx = spdiags (ones(nx+1,1)*[0.5,0.5],[0,1],nx,nx+1);afcx = afcx(:,2:end-1);
-% Afcx = kron( kron( speye(ny) , afcx ), speye(nz) );
-% 
-% % Augmente system if dealing with 3-component kernel
-% if size(Ws,1) == 3*mcell
-%     
-%     Acfx = kron(speye(3), Acfx);
-%     Acfy = kron(speye(3), Acfy);
-%     Acfz = kron(speye(3), Acfz);
-%     
-%     Afcx = kron(speye(3), Afcx);
-%     Afcy = kron(speye(3), Afcy);
-%     Afcz = kron(speye(3), Afcz);
-%   
-% end
 
 switch FLAG2
     case 'dmdx'
@@ -105,9 +58,9 @@ switch FLAG2
 
     case 'GRADm'
 
-        GRADx = sqrt(dmx.^2 + (dmy).^2 + (dmz).^2);
-        GRADy = sqrt((dmx ).^2 +  dmy.^2 + (dmz).^2);
-        GRADz = sqrt((dmx ).^2 + (dmy).^2 + dmz.^2);
+        GRADx = sqrt(dmx.^2 + dmy.^2 + dmz.^2);
+        GRADy = sqrt(dmx.^2 + dmy.^2 + dmz.^2);
+        GRADz = sqrt(dmx.^2 + dmy.^2 + dmz.^2);
 
     otherwise
         fprintf('FLAG must be GRADm | dmdx\n')
@@ -115,91 +68,159 @@ switch FLAG2
         return
 end
 
-rx = 1./ ( abs(GRADx) .^( 2.0 - q ) + delta ) ;
-%                     rx = rx / max(rx) + 1e-6;
-Rx = spdiags( rx .^0.5,0,size(Wx,1),size(Wx,1));
-
-ry = 1./ ( abs(GRADy) .^( 2.0 - q ) + delta ) ;
-%                     ry = ry / max(ry) + 1e-6;
-Ry = spdiags( ry .^0.5,0,size(Wy,1),size(Wy,1));
-
-rz = 1./ ( abs(GRADz) .^( 2.0 - q ) + delta ) ;
-%                     rz = rz / max(rz) + 1e-6;
-Rz = spdiags( rz .^0.5,0,size(Wz,1),size(Wz,1));                    
-
-% aVRWs = Wr * V * Rs * Ws ;
-% aVRWx = Wrx * Vx * Rx * Wx ;
-% aVRWy = Wry * Vy * Ry * Wy ;
-% aVRWz = Wrz * Vz * Rz * Wz ;
-
-aVRWs = Wr * V * Rs * Ws ;
-aVRWx = Wr * Vx * Rx * Wx  ;
-aVRWy = Wr * Vy * Ry * Wy  ;
-aVRWz = Wr * Vz * Rz * Wz  ;
-
-% Form the matrices by including the weights and volume
-WstRsWs = ( aVRWs )' * ( aVRWs ) ;
-WxtRxWx = ( aVRWx )' * ( aVRWx ) ;
-WytRyWy = ( aVRWy )' * ( aVRWy ) ;
-WztRzWz = ( aVRWz )' * ( aVRWz ) ;
-
-% phim = ( m - mref )' * ( alpha(1) * ((Wr * V * Ws  )' * (Wr * V * Ws  ) * (m - mref) )  +...
-%                     alpha(2) * ((Wr * Vx * Wx  )' * (Wr * Vx * Wx  ) * (m - mref) ) +...
-%                     alpha(3) * ((Wr * Vy * Wy  )' * (Wr * Vy * Wy  ) * (m - mref) ) +...
-%                     alpha(4) * ((Wr * Vz * Wz  )' * (Wr * Vz * Wz  ) * (m - mref) ) );
+% % Generate lp vectors
+% pvec    = zeros(mcell,1);
+% qxvec   = zeros(mcell,1);
+% qyvec   = zeros(mcell,1);
+% qzvec   = zeros(mcell,1);
+% rvec    = zeros(mcell,1);
+% 
+% for jj = 1 : size(LP,1)
+%     
+%     pvec    =  pvec + t(:,jj)*LP(jj,1);
+%     qxvec   =  qxvec + t(:,jj)*LP(jj,2);
+%     qyvec   =  qyvec + t(:,jj)*LP(jj,3);
+%     qzvec   =  qzvec + t(:,jj)*LP(jj,4);
+%     rvec    =  rvec + t(:,jj)*LP(jj,5);
+%     
+% end
 
 
-if p==2 && q==2
+tRs = spalloc(mcell,mcell,mcell);
+tRx = spalloc(mcell,mcell,mcell);
+tRy = spalloc(mcell,mcell,mcell);
+tRz = spalloc(mcell,mcell,mcell);
+
+
+
+
+if FLAG3~=0
     
-    scale(1) = 1 ;
-    scale_g  = 1 ;
+    rvec = zeros(mcell,1);
+
+    for ii = 1 : size(s,2)
+        
+        tt =t(:,ii);        
+        
+        tt(tt>0) = sqrt(tt(tt>0));
+        
+        T = spdiags((tt),0,mcell,mcell);
+%         S = spdiags(s(:,ii),0,mcell,mcell);
+        
+        rs = 1./ ( abs((m - mref)) .^2 + delta_s.^2 ).^(1 - LP(ii,1)/2);
+        rx = 1./ ( abs(GRADx) .^2 + delta_xyz.^2 ).^(1 - LP(ii,2)/2);
+        ry = 1./ ( abs(GRADy) .^2 + delta_xyz.^2 ).^(1 - LP(ii,3)/2);
+        rz = 1./ ( abs(GRADz) .^2 + delta_xyz.^2 ).^(1 - LP(ii,4)/2);
+
+        rvec = rvec + (T * ones(mcell,1)) * LP(ii,5);
+        
+        Rs = spdiags( (rs) .^ 0.5 ,0,length(rs),length(rs));
+
+        Rx = spdiags( (rx) .^ 0.5,0,size(Wx,1),size(Wx,1));
+
+        Ry = spdiags( (ry) .^ 0.5,0,size(Wy,1),size(Wy,1)); 
+        Rz = spdiags( (rz) .^ 0.5,0,size(Wz,1),size(Wz,1));                  
+
+        avrws =  T * Rs ;
+        avrwx =  T * Rx * Gx  ;
+        avrwy =  T * Ry * Gy  ;
+        avrwz =  T * Rz * Gz  ;
+       
+        
+        grad_s = 1 / max(abs((((avrws))'* ((avrws) * ((m - mref)) ) ) ) );
+        
+         switch FLAG1
+        case 'SMOOTH_MOD'
+            
+            % Compute gradients then compute magnitude 
+            grad_x = 1 / max(abs( ( avrwx'* ( (avrwx *  m) ) ) ) );
+            grad_y = 1 / max(abs( ( avrwy'* ( (avrwy *  m) ) ) ) );
+            grad_z = 1 / max(abs( ( avrwz'* ( (avrwz *  m) ) ) ) );
+
+        case 'SMOOTH_MOD_DIF'
+
+            % Compute gradients then compute magnitude 
+            grad_x = 1 / max(abs(  (avrwx'* ( (avrwx * ( m - mref ) ) ) ) ));
+            grad_y = 1 / max(abs(  (avrwy'* ( (avrwy * ( m - mref ) ) ) ) ));
+            grad_z = 1 / max(abs(  (avrwz'* ( (avrwz * ( m - mref ) ) ) ) ));
+
+         end
+        
+        tRs = tRs + sqrt( grad_s ) * T * Rs ;
+        tRx = tRx + sqrt( grad_x ) * T * Rx ;
+        tRy = tRy + sqrt( grad_y ) * T * Ry ;
+        tRz = tRz + sqrt( grad_z ) * T * Rz ;
+        
+        
+             
+    end
+    
+    aVRWs =  spdiags(sqrt( rvec * alpha(1) ),0,mcell,mcell) * Ws * tRs ;
+    aVRWx =  spdiags(sqrt( (2 - rvec) * alpha(2) ),0,mcell,mcell) * Wx * tRx *  Gx  ;
+    aVRWy =  spdiags(sqrt( (2 - rvec) * alpha(3) ),0,mcell,mcell) * Wy * tRy *  Gy  ;
+    aVRWz =  spdiags(sqrt( (2 - rvec) * alpha(4) ),0,mcell,mcell) * Wz * tRz *  Gz  ;                    
+                        
+    gamma = phim /(...
+            ((aVRWs * (m-mref) )' * (aVRWs * (m-mref) ))+...
+            (( (aVRWx) * m )' * ( (aVRWx) * ( m ) ))+...
+            (( (aVRWy) * m )' * ( (aVRWy) * ( m ) ))+...
+            (( (aVRWz) * m )' * ( (aVRWz) * ( m ) )));
+                 
+%     switch FLAG1
+%         case 'SMOOTH_MOD'
+%             
+%         sc_phigx = gamma;
+%         sc_phigy = gamma;
+%         sc_phigz = gamma;
+%         
+%         case 'SMOOTH_MOD_DIF'
+% 
+%         sc_phigx = gamma;
+%         sc_phigy = gamma;
+%         sc_phigz = gamma;
+% 
+%     end
+
+    aVRWs = sqrt(gamma) * aVRWs; 
+    aVRWx = sqrt(gamma) * aVRWx;
+    aVRWy = sqrt(gamma) * aVRWy;
+    aVRWz = sqrt(gamma) * aVRWz;
     
 else
-        
-     phis = ((m - mref)' * WstRsWs * (m - mref) );
-
-    % Scale the smallest q-norm on the smallest norm
-%     scale(1) = ((m - mref)' * (V * Ws)' * (V * Ws) * (m - mref) ) / (phis);
-    scale(1) = 0.5 * phim / (alpha(1) * phis);
-
-    % Scale the gradient p-norm on the smallest q-norm
-    switch FLAG1
-    case 'SMOOTH_MOD'
-        % Compute gradients then compute magnitude 
-        scale_g = 0.5 * phim /...
-        ( m' * ( alpha(2) * WxtRxWx * m +...
-                 alpha(3) * WytRyWy * m +...
-                 alpha(4) * WztRzWz * m  ) );
-        
-    case 'SMOOTH_MOD_DIF'
-        
-        % Compute gradients then compute magnitude 
-        scale_g = 0.5 * phim /...
-        ( ( m-mref )' * (alpha(2) * WxtRxWx * (m-mref) +...
-                         alpha(3) * WytRyWy * (m-mref) +...
-                         alpha(4) * WztRzWz * (m-mref)  ) );
-        
-
-    end
+       
+    % Form the matrices by including the weights and volume
+    aVRWs =  sqrt( alpha(1) ) * Ws ;
+    aVRWx =  sqrt( alpha(2) ) * Wx * Gx;
+    aVRWy =  sqrt( alpha(3) ) * Wy * Gy;
+    aVRWz =  sqrt( alpha(4) ) * Wz * Gz;
     
 end
 
-% Final scales
-scale(1) =  r * scale(1) * alpha(1);
-scale(2) = (2.0 - r) * scale_g * alpha(2);
-scale(3) = (2.0 - r) * scale_g * alpha(3);
-scale(4) = (2.0 - r) * scale_g * alpha(4);
+% If more than one zone, average the scaling between lp,lq on transition
+% if size(LP,1) ~= 1;
+        
+%     aVRWs = spdiags(sqrt( gamma * rvec ),0,mcell,mcell) * aVRWs;
+%     aVRWx = spdiags(sqrt( gamma * ( 2.0 - rvec ) ) ,0,mcell,mcell) * aVRWx;
+%     aVRWy = spdiags(sqrt( gamma * ( 2.0 - rvec ) ) ,0,mcell,mcell) * aVRWy;
+%     aVRWz = spdiags(sqrt( gamma * ( 2.0 - rvec ) ) ,0,mcell,mcell) * aVRWz;
+    
+% Otherwise just a scaler
+% else
+%     
+%     aVRWs = sqrt( gamma * LP(1,5) ) * aVRWs;
+%     aVRWx = sqrt( sc_phigx * ( 2.0 - LP(1,5) ) ) * aVRWx;
+%     aVRWy = sqrt( sc_phigy * ( 2.0 - LP(1,5) ) ) * aVRWy;
+%     aVRWz = sqrt( sc_phigz * ( 2.0 - LP(1,5) ) ) * aVRWz;
+%     
+% end
 
-aVRWs = sqrt(scale(1)) * aVRWs;
-aVRWx = sqrt(scale(2)) * aVRWx;
-aVRWy = sqrt(scale(3)) * aVRWy;
-aVRWz = sqrt(scale(4)) * aVRWz;
 
-% Form the final model objective function
-MOF =  ( scale(1) * WstRsWs +...
-scale(2) * WxtRxWx + scale(3) * WytRyWy + scale(4) * WztRzWz ) ;
 
-% Scale MOF
-% mu = phi / ((m- mref )' * MOF * (m- mref));
-% 
-% MOF = mu * MOF;
+
+
+        MOF = aVRWs'*aVRWs + aVRWx'*aVRWx + aVRWy'*aVRWy + aVRWz'*aVRWz;
+
+
+
+end
+

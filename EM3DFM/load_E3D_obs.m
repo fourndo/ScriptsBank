@@ -23,8 +23,9 @@ while line~=-1
             
         end
         
+        temp = str2num(line);
         count_trx = count_trx+1;
-        trx(count_trx,:) = str2num(line);
+        trx(count_trx,1:length(temp)) = temp;
         nrx(count_trx) = 0;
         
         
@@ -46,7 +47,8 @@ while line~=-1
             
             if isempty(str2num(line))==0
                 d(count,1) = freq;
-                d(count,2:end) = str2num(line);
+                temp = str2num(line);
+                d(count,2:length(temp)+1) = temp;
                 nrx(count_trx) = nrx(count_trx) +1;
                 count = count+1;
                 count_recv = count_recv+1;

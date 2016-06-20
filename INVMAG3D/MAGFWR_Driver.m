@@ -7,7 +7,7 @@ clear all
 
 addpath ..\FUNC_LIB\;
 % Project folders
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Documents\GIT\Research\SimPeg';
+work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\SingleBlock\CMI';
 
 inpfile = 'MAG3Cfwr.inp';
 
@@ -16,34 +16,58 @@ inpfile = 'MAG3Cfwr.inp';
 % Load mesh file and convert to vectors (UBC format)
 [xn,yn,zn]=read_UBC_mesh([work_dir '\' meshfile]);
 
+nx = length(xn)-1;
+ny = length(yn)-1;
+nz = length(zn)-1;
+
+% Load susceptibility model
+m_sus = load([work_dir '\' suscfile]); %m_sus = m_sus;
+mcell = length(m_sus);
+
+flr_noise   = 0.0;
+floor = 1.0;
+
 %% 3D vertical nodal location
 [Zn,Xn,Yn] = ndgrid(zn,xn,yn);
 
 if isempty(topofile)==1
     
-    nxn = length(xn);
-    nyn = length(yn);
-    topo = [reshape(Xn(1,:,:),nxn*nyn,1) reshape(Yn(1,:,:),nxn*nyn,1) reshape(Zn(1,:,:),nxn*nyn,1)+1e-8];
-    
+%     nxn = length(xn);
+%     nyn = length(yn);
+%     topo = [reshape(Xn(1,:,:),nxn*nyn,1) reshape(Yn(1,:,:),nxn*nyn,1) reshape(Zn(1,:,:),nxn*nyn,1)+1e-8];
+    nullcell = ones(mcell,1);
 else
     % Load topo
     topo = read_UBC_topo([work_dir '\' topofile]);
+    [nullcell,tcell,~] = topocheck(xn,yn,zn,topo+1e-5);
+    
 end
 
 % Create nullcell
-[nullcell,tcellID,ztopo_n] = topocheck(Xn,Yn,Zn,topo);
-% save([work_dir '\nullcell.dat'],'-ascii','nullcell');
+
+%save([work_dir '\nullcell.dat'],'-ascii','nullcell');
+
+%## TEMPORARY MOD##
+% nullcell = m_sus~=-100;
+% % Core out
+% m_sus = reshape(m_sus,nz,nx,ny);
+% m_sus(1:end-2,3:end-2,3:end-2) = 0;
+% m_sus = m_sus(:);
 
 % Get index of active cells
 cellID = find(nullcell==1);
 
 
 % Get nodal discretization for octree levels
-celln = MAG3C_RTC_OctNodes(Xn,Yn,Zn,cellID,ztopo_n,0);
+%celln = MAG3C_RTC_OctNodes(Xn,Yn,Zn,cellID,ztopo_n,0);
+% Create node pair for each cell
+znzn = kron(kron(ones(ny,1),ones(nx,1)),[zn(1:end-1)' zn(2:end)']);
+xnxn = kron(kron(ones(ny,1),[xn(1:end-1)' xn(2:end)']),ones(nz,1));
+ynyn = kron(kron([yn(1:end-1)' yn(2:end)'],ones(nx,1)),ones(nz,1));
 
-% Load susceptibility model
-m_sus = load([work_dir '\' suscfile]); %m_sus = m_sus;
-mcell = length(m_sus);
+celln = [znzn(:,1) xnxn(:,1) ynyn(:,1) znzn(:,2) xnxn(:,2) ynyn(:,2)];
+celln = celln(nullcell==1,:);
+
 
 
 % Create selector matrix for active cells
@@ -52,9 +76,9 @@ X = X(nullcell==1,:);
 
 m_sus = X*m_sus;
 % Load observation loc  
-[H, BI, BD, MI, MD, obsx, obsy, obsz, ~, ~] = read_MAG3D_obs([work_dir '\' obsfile]);
+[H, HI, HD, MI, MD, dtype, obsx, obsy, obsz, d, ~] = read_MAG3D_obs([work_dir '\' obsfile]);
 
-D = mod(450-BD,360);
+D = mod(450-HD,360);
 % plot_mag3C(obsx,obsy,oldB,I,D,'Observed 3C-Data data')
 % obsx = -222.5:5:-50;
 % obsy = -162.5:5:-50;
@@ -103,7 +127,7 @@ end
 % [p,s,t] = azmdip_2_pst(BD,BI,mcell);
 
 
-p = [(cosd(BI) * cosd(D)) (cosd(BI) * sind(D)) sind(BI)];
+p = [(cosd(HI) * cosd(D)) (cosd(HI) * sind(D)) sind(HI)];
 
 % Compute sensitivities
 % Pre-allocate
@@ -112,9 +136,9 @@ by = zeros(ndata,1);
 bz = zeros(ndata,1);
 btmi = zeros(ndata,1);
 
-progress = -1;
-tic   
-for ii = 1:ndata
+parfor_progress(ndata)
+pooljob = parpool(3);
+parfor ii = 1:ndata
    
     % compute kernel for active cells
     [Tx,Ty,Tz] = MAG3C_T(obsx(ii),obsy(ii),obsz(ii),celln);
@@ -131,15 +155,11 @@ for ii = 1:ndata
     
     btmi(ii) = G * m_sus;
     
-    d_iter = floor(ii/ndata*20);
-    if  d_iter > progress
-
-        fprintf('Computed %i pct of data in %8.5f sec\n',d_iter*5,toc)
-        progress = d_iter;
-
-    end
+%     parfor_progress;
             
 end
+delete(pooljob);
+parfor_progress(0);
 % save([work_dir '\Tx'],'Tx');
 % save([work_dir '\Ty'],'Ty');
 % save([work_dir '\Tz'],'Tz');
@@ -148,9 +168,9 @@ end
 % load([work_dir '\Tz']);
 
 % Create projection matrix for TMI
-P = [spdiags(ones(ndata,1)* (cosd(BI) * cosd(D)),0,ndata,ndata) ...
-    spdiags(ones(ndata,1)* (cosd(BI) * sind(D)),0,ndata,ndata) ...
-    spdiags(ones(ndata,1)* sind(BI),0,ndata,ndata)];
+P = [spdiags(ones(ndata,1)* (cosd(HI) * cosd(D)),0,ndata,ndata) ...
+    spdiags(ones(ndata,1)* (cosd(HI) * sind(D)),0,ndata,ndata) ...
+    spdiags(ones(ndata,1)* sind(HI),0,ndata,ndata)];
 
 % avg_sens = mean(P*G*spdiags(1./wr,0,mcell,mcell),1)';
 % save([work_dir '\avg_sens.dat'],'-ascii','avg_sens');
@@ -158,9 +178,9 @@ P = [spdiags(ones(ndata,1)* (cosd(BI) * cosd(D)),0,ndata,ndata) ...
 
 
 %% Write fwr file with noise
-pct_noise   = 0.00;
-rand_noise = pct_noise*randn(ndata,1);
-floor = 0.0;
+
+% rand_noise = pct_noise*randn(ndata,1);
+
 
 % Write TMI data
 % data_TMI = P * [bx;by;bz];
@@ -170,18 +190,18 @@ lBl = sqrt( bx.^2 + by.^2 + bz.^2 );
 
 % Write 3-components file
 % floor       = (pct_noise.*max(abs(bx)));
-noise       = floor .*randn(ndata,1);
-bx = bx + noise;
+
+bx = bx + flr_noise * randn(ndata,1);
 wdx = floor*ones(ndata,1);%abs(bx)*pct_noise + pct_noise*std(bx);
 
 % floor       = (pct_noise.*max(abs(by)));
-noise       = floor .*randn(ndata,1);
-by = by + noise;
+% noise       = floor .*randn(ndata,1);
+by = by + flr_noise * randn(ndata,1);
 wdy = floor*ones(ndata,1);%abs(by)*pct_noise + pct_noise*std(by);
 
 % floor       = (pct_noise.*max(abs(bz)));
-noise       = floor .*randn(ndata,1);
-bz = bz + noise;
+% noise       = floor .*randn(ndata,1);
+bz = bz + flr_noise * randn(ndata,1);
 wdz = floor*ones(ndata,1);%abs(bz)*pct_noise + pct_noise*std(bz);
 
 d_3C = [bx;by;bz];
@@ -195,21 +215,21 @@ d_TMI = P * [bx;by;bz];
 wd_TMI = floor*ones(ndata,1);%abs(d_TMI)*pct_noise + pct_noise*std(d_TMI); %./ floor;
 
 
-write_MAG3D_3C([work_dir '\' obsfile(1:end-4) '_3C.obs'],H,BI,BD,...
+write_MAG3D_3C([work_dir '\' obsfile(1:end-4) '_3C.obs'],H,HI,HD,...
     obsx,obsy,obsz,bx,by,bz,wdx,wdy,wdz);
 
-plot_mag3C(obsx,obsy,d_3C,BI,D,'Observed 3C-Data data')
+plot_mag3C(obsx,obsy,d_3C,HI,D,'Observed 3C-Data data');
 
-write_MAG3D_TMI([work_dir '\' obsfile(1:end-4) '_TMI.obs'],H,BI,BD,MI,MD,...
+write_MAG3D_TMI([work_dir '\' obsfile(1:end-4) '_TMI.obs'],H,HI,HD,MI,MD,...
     obsx,obsy,obsz,d_TMI,wd_TMI);
 
-plot_TMI(obsx,obsy,btmi,d_TMI,wd_TMI,'Observed vs Predicted Magnitude');
+plot_TMI(obsx,obsy,btmi,d_TMI,wd_TMI,'Observed vs Predicted Magnitude',false);
 
-noise       = floor .*randn(ndata,1);
-lBl = lBl + noise;
+% noise       = floor .*randn(ndata,1);
+lBl = lBl + flr_noise * randn(ndata,1);
 wd = floor*ones(ndata,1);
 % lBl = sqrt( bx.^2 + by.^2 + bz.^2 );
 % wd = sqrt( wdx.^2 + wdy.^2 + wdz.^2 );
 
-write_MAG3D_TMI([work_dir '\' obsfile(1:end-4) '_lBl.obs'],H,BI,BD,MI,MD,obsx,obsy,obsz,lBl,wd)
+write_MAG3D_TMI([work_dir '\' obsfile(1:end-4) '_lBl.obs'],H,HI,HD,MI,MD,obsx,obsy,obsz,lBl,wd)
 

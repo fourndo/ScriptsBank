@@ -1,4 +1,4 @@
-function [nullcell,topocell,ztopo_n] = topocheck_v2(xn,yn,zn,topo)
+function [nullcell,topocell,ztopo_n] = topocheck(xn,yn,zn,topo)
 % [nullcell,topocell,toponode] = topocheck(Xn,Yn,Zn,topo)
 % Create active cell matrix from discretized topography and topocell for
 % all cells intersected by the toposurface
@@ -79,7 +79,7 @@ for ii = 1 : nx
 
         if  d_iter > progress
 
-            fprintf('Computed %i pct of data in %8.5f sec\n',d_iter*5,toc)
+            fprintf('Computed %i pct of data in %8.5f sec\r',d_iter*5,toc)
 
             progress = d_iter;        
             tic

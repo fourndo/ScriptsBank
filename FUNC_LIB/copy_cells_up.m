@@ -1,44 +1,58 @@
+% Function copy_cells_up
+%
+% Reads in a mesh and a model and propagate the top cells all the way to
+% the top of the mesh.
+
+
 clear all
 close all
 
-modelfile = 'TMI_p2q2l1_iter_32.sus';
-work_dir     = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Research\Modelling\Topo_adjust\Gaussian_topo_plane_model';
-meshfile    = 'Mesh_5m.msh';
+%% USER INPUT
+modelfile   = 'MAG3D_TMI_lplq.sus';
+work_dir    = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Block_Gaussian_topo';
+meshfile    = 'Mesh_10m.msh';
 
-mesh=get_UBC_mesh([work_dir '\' meshfile]);
+% Specify the no-data value in the original model (-100:Mag , 1e-8:Cond)
 ndv = -100;
 
-nx = mesh(1,1); %size(X,1);    %number of cell in X
-ny = mesh(1,2); %size(X,2);    %number of cell in Y
-nz = mesh(1,3); %size(X,3);    %number of cell in Z
+out_file    = 'Model_FullSpace.dat';
+%% SCRIPT STARTS HERE
+mesh=get_UBC_mesh([work_dir '\' meshfile]);
 
-dx = mesh(3,1:nx);
-dy = mesh(4,1:ny);
-dz = mesh(5,1:nz);
 
-x0 = mesh(2,1);
-y0 = mesh(2,2);
-z0 = mesh(2,3);
+[xn,yn,zn] = read_UBC_mesh([work_dir '\' meshfile]);
+dx = xn(2:end) - xn(1:end-1); nx = length(dx);
+dy = yn(2:end) - yn(1:end-1); ny = length(dy);
+dz = zn(1:end-1) - zn(2:end); nz = length(dz);
 
 % Load model
 m = load([work_dir '\' modelfile]);
 m = reshape(m,nz,nx,ny);
 
+% Loop the XY plane and grab one column        
 for ii = 1:nx;
+    
     for jj = 1:ny
         
-       airc = sum(m(:,ii,jj)==ndv);
+       airc = m(:,ii,jj)~=ndv;
        
-       if airc~=nz
-           m(1:airc,ii,jj)=m(airc+1,ii,jj);
+       % If there is no ground cells, then leave it empty
+       if isempty(airc)
+           
+           m(:,ii,jj) = ndv;
+           
+       % Otherwise copy the last cell up      
+       else 
+           
+           ground = m(airc,ii,jj);
+           m(airc==0,ii,jj) = ground(1);
+           
        end
        
     end
 end
 
-% model(nullcell==0) = 0;
-% 
-% model = reshape(model,ny*nx*nz,1);
+%Output model
 m = m(:);
 
-save([work_dir '\' modelfile 'noair'],'-ascii','m');
+save([work_dir '\' out_file],'-ascii','m');

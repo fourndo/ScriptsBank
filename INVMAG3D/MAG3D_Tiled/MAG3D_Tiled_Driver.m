@@ -22,13 +22,14 @@ addpath 'func_lib';
 
 dsep = '\';
 % Project folders
+% work_dir = '/tera_raid/dfournier/TKC/Mag/DIGHEM_lp';
 work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Nut_Cracker\Tiled_MAG3D';
 out_dir = [work_dir dsep 'ALL_Tiles'];
 mkdir(out_dir);
 
 inpfile   = 'MAG3D_Tile.inp'; 
 
-[meshfile,obsfile,topofile,mstart,mref,magfile,weightfile,chi_target,alphas,beta,bounds,norm_vec,FLAG1,FLAG2,tilefile] = MAG3D_Tile_read_inp([work_dir dsep inpfile]);
+[meshfile,obsfile,topofile,mstart,mref,magfile,weightfile,chi_target,alphas,beta,bounds,norm_vec,eps_p,eps_q,FLAG1,FLAG2,Rot,tilefile] = MAG3D_Tile_read_inp([work_dir dsep inpfile]);
 
 % mtrue = load([work_dir '\..\Effec_sus.sus']);
 % Load mesh file and convert to vectors (UBC format)
@@ -45,26 +46,39 @@ zc = (zn(2:end) + zn(1:end-1))/2;
 
 mcell = (length(xn)-1) * (length(yn)-1) * (length(zn)-1);
 
-pct_cutoff = 70;
-
 expanfac = 1.4;
+npadx = 8;
+npady = 8;
 
 R = 3;
 R0 = 0;
 
+azm = 0;
+dip = 0;
+
 %% Load observation file (3C UBC-MAG format)
-[H, I, Dazm, D, Obsx, Obsy, Obsz, data, wd_full] = read_MAG3D_obs([work_dir dsep obsfile]);
+[H, BI, BD, MI, MD, Obsx, Obsy, Obsz, data, wd_full] = read_MAG3D_obs([work_dir dsep obsfile]);
 % plot_mag3C(obsx,obsy,d,I,D,'Observed 3C-data')
 % plot_TMI(obsx,obsy,d,d,wd,'Observed vs Predicted Magnitude');
 
+% % Filter data
+% flt_r = 10;
+% [indx] = Filter_xy(Obsx,Obsy,flt_r);
+% 
+% Obsx = Obsx(indx);
+% Obsy = Obsy(indx);
+% Obsz = Obsz(indx);
+% data = data(indx);
+% wd_full = wd_full(indx);
+% 
 ndata = length(data);
 
-
+% write_MAG3D_TMI([work_dir dsep obsfile(1:end-4) '_FLT' num2str(flt_r) '.dat'],H, BI, BD, MI, MD,Obsx,Obsy,Obsz,data,wd_full);
 %% Load input models and weights
 % Load magnetization model
 if isempty(magfile) == 1
     
-    mag_azmdip = [ones(mcell,1)*Dazm ones(mcell,1)*I];
+    mag_azmdip = [ones(mcell,1)*MD ones(mcell,1)*MI];
     mag_xyz = azmdip_2_xyz( mag_azmdip(:,1) , mag_azmdip(:,2) );
     
 else
@@ -145,21 +159,22 @@ end
 % Format of tile file is [xo, yo, x_max, y_max]
 % Each row defines a seperate tile
 if isempty(tilefile)
-    T = [xn(1) yn(1) xn(end) yn(end)];
+    ntiles = 1;%T = [xn(1) yn(1) xn(end) yn(end)];
 else
     T = load([work_dir dsep tilefile]);
+    ntiles = size(T,1);
 end
-ntiles = size(T,1);
 
-% matlabpool OPEN 2
+
+%parpool(3)
 
 for ii = 1 : ntiles
-    addpath 'func_lib';
+
     % Define working directory for tile
     tile_dir = [work_dir dsep 'Tile' num2str(ii)];
     mkdir(tile_dir);
     
-    if ntiles ~=1
+    if ~isempty(tilefile)
         % Create core mesh from tile extent
         xn_t = T(ii,1):min(dx):T(ii,3);
         yn_t = T(ii,2):min(dy):T(ii,4);
@@ -175,12 +190,26 @@ for ii = 1 : ntiles
         xn_t = [(xn_t(1) - fliplr(cumsum(padx))) xn_t (xn_t(end) + cumsum(padx))];
         yn_t = [(yn_t(1) - fliplr(cumsum(pady))) yn_t (yn_t(end) + cumsum(pady))];
         
+        mcell = (length(xn_t)-1) * (length(yn_t)-1) * (length(zn_t)-1);
+        
+        w_t = ones(4*mcell,1);
+        mref_t = zeros(mcell,1);
+        mstart_t = ones(mcell,1)*1e-4;
+        t = ones(mcell,1);
     else
         
         xn_t = xn;
         yn_t = yn;
         zn_t = zn;
         
+        w_t = w;
+    
+        mref_t = mref;
+
+        mstart_t = mstart;
+
+        %t = ones(mcell_t,1);
+    
         indx = ones(ndata,1) == 1;
         
     end
@@ -200,7 +229,7 @@ for ii = 1 : ntiles
     dy_t = yn_t(2:end) - yn_t(1:end-1); 
     dz_t = zn_t(1:end-1) - zn_t(2:end); 
 
-    write_MAG3D_TMI([tile_dir dsep 'Tile_data.dat'],H,I,Dazm,obsx,obsy,obsz,d,wd)
+    write_MAG3D_TMI([tile_dir dsep 'Tile_data.dat'],H, BI, BD, MI, MD,obsx,obsy,obsz,d,wd)
     write_UBC_mesh(out_dir,['Tile' num2str(ii) '.msh'],dsep,xn_t(1),yn_t(1),zn_t(1),dx_t,dy_t,dz_t)
     write_UBC_mesh(tile_dir,['Tile' num2str(ii) '.msh'],dsep,xn_t(1),yn_t(1),zn_t(1),dx_t,dy_t,dz_t)
     
@@ -218,40 +247,23 @@ for ii = 1 : ntiles
 %     indz = zc <= zc_t(1) & zc >= zc_t(end);
     
     %% NEED TO FIX THE TILED INTERPOLATION   
-%     F = interp3(zc, xc, yc,reshape(mag_xyz(:,1),nz,nx,ny),zc_t,xc_t,yc_t);
-%     mag_xyz_t = F(Zc_t,Xc_t,Yc_t);
-%     
-%     F = scatteredInterpolant(Zc(indz,indx,indy), Xc(indz,indx,indy),Yc(indz,indx,indy),mstart);
-%     mstart_t = F(Zc_t,Xc_t,Yc_t);
-%     
-%     F = scatteredInterpolant(Zc(indz,indx,indy), Xc(indz,indx,indy),Yc(indz,indx,indy),reshape(mref,nz,nx,ny));
-%     mref_t = F(Zc_t,Xc_t,Yc_t);
-%     
-%     F = scatteredInterpolant(Zc(indz,indx,indy), Xc(indz,indx,indy),Yc(indz,indx,indy),w);
-%     w_t = F(Zc_t,Xc_t,Yc_t);
-%     [Zn,Xn,Yn] = ndgrid(zn_t,xn_t,yn_t);
     [nullcell,tcell,~] = topocheck(xn_t,yn_t,zn_t,topo+1e-5);
     save([tile_dir dsep 'nullcell.dat'],'-ascii','nullcell');
-    mag_azmdip = [ones(mcell_t,1)*Dazm ones(mcell_t,1)*I];
-    m_vec_t = azmdip_2_xyz( mag_azmdip(:,1) , mag_azmdip(:,2) );
 
-
-    mag_azmdip = [ones(mcell_t,1)*Dazm ones(mcell_t,1)*I];
+    mactv = sum(nullcell);
+    
+    mag_azmdip = [ones(mactv,1)*MD ones(mactv,1)*MI];
     mag_xyz_t = azmdip_2_xyz( mag_azmdip(:,1) , mag_azmdip(:,2) );
     
-    w_t = ones(4*mcell_t,1);
     
-    mref_t = zeros(mcell_t,1);
-    
-    mstart_t = ones(mcell_t,1)*1e-4;
-    
-    t = ones(mcell_t,1);
+    M = [spdiags(H * mag_xyz_t(:,1),0,mactv,mactv);spdiags(H * mag_xyz_t(:,2),0,mactv,mactv);spdiags(H * mag_xyz_t(:,3),0,mactv,mactv)];
+
 
     %% CALL MAGSEN_Tile and create sensitivity
-    [G,~,~] = MAGSEN_Tiled(tile_dir,dsep,xn_t,yn_t,zn_t,I, D, obsx, obsy, obsz,nullcell, 'DISTANCE', 'G', R, R0);
+    G = MAGSEN_Tiled(tile_dir,dsep,xn_t,yn_t,zn_t,H, BI, BD, MI, MD, obsx, obsy, obsz,nullcell, 'NONE', 'G', R, R0, M);
     
     %% CALL MAGINV_Tile and run inversion
-    MAGINV_sus_Tiled(tile_dir,out_dir,dsep,ii,xn_t,yn_t,zn_t,H, I, Dazm, obsx, obsy, obsz, G, d, wd,mag_xyz_t,w_t,mref_t,mstart_t,bounds,chi_target,alphas,beta,LP,t,FLAG1,FLAG2)
+    MAGINV_sus_Tiled(tile_dir,out_dir,dsep,ii,xn_t,yn_t,zn_t,H, BI, BD, MI, MD, obsx, obsy, obsz, G, d, wd,w_t,mref_t,mstart_t,bounds,chi_target,alphas,beta,LP,eps_p,eps_q,t,FLAG1,FLAG2,Rot)
     
 end
 % 

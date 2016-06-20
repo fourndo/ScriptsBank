@@ -7,13 +7,16 @@ clear all
 
 addpath ..\FUNC_LIB\;
 % Project folders
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Tli_Kwi_Cho\Modelling\Inversion\MAG';
+work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Nut_Cracker\Induced_MAG3C';
 inpfile = 'MAG3Csen.inp';
 
 [meshfile,obsfile,topofile, wr_flag, sen_flag] = MAG3Csen_read_inp([work_dir '\' inpfile]);
 
 % Load mesh file and convert to vectors (UBC format)
 [xn,yn,zn]=read_UBC_mesh([work_dir '\' meshfile]);
+nx = length(xn)-1;
+ny = length(yn)-1;
+nz = length(zn)-1;
 
 % Write logfile
 fid = fopen([work_dir '\MAG3Csen.log'],'w');
@@ -52,8 +55,12 @@ load([work_dir '\nullcell.dat']);
 % Get index of active cells
 cellID = find(nullcell==1);
 
-% Get nodal discretization for octree levels
-celln = MAG3C_RTC_OctNodes(Xn,Yn,Zn,cellID,ztopo_n,0);
+znzn = kron(kron(ones(ny,1),ones(nx,1)),[zn(1:end-1)' zn(2:end)']);
+xnxn = kron(kron(ones(ny,1),[xn(1:end-1)' xn(2:end)']),ones(nz,1));
+ynyn = kron(kron([yn(1:end-1)' yn(2:end)'],ones(nx,1)),ones(nz,1));
+
+celln = [znzn(:,1) xnxn(:,1) ynyn(:,1) znzn(:,2) xnxn(:,2) ynyn(:,2)];
+celln = celln(nullcell==1,:);
 
 % Load susceptibility model
 mcell = size(celln,1);

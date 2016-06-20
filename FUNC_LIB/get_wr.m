@@ -196,7 +196,8 @@ end
     
     otherwise
         
-        fprintf('Flag should be "depth" or "distance"\n');
+        wr = ones(size(nullcell));
+        fprintf('Distance weight computed from sensitivity\n');
         
 end
 

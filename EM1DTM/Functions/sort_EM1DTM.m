@@ -1,4 +1,4 @@
-function [data_sort,xyz_sort,std_sort] = sort_EM1DTM(data,xyz,limits,filter_r,argumin)
+function [data_sort,xyz_sort] = sort_EM1DTM(data,xyz,limits,filter_r,tflag,pflag)
 % [data_out] = sort_EM1DTM(work_dir,rawdata.mat,radius)
 %
 % INPUT:
@@ -22,8 +22,7 @@ function [data_sort,xyz_sort,std_sort] = sort_EM1DTM(data,xyz,limits,filter_r,ar
 
 %% SCRIPT STARTS HERE
 % Total number of data
-ndat = size(data,1);
-ntc = size(data,2);
+ndat = size(xyz,1);
 
 X = xyz(:,1);
 Y = xyz(:,2);
@@ -48,15 +47,17 @@ else
 end
 figure; scatter(X,Y);title('Before sorting');hold on
 
-
-data_sort = zeros(ndat,ntc);
-std_sort = zeros(ndat,ntc);
-xyz_sort = zeros(ndat,4);
-
-count = 1;
 for ii = 1 : ndat
-
+    
     if mask(ii)==1
+        
+        data_sub= [];
+        for jj = 1 : size(data,2)
+
+            data_sub{jj}   = data{jj}(ii);
+
+        end
+    
 %         temp = zeros(length(rc_specs),1); temp(ii:ii+nfreq-1)=1;
 %             temp = stn_num(:,1)==stn(ii,1);
         r = ( (X(ii) - X(:)).^2 +...
@@ -65,6 +66,42 @@ for ii = 1 : ndat
         % Only keep the curretn points and neighbours at distance r+
         mask(r <= filter_r) = 0;
         mask(ii) = 1;
+        
+        %% Filter for positivity and time channels
+        % Only keep data specified by (tflag) and (dtype)
+        index = ones(size(data_sub{5}{1}{1}{5},1),1);
+
+        % Check how many time channels are greater than tflag
+        if ~isempty(tflag)
+
+            index(data_sub{5}{1}{1}{5}(:,1) > tflag) = 0;
+
+        end
+
+        % Check how many datum are negative
+        if ~isempty(pflag)
+
+            index(data_sub{5}{1}{1}{7}(:,1) < 0) = 0;
+
+        end
+        
+        % Convert to logical
+        index = index == 1;
+        
+        % If not enough data, skip the station
+        if sum(index) < 2
+
+            mask(ii) = 0;
+        
+        % Otherwise remove the bad data and update the database 
+        else
+            
+            data{5}{ii}{1}{4}(1) = sum(index);
+            data{5}{ii}{1}{5} = data{5}{ii}{1}{5}(index,:);
+            data{5}{ii}{1}{6} = data{5}{ii}{1}{6}(index);
+            data{5}{ii}{1}{7} = data{5}{ii}{1}{7}(index,:);
+            
+        end
 % 
 %         % Select data around and stack
 %         index = r < interp_r;
@@ -103,29 +140,14 @@ for ii = 1 : ndat
 
 end
 
-data_sort   = data(mask==1,:);
-xyz_sort    = xyz(mask==1,:);
-std_sort    = abs(data_sort)*0.1;
+data_sort=[];
 
-switch argumin
-    
-    case 'pos'
- 
-        tester = data_sort>0;
-        
-        tester = sum(tester,2);
-        
-%         mask = tester < size(data,2)/2;
-        mask = tester < 2;
-        
-        data_sort = data_sort(mask==0,:);
-        xyz_sort = xyz_sort(mask==0,:);
-        std_sort = std_sort(mask==0,:);
-        
-        fprintf('%i data points were removed because of large negative value\n', sum(mask==1));
-            
-        
+for ii = 1 : size(data,2)
+    data_sort{ii}   = data{ii}(mask==1);
 end
+
+xyz_sort    = xyz(mask==1,:);
+
 
 figure(1)
 scatter(xyz_sort(:,1),xyz_sort(:,2),'r*');title('After sorting')

@@ -26,11 +26,12 @@ work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Bookpurnong\Mod
 
 obsfile = 'Inv_Data_XYZ_ds15m.dat';
 
-predfile = 'Inv_PRED_iter4.pre';
+predfile = 'Inv_PRED_iter2.pre';
 % predfile = 'Inv_PRED_iter6.pre';
 
 %% Load data
-set(figure, 'Position', [25 50 1800 900])
+set(figure(1), 'Position', [25 50 1800 900])
+set(figure(2), 'Position', [25 50 1800 900])
 data = load([work_dir '\' obsfile]);
 pred = load([work_dir '\' predfile]);
 
@@ -82,27 +83,38 @@ for ii = 1 : nfreq
     uncert_R = griddata(sub_data(:,2),sub_data(:,1),sub_data(:,7),Y,X);
     
     
-    set(figure, 'Position', [25 50 1800 900])
-    subplot(231)
+    figure(1)
+    subplot(2,6,(ii-1)*2+1)
     h = imagesc(x,y,data_R);
     set(h,'alphadata',~isnan(data_R));
     title(['\bf' num2str(freq(ii)) 'Real'])
     caxis([min(sub_data(:,5)) max(sub_data(:,5))])
     colorbar
     colormap(jet)
-    axis equal
+    axis equal tight
     grid on
     
-    subplot(232)
+    subplot(2,6,(ii-1)*2+7)
     h=imagesc(x,y,pred_R);
     set(h,'alphadata',~isnan(data_R));
     title('\bfPredicted Real')
     caxis([min(sub_data(:,5)) max(sub_data(:,5))])
     colorbar
-    axis equal
+    axis equal tight
     grid on
     
-    subplot(233)
+    figure(2)
+    subplot(2,6,(ii-1)*2+1)
+    h = imagesc(x,y,data_R);
+    set(h,'alphadata',~isnan(data_R));
+    title(['\bf' num2str(freq(ii)) 'Real'])
+    caxis([min(sub_data(:,5)) max(sub_data(:,5))])
+    colorbar
+    colormap(jet)
+    axis equal tight
+    grid on
+    
+    subplot(2,6,(ii-1)*2+7)
     h=imagesc(x,y,( data_R-pred_R ) ./ uncert_R );
     set(h,'alphadata',~isnan(data_R));
     title('\bfNormalized Residual')
@@ -111,51 +123,62 @@ for ii = 1 : nfreq
     axis equal tight
     grid on
 
-    subplot(234)
+    figure(1)
+    subplot(2,6,(ii-1)*2+2)
     h=imagesc(x,y,data_I);
     set(h,'alphadata',~isnan(data_I));
     title(['\bf' num2str(freq(ii)) ' Imag'])
     caxis([min(sub_data(:,6)) max(sub_data(:,6))])
     colorbar
-    axis equal
+    axis equal tight
     grid on
     
-    subplot(235)
+    subplot(2,6,(ii-1)*2+8)
     h=imagesc(x,y,pred_I);
     set(h,'alphadata',~isnan(data_I));
     title('\bfPredicted Imag')
     caxis([min(sub_data(:,6)) max(sub_data(:,6))])
     colorbar
-    axis equal
+    axis equal tight
     grid on
     
-    subplot(236)
-    h=imagesc(x,y, ( data_I-pred_I ) ./ uncert_I);
-    set(h,'alphadata',~isnan(data_I));
-    caxis([-4 4])
-    title('\bfNormalized Residual')
-    colorbar
-    axis equal
-    grid on
-
-    figure(1)
-    subplot(2,nfreq,ii)
-    h=imagesc(x,y,data_R);
-    set(h,'alphadata',~isnan(data_R));
-    title(['\bf' num2str(freq(ii)) ' Real'])
-    caxis([min(sub_data(:,5)) max(sub_data(:,5))])
-    colorbar
-    colormap(jet)
-    axis equal
-    grid on
-    
-    subplot(2,nfreq,ii+nfreq)
+    figure(2)
+    subplot(2,6,(ii-1)*2+2)
     h=imagesc(x,y,data_I);
     set(h,'alphadata',~isnan(data_I));
     title(['\bf' num2str(freq(ii)) ' Imag'])
     caxis([min(sub_data(:,6)) max(sub_data(:,6))])
     colorbar
-    axis equal
+    axis equal tight
     grid on
+    
+    subplot(2,6,(ii-1)*2+8)
+    h=imagesc(x,y, ( data_I-pred_I ) ./ uncert_I);
+    set(h,'alphadata',~isnan(data_I));
+    caxis([-4 4])
+    title('\bfNormalized Residual')
+    colorbar
+    axis equal tight
+    grid on
+
+%     figure(1)
+%     subplot(2,nfreq,ii)
+%     h=imagesc(x,y,data_R);
+%     set(h,'alphadata',~isnan(data_R));
+%     title(['\bf' num2str(freq(ii)) ' Real'])
+%     caxis([min(sub_data(:,5)) max(sub_data(:,5))])
+%     colorbar
+%     colormap(jet)
+%     axis equal tight
+%     grid on
+%     
+%     subplot(2,nfreq,ii+nfreq)
+%     h=imagesc(x,y,data_I);
+%     set(h,'alphadata',~isnan(data_I));
+%     title(['\bf' num2str(freq(ii)) ' Imag'])
+%     caxis([min(sub_data(:,6)) max(sub_data(:,6))])
+%     colorbar
+%     axis equal tight
+%     grid on
 end
 

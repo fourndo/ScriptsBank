@@ -15,6 +15,8 @@ function [Tx,Ty,Tz] = MAG3C_T(obsx,obsy,obsz,celln)
 % nullcell   : 1D vector for active1 and inactive (0) cells
 % Last update: February 17th, 2014
 
+val = 1e-8;
+
 mcell = size(celln,1);
 
 % Pre-allocate to store fields
@@ -22,34 +24,34 @@ Tx = zeros(1,3*mcell);
 Ty = zeros(1,3*mcell);
 Tz = zeros(1,3*mcell);
   
-z1 = celln(:,1,1);
-z2 = celln(:,1,4);
-x2 = celln(:,1,2);
-x1 = celln(:,1,5);
-y2 = celln(:,1,3);
-y1 = celln(:,1,6);
+z1 = celln(:,1);
+z2 = celln(:,4);
+x2 = celln(:,2);
+x1 = celln(:,5);
+y2 = celln(:,3);
+y1 = celln(:,6);
 
 %     %First compute de location of the center of the cell
 %     Y = y0 + sum(dy(1:jj)) - dy(jj) /2;
 % 
 %     %Then the distance between the cell corners and the observation
 
-dy2 = y2 - obsy;
-dy1 = y1 - obsy;
+dy2 = y2 - obsy + val;
+dy1 = y1 - obsy + val;
 
 %    for ii = 1 : nx
 
 %         X = x0 + sum(dx(1:ii)) - dx(ii) /2;
 % 
-dx2 = x2 - obsx;
-dx1 = x1 - obsx;
+dx2 = x2 - obsx + val;
+dx1 = x1 - obsx + val;
 
 %        for kk = 1 : nz            
 
 %             Z = z0 - sum(dz(1:kk)) + dz(kk) /2;
 % 
-dz1 = obsz - z1;
-dz2 = obsz - z2;
+dz1 = obsz - z1 + val;
+dz2 = obsz - z2 + val;
 
 R1 = ( dy2.^2 + dx2.^2 );
 R2 = ( dy2.^2 + dx1.^2 );

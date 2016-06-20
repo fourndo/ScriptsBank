@@ -27,16 +27,16 @@ clear all
 close all
 
 %% INPUT 
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Paul_Lake\Modeling\Inversion\CMI_Tiles\ALL_Tiles';
-out_meshfile = '..\..\Mesh_50m_v2.msh';
-tilefile = '..\..\Tiles_50m_Tight.dat';
+work_dir = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\MAG\SPECTRUM\CMI\ALL_Tiles';
+out_meshfile = '..\Mesh_50m_padded.msh';
+tilefile = '..\Tiles.dat';
 rangemax = 100;
 ndv = -100;
 dsep = '\';
-flag1 = 'nullfile';
-arg1 = 'nullcell.dat';
-flag2 = 'none';
-arg2 = [];
+flag1 = 'topofile';
+arg1 = '..\..\..\DEM_30m.topo';
+flag2 = 'rem_pad';
+arg2 = [8 8];
 
 %% \\\\\\\\\\\\\\\\\ %%
 % SCRIPT STARTS HERE  %

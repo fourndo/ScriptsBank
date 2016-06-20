@@ -18,11 +18,11 @@ close all
 addpath '..\.'
 
 %% INPUT VARIABLES
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Paul_Lake\Modeling\Inversion';
+work_dir = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\MAG\SPECTRUM';
 
 meshfile = 'Mesh_50m.msh';
 
-obsfile = 'Obs_Paul_Lake_SUB_1pc_10nT.dat';
+obsfile = 'Spectrum_FULL.obs';
 
 dsep = '\';
 
@@ -43,15 +43,15 @@ dy = min(dy);
 %% Plot mesh and obs
 set(figure, 'Position', [50 25 900 600]);
 
-[H, I, Dazm, D, Obsx, Obsy, Obsz, data, wd_full] = read_MAG3D_obs([work_dir dsep obsfile]);
+[H, BI, BD, MI, MD, Obsx, Obsy, Obsz, data, wd_full] = read_MAG3D_obs([work_dir dsep obsfile]);
 
 xx = min(Obsx):50:max(Obsx);
 yy = min(Obsy):50:max(Obsy);
 [YY,XX] = ndgrid(yy,xx);
 
-F = scatteredInterpolant(Obsy, Obsx, data ,'natural');
+grid_d = griddata(Obsy, Obsx, data,YY,XX ,'natural');
 
-grid_d = F(YY,XX);
+%  F(YY,XX);
 
 %% Flag cell grid too far from obs
 % flag = zeros(size(YY));
@@ -64,14 +64,14 @@ grid_d = F(YY,XX);
 %     
 % end
 % save([work_dir dsep 'Obs_flag'],'flag');
-load([work_dir dsep 'Obs_flag']);
+% load([work_dir dsep 'Obs_flag']);
 
 %%
 % msh = mesh(Xn,Yn,ones(size(Xn)),'FaceColor','none'); hold on
 ax1 = axes('Position',[0.1 .55 .4 .4]);
 view([0 90]) 
 h = imagesc(xx,yy,grid_d);hold on
-set(h,'alphadata',~isnan(grid_d) .* flag)
+set(h,'alphadata',~isnan(grid_d))
 caxis(ax1,[-500 100])
 bb = colormap(jet);
 xlim([min(Obsx) max(Obsx)]); rangex = max(Obsx) - min(Obsx); 
@@ -101,7 +101,7 @@ text(2,-.1,'$(nT)$', 'interpreter', 'latex','FontSize',10,'HorizontalAlignment',
 
 
 %% Load extra data
-load([work_dir '\Pipes43101']);
+% load([work_dir '\Pipes43101']);
 
 
 %% Pick regions of background and compute median value\
@@ -167,7 +167,7 @@ trend_d = F(YY,XX);
 ax2 = axes('Position',[0.575 .55 .4 .4]);
 view([0 90]) 
 h = imagesc(xx,yy,trend_d);hold on
-set(h,'alphadata',~isnan(trend_d) .* flag)
+set(h,'alphadata',~isnan(trend_d))
 caxis(ax2,[-500 100])
 colormap(jet)
 % colorbar
@@ -186,7 +186,7 @@ text(5.1e+5,7.155e+6,'$(b)$', 'interpreter', 'latex','FontSize',14,'HorizontalAl
 ax3 = axes('Position',[0.325 0.05 .4 .4]);
 view([0 90]) 
 h = imagesc(xx,yy,grid_d - trend_d);hold on
-set(h,'alphadata',~isnan(grid_d) .* flag)
+set(h,'alphadata',~isnan(grid_d) )
 caxis(ax3,[-250 250])
 bb = colormap(jet);
 % colorbar
@@ -219,8 +219,8 @@ text(2,-.1,'$(nT)$', 'interpreter', 'latex','FontSize',10,'HorizontalAlignment',
 
 %% Save polynomial and de-trended data
 wd_detrend = abs(d_detrend) * 0.02 + 5;
-write_MAG3D_TMI([work_dir dsep 'Obs_Paul_Lake_SUB_1pc_10nT_DETREND.dat'],H,I,Dazm,Obsx,Obsy,Obsz,d_detrend,wd_detrend);
+write_MAG3D_TMI([work_dir dsep obsfile(1:end-4) '_DETREND.dat'],H, BI, BD, MI, MD,Obsx,Obsy,Obsz,d_detrend,wd_detrend);
 
-write_MAG3D_TMI([work_dir dsep 'Trend.dat'],H,I,Dazm,Obsx,Obsy,Obsz,trend,wd_detrend);
+write_MAG3D_TMI([work_dir dsep 'Trend.dat'],H, BI, BD, MI, MD,Obsx,Obsy,Obsz,trend,wd_detrend);
 
 

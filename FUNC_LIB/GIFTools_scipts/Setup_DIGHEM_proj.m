@@ -9,6 +9,7 @@ proj = 'TKC_DIGHEM_Coarse';
 cd(work_dir);
 
 load(proj)
+
 project = GIFtools(obj);
 
 %% Load data from ASCII
@@ -52,33 +53,45 @@ project = GIFtools(obj);
 % item.replaceColumn(5,-d(:,5));
 
 %% Change uncertainties
-item = project.getItem(21);
+item = project.getItem(18);
 data = item.getData;
 item.copy;
+
+HzR_data = zeros(size(data,1),1);
+HzI_data = zeros(size(data,1),1);
 
 HzR_uncrt = zeros(size(data,1),1);
 HzI_uncrt = zeros(size(data,1),1);
 
 index = data(:,2)==900;
 
+HzR_data(index) = abs(data(index,6) ) * 2.0;
+HzI_data(index) = abs(data(index,8) ) * 2.0;
+
 HzR_uncrt(index) = abs(data(index,6) ) * 0.0 + 1;%max([0 0.05*abs(min(data(index,6)))]);
 HzI_uncrt(index) = abs(data(index,8 )) * 0.0 + 1;%max([0 0.05*abs(max(data(index,8)))]);
 
 index = data(:,2)==7200;
+
+HzR_data(index) = abs(data(index,6) ) * 2.0;
+HzI_data(index) = abs(data(index,8) ) * 2.0;
 
 HzR_uncrt(index) = abs(data(index,6) ) * 0.0 + 2;%max([0 0.1*abs(min(data(index,6)))]);
 HzI_uncrt(index) = abs(data(index,8) ) * 0.0 + 2;%max([0 0.1*abs(max(data(index,8)))]);
 
 index = data(:,2)==56000;
 
+HzR_data(index) = abs(data(index,6) ) * 2.0;
+HzI_data(index) = abs(data(index,8) ) * 2.0;
+
 HzR_uncrt(index) = abs(data(index,6) ) * 0.0 + 4;%max([0 0.1*abs(min(data(index,6)))]);
 HzI_uncrt(index) = abs(data(index,8) ) * 0.0 + 4;%max([0 0.1*abs(max(data(index,8)))]);
 
 item = project.getItem(end);
-item.replaceColumn([7 9],[HzR_uncrt HzI_uncrt]);
+item.replaceColumn([6 7 8 9],[HzR_data HzR_uncrt HzI_data HzI_uncrt]);
 
 %% Load pred data and modify to ppm
-item_ppm = project.getItem(22);
+item_ppm = project.getItem(19);
 Ho_R = item_ppm.getData(:,16);
 
 item = project.getItem(end);

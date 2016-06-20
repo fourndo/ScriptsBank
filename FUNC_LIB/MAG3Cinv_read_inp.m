@@ -1,4 +1,4 @@
-function [meshfile,obsfile,mstart,mref,magfile,weightfile,chi_target,alphas,beta,bounds,norm_vec,FLAG1,FLAG2] = MAG3Cinv_read_inp(inputfile)
+function [meshfile,obsfile,topofile,mstart,mref,magfile,weightfile,chi_target,alphas,beta,bounds,norm_vec,eps_p,eps_q,FLAG1,FLAG2,ROT] = MAG3Cinv_read_inp(inputfile)
 % Function [work_dir,meshfile,obsfile,wr_flag,chi_target,alphas,beta,pvec,qvec,lvec] = MAG3D_read_inp('inputfile')
 % Read input file for inversion
 
@@ -7,7 +7,7 @@ line = fgets(fid);
 
 fprintf('Start reading input file\n')
 count = 1;
-while line~=-1
+while count<17
     
     arg = regexp(line,'!','split');
     
@@ -20,8 +20,19 @@ while line~=-1
         
         obsfile = strtrim(arg{1});
         fprintf('Observations: \t\t %s\n',obsfile);
-        
+    
     elseif count == 3
+        
+        topofile = strtrim(arg{1});
+        
+        if isempty(regexp(topofile,'null','match'))==0
+            topofile = [];
+            fprintf('No topography - entire mesh used.\n');
+        else
+            fprintf('Topography: \t\t %s\n',topofile);
+        end
+        
+    elseif count == 4
         
         mstart = strtrim(arg{1});
         
@@ -38,7 +49,7 @@ while line~=-1
         end
         
         
-    elseif count == 4
+    elseif count == 5
         
         mref = strtrim(arg{1});
         
@@ -46,15 +57,15 @@ while line~=-1
             
             temp = regexp(mref,'\s','split');
             mref = str2num(temp{2});
-            fprintf('Starting model: \t\t %e\n',mref);
+            fprintf('Reference model: \t\t %e\n',mref);
             
         else
             
-            fprintf('Starting model: \t\t %s\n',mref);
+            fprintf('Reference model: \t\t %s\n',mref);
             
         end
         
-    elseif count == 5
+    elseif count == 6
         
          magfile = strtrim(arg{1});
         if isempty(regexp(magfile,'DEFAULT','match'))==0
@@ -64,7 +75,7 @@ while line~=-1
             fprintf('Magnetization model: \t\t %s\n',magfile);
         end
         
-    elseif count == 6
+    elseif count == 7
         
          weightfile = strtrim(arg{1});
         if isempty(regexp(weightfile,'DEFAULT','match'))==0
@@ -74,7 +85,7 @@ while line~=-1
             fprintf('Cell-based weights: \t\t %s\n',weightfile);
         end
         
-    elseif count == 7
+    elseif count == 8
         
         chi_target = str2num(arg{1});
         
@@ -86,7 +97,7 @@ while line~=-1
         
         fprintf('Target chi factor: \t %f\n',chi_target);
         
-    elseif count == 8
+    elseif count == 9
         
         alphas = str2num(arg{1});
         
@@ -100,7 +111,7 @@ while line~=-1
         
         fprintf('Alpha values: \t\t %4.1e %4.1e %4.1e %4.1e\n',alphas);
         
-    elseif count == 9
+    elseif count == 10
         
        beta = str2num(arg{1});   
        
@@ -113,7 +124,7 @@ while line~=-1
           fprintf('Starting Beta: \t\t %f\n',beta); 
        end
     
-   elseif count == 10
+   elseif count == 11
         
         temp = strtrim(arg{1});
         
@@ -132,48 +143,55 @@ while line~=-1
         end
         
    
-    elseif count == 11
+    elseif count == 12
         
         if isempty(regexp(arg{1},'VALUE','match'))==0
             
        	    temp = regexp(arg{1},'\s','split');
-	    for ii = 2 : 6
-	    
-                
-            	norm_vec(ii-1) = str2num(temp{ii});
+            for ii = 2 : 6
+
+
+                    norm_vec(ii-1) = str2num(temp{ii});
+
+                    if isempty(norm_vec(ii-1))==1
+
+                        fprintf('Error in input file at line %i\n',count);
+                        fprintf('Requires five numerical value (e.g.--> p ,qx, qy, qz , r )\n')
+                        break
+
+                    end
+
+
+
+            end
             
-            	if isempty(norm_vec(ii-1))==1
-
-            	    fprintf('Error in input file at line %i\n',count);
-            	    fprintf('Requires five numerical value (e.g.--> p ,qx, qy, qz , r )\n')
-            	    break
-                
-            	end
-
-	   end
-	   
+            fprintf('Lp-norm: %2.1f %2.1f %2.1f %2.1f %2.1f\n',norm_vec)
+        
         elseif isempty(regexp(arg{1},'FILE','match'))==0
             
             temp = regexp(arg{1},'\s','split');
             norm_vec = strtrim(temp{2});
             
-%             if size(norm_vec,2)~=5
-% 	    
-% 	          fprintf('Error reading lp norm input file %s\n',arg{2});
-% 	          fprintf('Requires five columns of values (e.g.--> p ,qx, qy, qz , r )\n')
-% 	          break
-% 	                    
-%             end
+            fprintf('Lp-norm from file: %s\n',norm_vec)
+
             	
         end
         
-%         pvec = norm_vec(:,1);
-%         qxvec = norm_vec(:,2);
-%         qyvec = norm_vec(:,3);
-%         qzvec = norm_vec(:,4);
-%         rvec = norm_vec(:,5);
+    elseif count == 13
+               
+       if isempty(regexp(arg{1},'DEFAULT','match'))==0
+          eps_p = [];
+          eps_q = [];
+          fprintf('Threshold p and q: \t\t COMPUTED\n'); 
+          
+       elseif isempty(regexp(arg{1},'VALUE','match'))==0
+            temp = regexp(arg{1},'\s','split');
+            eps_p = str2num(temp{2});   
+            eps_q = str2num(temp{3});
+            fprintf('Threshold p and q: \t\t %e %e\n',eps_p,eps_q); 
+       end
         
-    elseif count == 12
+    elseif count == 14
 
         FLAG1 = strtrim(arg{1});
         
@@ -186,7 +204,7 @@ while line~=-1
         end
         fprintf('Gradient: \t\t\t %s\n',FLAG1);
         
-    elseif count == 13
+    elseif count == 15
 
         FLAG2 = strtrim(arg{1});
         
@@ -199,7 +217,24 @@ while line~=-1
         end
         fprintf('Type of derivative: \t\t\t %s\n',FLAG2);
         
-    
+    elseif count == 16
+        
+        temp = strtrim(arg{1});
+        
+        if isempty(regexp(arg{1},'VALUE','match'))==0
+            
+            temp = regexp(temp,'\s','split');
+            ROT(1) = str2num(temp{2});
+            ROT(2) = str2num(temp{3});
+            ROT(3) = str2num(temp{4});
+        else
+            
+            ROT = zeros(3,1);
+            
+        end
+        
+        fprintf('Objective function rotated azm: %f, dip: %f, plunge: %f\n',ROT(1),ROT(2),ROT(3))
+            
     end
     
     line = fgets(fid);

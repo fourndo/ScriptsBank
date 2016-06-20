@@ -3,6 +3,6 @@ theta = linspace(-pi, pi, n+1);
 x = r*cos(theta(:))+xc;
 y = r*sin(theta(:))+yc;
 
-x = x(1:end-1);
-y = y(1:end-1);
+x = x(end-1:-1:1);
+y = y(end-1:-1:1);
 end

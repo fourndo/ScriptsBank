@@ -1,10 +1,10 @@
-function [m, tncg, Pac] = GN_PCG_solver( G, m, mref, nullcell, d, phi_in, beta , PreC, Pac, lowBvec, uppBvec , MOF, aVRWs, aVRWx, aVRWy, aVRWz, FLAG )
+function [m, tncg, Pac] = GN_PCG_solver( G, m, mref, d, phi_in, beta , PreC, Pac, lowBvec, uppBvec , MOF, aVRWs, aVRWx, aVRWy, aVRWz, FLAG )
 % Solve H dm = J and update model
 
 mcell = length(m);
 
 Di = speye(mcell,mcell);
-
+tol = 1e-5;      % Tolerance for the smallest step size possible
 tncg = 0;        % Count total CG steps
 solves = 1;       % Count number of GN solves
 rddm = 1;       % Mesure the relative change in rel|dm|
@@ -54,6 +54,7 @@ while solves < 5 && rddm > 1e-3
     % Combine active and inactive cells step if active bounds
     if sum(temp)~=mcell
 
+        % Compute contribution from inactive cells
         rhs_a = ( Di - Pac ) * (A' * b);
         dm_i = max( abs( dm ) );
         dm_a = max( abs(rhs_a) ); 
@@ -70,7 +71,7 @@ while solves < 5 && rddm > 1e-3
 
     % Reduce step length in order to reduce phid
     phi_out = [phi_in phi_in];   
-    while (phi_out(1) > phi_in || gamma == 2) && gamma > 1e-3 %phi_out(2)/phi_out(1) >= 1
+    while (phi_out(1) > phi_in || gamma == 2) && gamma > tol %phi_out(2)/phi_out(1) >= 1
         
         phi_out(2) = phi_out(1);
         

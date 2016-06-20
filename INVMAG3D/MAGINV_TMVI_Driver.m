@@ -10,11 +10,12 @@ close all
 addpath ..\FUNC_LIB\;
 
 % Project folders
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Paul_Lake\Modeling\Inversion\Tile_AMI\Tile1';
+work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\SingleBlock';
 inpfile   = 'MAGINV_TMVI.inp'; 
+dsep = '\';
 
 % [meshfile,obsfile,susfile,chi_target,alphas,beta,pvec,qvec,lvec,FLAG] = MAG3CM_read_inp([work_dir '\' inpfile]);
-[meshfile,obsfile,mstart,mref,esus,chi_target,alphas,beta,bounds,norm_vec,FLAG1,FLAG2] = MAGINV_TMVI_read_inp([work_dir '\' inpfile]);
+[meshfile,obsfile,topofile,mstart,mref,esus,chi_target,alphas,beta,bounds,norm_vec,FLAG1,FLAG2] = MAGINV_TMVI_read_inp([work_dir '\' inpfile]);
 
 % Load mesh file and convert to vectors (UBC format)
 [xn,yn,zn] = read_UBC_mesh([work_dir '\' meshfile]);
@@ -85,7 +86,16 @@ uppBvec = [ones(mcell,1) * bounds(1,2);ones(mcell,1) * bounds(2,2);ones(mcell,1)
 
 %% Initialize dynamic cells
 % Create selector matrix for active cells
-load([work_dir '\nullcell.dat']);
+if isempty(topofile)==1
+    
+    nullcell = ones(nx*ny*nz,1);
+    
+else
+    % Load topo
+    topo = read_UBC_topo([work_dir dsep topofile]);
+    [nullcell,tcell,~] = topocheck(xn,yn,zn,topo+1e-5);
+    
+end
 x = spdiags(nullcell,0,mcell,mcell);
 x = x(nullcell==1,:);
 X = kron(speye(3),x);
@@ -98,10 +108,10 @@ mref = X * mref;
 % Normalize effective susceptibility weight
 esus(esus==-100) = 0;
 esus = x * esus;
-esus = esus  / norm(esus);
-esus = kron(ones(3,1), esus );
+esus = x*esus;
+wj = esus  / max(esus) + 1e-2;
 % esus = kron(ones(3,1), esus / max(esus) );
-Wj = spdiags(esus,0,3*mactv,3*mactv);
+% Wj = spdiags(esus,0,3*mactv,3*mactv);
 
 lowBvec = X * lowBvec;
 uppBvec = X * uppBvec;
@@ -145,8 +155,8 @@ else
 %     LP{2} = norm_vec(2,:);
 %     LP{3} = norm_vec(3,:);
     
-    s= X * ones(3*mcell,1);
-    t= X * ones(3*mcell,1);
+    s= x * ones(mcell,1);
+    t= x * ones(mcell,1);
 
 %     s{2}= x * ones(mcell,1);
 %     t{2}= x * ones(mcell,1);
@@ -157,7 +167,7 @@ end
 
 
 %% Load observation file (3C UBC-MAG format)
-[H, I, Dazm, D, obsx, obsy, obsz, d, wd] = read_MAG3D_obs([work_dir '\' obsfile]);
+[H, HI, HD, MI, MD, dtype, obsx, obsy, obsz, d, wd] = read_MAG3D_obs([work_dir dsep obsfile]);
 % plot_mag3C(obsx,obsy,d,I,D,'Observed 3C-data')
 % plot_TMI(obsx,obsy,d,d,wd,'Observed vs Predicted Magnitude');
 
@@ -170,7 +180,7 @@ Wd   = spdiags(1./wd,0,ndata,ndata);
 % wr = get_wr(obsx, obsy, obsz, D, I, xn, yn, zn, nullcell, wr_flag);
 % save([work_dir '\wr.dat'],'-ascii','wr');
 
-wr = load([work_dir '\wr.dat']);
+
 
 % if length(wr) == mcell
 %         
@@ -184,47 +194,56 @@ wr = load([work_dir '\wr.dat']);
 % wr = kron([1;1;1],wr);
 
 %% Load forward operator
+[P,S,T] = azmdip_2_pst(HD,HI,mactv);
+if dtype == 1
+    [G,~,~] = MAGSEN_Func(work_dir,dsep,xn,yn,zn, H, HI, HD, MI, MD,dtype,...
+        obsx, obsy, obsz,nullcell, 'SENS', 'G', 3, min(dx)/4);
+    
+    G = [G * (H * P) G * (H * S) G * (H * T)];
+    
+else
+    
+    [Tx,Ty,Tz] = MAGSEN_Func(work_dir,dsep,xn,yn,zn, H, HI, HD, MI, MD,dtype,...
+        obsx, obsy, obsz,nullcell, 'SENS', 'TxTyTz', 3, min(dx)/4);
+    
+    G = [[Tx;Ty;Tz] * (H * P) [Tx;Ty;Tz] * (H * S) [Tx;Ty;Tz] * (H * T)];
+    clear Tx Ty Tz
+
+end
+% Case cartesian coordinates
 
 
-load([work_dir '\Gp']);
-load([work_dir '\Gs']);
-load([work_dir '\Gt']);
+% Create orthogonal forward operators
+% Primary (inducing)
 
-G = [Gp Gs Gt];
-clear Gp Gs Gt
 
-% wd = abs(d)*0.05 + 0.05*std(d);
-Wd = spdiags(1./wd,0,ndata,ndata);
 
 % G = Wd * G * Esus * H ;
 
-G = Wd * G * Wj;
+G = Wd * G;
 d = Wd * d;
 
 
-
+%% Create gradient matrices and corresponding volume vectors
 %% Create gradient matrices and corresponding volume vectors
 [~, Gx, Gy, Gz, V, Vx, Vy, Vz] = get_GRAD_op3D_SQUARE(dx,dy,dz,nullcell,x);
 % [Ws, V ] = getWs3D(dx,dy,dz,X);
 
-Ws =  V * spdiags(x * ( w(1:mcell) .* wr ) ,0,mactv,mactv);
-Wx =  Vx * spdiags(x * ( w(1+mcell:2*mcell) .* wr ) ,0,mactv,mactv);
-Wy =  Vy * spdiags(x * ( w(1+2*mcell:3*mcell) .* wr ) ,0,mactv,mactv);
-Wz =  Vz * spdiags(x * ( w(1+3*mcell:4*mcell) .* wr ) ,0,mactv,mactv);
+%wr = load([work_dir '\wr.dat']);
+v = spdiags(V);
+j = sum(G(:,1:mcell).^2,1);
+j = (j'.^0.5)./v.^2;
 
-% Ws = kron(speye(3), Ws);
-% Wx = kron(speye(3), Wx);
-% Wy = kron(speye(3), Wy);
-% Wz = kron(speye(3), Wz);
-% Vx = kron(speye(3), Vx);
-% Vy = kron(speye(3), Vy);
-% Vz = kron(speye(3), Vz);
-% V = kron( speye(3), V );
-% Gx = kron(speye(3), Gx);
-% Gy = kron(speye(3), Gy);
-% Gz = kron(speye(3), Gz);
+wr = (j / max(j)).^0.5;
+
+
+Ws =  V * spdiags(x * ( w(1:mcell) ).* wr ./wj ,0,mactv,mactv);
+Wx =  V * spdiags(x * ( w(1+mcell:2*mcell) ).* wr ./wj ,0,mactv,mactv);
+Wy =  V * spdiags(x * ( w(1+2*mcell:3*mcell) ).* wr ./wj ,0,mactv,mactv);
+Wz =  V * spdiags(x * ( w(1+3*mcell:4*mcell) ).* wr ./wj ,0,mactv,mactv);
 
 mactv = sum(nullcell);
+
 %% START INVERSION
     
 target = chi_target * ndata;     % Target misifit
@@ -266,7 +285,8 @@ dkdt = @(p,ep) (ep).^(1/(2*(2-p)));
 traffic_s = 1;    % Measures the number of points/iteration passing the lp corner
 traffic_xyz = 1;    % Measures the number of points/iteration passing the lp corner
 group_s = 1;  % Measures the number of lower than the lp corner
-
+eps_FLAG = 0;
+dphim = 100;
 while switcher ~= 3 
 
 
@@ -274,11 +294,11 @@ while switcher ~= 3
     
     if switcher == 0     
         
-        delta_s(count) = (prctile(abs(invmod(invmod > 0)),pct_cutoff))*3;
-        delta_xyz(count) = (prctile(abs(invmod(invmod > 0)),pct_cutoff))*3;
+        delta_p(count,1:3) = 1e-1;%delta_tresh(1)*3;
+        delta_q(count,1:3) = 1e-1;%delta_tresh(2)*3;
         
 %                     [MOF,aVRWs,aVRWx,aVRWy,aVRWz] = get_lp_MOF(invmod,V,Ws,Vx,Wx,Vy,Wy,Vz,Wz,alpha,2,2,1);
-        [MOF,aVRWs,aVRWx,aVRWy,aVRWz] = get_lp_MOF_3D_v2(invmod,mref,1,Ws,Wx,Wy,Wz,Gx,Gy,Gz,t,alphas,kron([1 1 1],[2 2 2 2 1]),FLAG1,FLAG2,switcher,delta_s(count),delta_xyz(count));
+        [MOF,aVRWs,aVRWx,aVRWy,aVRWz] = get_lp_MOF_3D(invmod,mref,1,Ws,Wx,Wy,Wz,Gx,Gy,Gz,t,alphas,kron([1 1 1],[2 2 2 2 1]),FLAG1,FLAG2,switcher,delta_p(count,:),delta_q(count,:));
 
         
 
@@ -294,124 +314,95 @@ while switcher ~= 3
 %         tresh = dkdt(2,delta(count));
         tresh_s = 1;
         tresh_xyz = 1;
+    if isempty(beta)==1
+
+            temp = randn(3*mactv,1);
+            beta = sum((G*temp).^2) / (temp'*MOF*temp) * 1e+5 ;
+
+        end
+        
+        phi(count) = norm(G*invmod - d).^2 +...
+                    invmod' * beta(count) * MOF * invmod;
+%         tresh = dkdt(2,delta(count));
+
+        
     else
 
         lp_count = lp_count+1;
         
-        if lp_count == 1
-%             target = target /10;
-            % Fix treshold for smallness term
-            remnt = invmod(mcell+1:end);
-            tresh_s = 1e-4;
-%             tresh_s = prctile(abs(remnt(remnt~=0)),pct_cutoff);%0.001;
-            delta_s(count) = tresh_s*2;%x_tresh.^2;
-            
-            
-            
-            % Fix treshold for smoothness term
-    dmdx = sqrt( (kron(speye(3),Wx) * invmod).^2 + (kron(speye(3),Wy) * invmod).^2 + (kron(speye(3),Wz) * invmod).^2 );
-            tresh_xyz = prctile(abs(dmdx(dmdx > 0)),pct_cutoff);%0.001;%
-            delta_xyz(count) = tresh_xyz*2;%x_tresh.^2;
-            
-            
-        end
-            
-        if traffic_s(end)*100 > 1 && switcher == 1
-            
-            
-            
-            figure(1)
-            if lp_count==1
-            
-                subplot(1,2,1) 
-                %%%% TEMPORARY CHANGE
-%                 target = target / 4;
-            else
-                subplot(1,2,2)   
-                delta_s(count) = delta_s(count-1)/2;
-            end
-            xx = sort(abs(invmod));
-            mm = xx./(xx.^2 + delta_s(end).^2).^(1-LP(1)/2);
-            [n, xout] =hist(abs(invmod),100); hold off
-            [h_plot,h1,h2] = plotyy(xout,n,xx,mm/max(mm),'bar','plot');  
-            hold(h_plot(1),'on');
-            hold(h_plot(2),'on');
-            set(h2,'LineWidth',2)
+        
+        if lp_count == 1 && eps_FLAG==0
+
+            for pst = 1 : 3
+
+                Clp = zeros(1,3);
+                Clp(pst) = 1;
+
+                % Create sub-space matrix and grab the right model
+                Clp = kron(Clp,speye(mactv));
+
+                m = Clp*invmod;
+
+                [pp,qq] = get_eps(m,10,Gx,Gy,Gz);
                 
-            ylim(h_plot(1),[0 mactv]);
-            xlim(h_plot(1),[0 max(abs(invmod))])
-            xlim(h_plot(2),[0 max(abs(invmod))])
-
-            axis(h_plot(1),'square')
-            axis(h_plot(2),'square')
-    %                 [n, xout] =hist(h_plot(1),abs(invmod),100);
-            set(h1,'barwidth', 1, 'basevalue', 1,'FaceColor',[0.7 0.7 0.7],'LineWidth',0.5);
-
-            plot(h_plot(2),[tresh_s tresh_s],[0 max(n)],'r--','LineWidth',2)
-
-            set(h_plot(1),'yscale','log')
-
-            hold off
-
+                eps_p(pst) = pp;
+                eps_q(pst) = qq;
+                
+            end
             
-        else
-
-            delta_s(count) = delta_s(count-1);
-
+            
         end
         
-        if traffic_xyz(end)*100 > 1 && switcher == 1
+        for pst = 1 : 3
             
-            
-            
-    dmdx = sqrt( (kron(speye(3),Wx) * invmod).^2 + (kron(speye(3),Wy) * invmod).^2 + (kron(speye(3),Wz) * invmod).^2 );
-            
-            figure(2)
-            if lp_count==1
-            
-                subplot(1,2,1) 
+            if delta_p(end,pst)> eps_p(pst)
+
+                delta_p(count,pst) = delta_p(count-1,pst)*.5;
+
+                if delta_p(count,pst) < eps_p(pst)
+
+                    delta_p(count,pst) = eps_p(pst);
+
+                end
+
             else
-                subplot(1,2,2) 
-                delta_xyz(count) = delta_xyz(count-1)/2;  
+
+                    delta_p(count,:) = delta_p(count-1,:);
+
             end
-            xx = sort(abs(dmdx));
-            mm = xx./(xx.^2 + delta_xyz(end).^2).^(1-LP(2)/2);
-            [n, xout] =hist(abs(dmdx),100); hold off
-            [h_plot,h1,h2] = plotyy(xout,n,xx,mm/max(mm),'bar','plot');  
-            hold(h_plot(1),'on');
-            hold(h_plot(2),'on');
-            set(h2,'LineWidth',2)
-                
-            ylim(h_plot(1),[0 1e+4]);
-            xlim(h_plot(1),[0 max(dmdx)])
-            xlim(h_plot(2),[0 max(dmdx)])
-    
-            axis(h_plot(1),'square')
-            axis(h_plot(2),'square')
-    %                 [n, xout] =hist(h_plot(1),abs(invmod),100);
-            set(h1,'barwidth', 1, 'basevalue', 1,'FaceColor',[0.7 0.7 0.7],'LineWidth',0.5);
 
-            plot(h_plot(2),[tresh_xyz tresh_xyz],[0 max(n)],'r--','LineWidth',2)
+            if delta_q(end,pst)> eps_q(pst)
 
-            set(h_plot(1),'yscale','log')
+                delta_q(count,pst) = delta_q(count-1,pst)*.5;
 
-            hold off
+                if delta_q(count,pst) < eps_q(pst)
 
-            
-        else
+                    delta_q(count,pst) = eps_q(pst);
 
-            delta_xyz(count) = delta_xyz(count-1);
+                end
 
-        end
+            else
+
+                delta_q(count,pst) = delta_q(count-1,pst);
+
+            end
+
+
+        end 
         
-        if traffic_xyz(end)*100 <= 1 || traffic_s(end)*100 <= 1
+        if dphim(end)  < 5%traffic_s(end)*100 <= 1  && traffic_xyz(end)*100 <= 1
             
+            fprintf('\n# # ADJUST BETA # #\n');
             switcher = 2;
-            
+
+        else
+
+            fprintf('\n# # LP-LQ ITER# #\n');
+
         end
           
         fprintf('\n# # LP-LQ ITER# #\n');
-        [MOF,aVRWs,aVRWx,aVRWy,aVRWz] = get_lp_MOF_3D_v2(invmod,mref,phi_m(end),Ws,Wx,Wy,Wz,Gx,Gy,Gz,t,alphas,LP,FLAG1,FLAG2,switcher,delta_s(count),delta_xyz(count));
+        [MOF,aVRWs,aVRWx,aVRWy,aVRWz] = get_lp_MOF_3D(invmod,mref,phi_m(end),Ws,Wx,Wy,Wz,Gx,Gy,Gz,t,alphas,LP,FLAG1,FLAG2,switcher,delta_p(count,:),delta_q(count,:));
 
 %         tresh = dkdt(LP(:,1),delta(count));
 
@@ -432,11 +423,13 @@ while switcher ~= 3
 
     fprintf('\n# # # # # # # # #\n');
     fprintf('BETA ITER: \t %i  \nbeta: \t %8.5e \n',count,beta(count));
+%     fprintf('eps_q: \t %8.5e \t eps_q*: \t %8.5e\n',delta_p(count),eps_p)
+%     fprintf('eps_p: \t %8.5e \t eps_p*: \t %8.5e\n',delta_q(count),eps_q)
     
     % Save previous model before GN step
     
     
-    [invmod, ncg, Pac] = GN_PCG_solver( G, invmod, mref, nullcell, d, phi(end), beta(count) , PreC, Pac, lowBvec, uppBvec, MOF, aVRWs, aVRWx, aVRWy, aVRWz, FLAG1 );
+    [invmod, ncg, Pac] = GN_PCG_solver( G, invmod, mref, d, phi(end), beta(count) , PreC, Pac, lowBvec, uppBvec, MOF, aVRWs, aVRWx, aVRWy, aVRWz, FLAG1 );
     tncg = tncg + ncg;
     
     %% Save iteration and continue
@@ -472,8 +465,16 @@ while switcher ~= 3
     phi_m(count) = (invmod)'*(MOF)*(invmod);
     phi(count) = objfunc(invmod,MOF,beta(count));
     
-    % Get truncated cells
-    tcells = spdiags(Pac);
+    if count ~= 1
+        
+        dphim(count) = abs(phi_m(count) - phi_m(count-1)) / phi_m(count) *100;
+        
+    end
+    
+%     fprintf('---------->\n')
+    fprintf(' phi_d:\t %8.5e \n',phi_d(count))
+    fprintf(' phi_m:\t %8.5e \n',phi_m(count))
+    fprintf(' dphi_m:\t %8.5e \n',dphim(count))
     
     
     fprintf('---------->')
@@ -481,7 +482,6 @@ while switcher ~= 3
     fprintf('Final Relative dm:\t %8.5e ', rdm(count));
     fprintf('<----------\n')
     
-    fprintf('Number of Inactive cells: %i\n',sum(tcells));
     fprintf('Number of CGS iterations: %i\n\n',ncg);
 
     % Get next beta
@@ -497,11 +497,10 @@ while switcher ~= 3
     fprintf(fid,' \t %8.5e ',sum( (aVRWz*invmod).^2 ));
     fprintf(fid,' \t %8.5e ',invmod'*MOF*invmod);
     fprintf(fid,' \t %8.5e ',phi(count));
-    fprintf(fid,' \t\t %i ',sum(tcells));
     fprintf(fid,' \t\t %i\n',ncg);
 
 
-     model_out = X'*(Wj*invmod);
+     model_out = X'*(invmod);
 %      model_out(kron([1;1;1],nullcell)==0) = -100;
     % Create orthogonal magnetization vectors
     Mp =  model_out(1:mcell);%M + IWr * Esus * invmod;
@@ -515,9 +514,8 @@ while switcher ~= 3
     
     % Convert back to cartesian for plotting
     % z is flipped because conventionofcode is z positive down
-    [mp,ms,mt] = azmdip_2_pst(Dazm,I,mcell);
     
-    Mxyz = [mp ms mt] *  model_out;
+    Mxyz = [P S T] *  model_out;
     Mx = Mxyz(1 : mcell);
     My = Mxyz(((1+mcell) : 2*mcell));
     Mz = Mxyz(((1+2*mcell) : 3*mcell));
@@ -530,11 +528,17 @@ while switcher ~= 3
     Mrem = sqrt( Mpm.^2 + Ms.^2 + Mt.^2 );
     Mind = sqrt( Mpp.^2);
     
-    save([work_dir '\Mvec_TMVI_iter_' num2str(count) '.fld'],'-ascii','M')
-    save([work_dir '\M_TMVI_iter_' num2str(count) '.amp'],'-ascii','Mamp')
-    save([work_dir '\M_TMVI_iter_' num2str(count) '.ind'],'-ascii','Mind')
-    save([work_dir '\M_TMVI_iter_' num2str(count) '.rem'],'-ascii','Mrem')           
-    write_MAG3D_TMI([work_dir '\TMVI_iter_' num2str(count) '.pre'],H,I,Dazm,obsx,obsy,obsz,(G*invmod).*wd,wd)
+    save([work_dir '\Mvec_MVI_m.fld'],'-ascii','M')
+    save([work_dir '\M_MVI_m.amp'],'-ascii','Mamp')
+    save([work_dir '\M_MVI_m.ind'],'-ascii','Mind')
+    save([work_dir '\M_MVI_m.rem'],'-ascii','Mrem')
+    
+%     if dtype == 1
+%         write_MAG3D_TMI([work_dir '\MVI_d.pre'],H,I,Dazm,obsx,obsy,obsz,(G*invmod).*wd,wd)
+%     else
+%         write_MAG3D_3C([work_dir '\' obsfile(1:end-4) '_3C.obs'],H,HI,HD,...
+%         obsx,obsy,obsz,(G*invmod).*wd,wd);
+%     end
 
 end
           

@@ -16,16 +16,16 @@ clear all
 close all
 
 %% INPUT VARIABLES
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Paul_Lake\Modeling\Inversion';
+work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\CraigModel\MAG';
 
-meshfile = 'Mesh_50m.msh';
+meshfile = 'ubc_mesh.msh';
 
-obsfile = 'Obs_Paul_Lake_SUB_2pc_10nT_DETREND.dat';
+obsfile = 'LdM_magnetics_data_SUB20m.mag';
 
 dsep = '\';
 
-max_mcell = 1e+5;
-min_Olap = 5e+2;
+max_mcell = 10e+4;
+min_Olap = 4e+2;
 %% Load in files
 [xn,yn,zn] = read_UBC_mesh([work_dir dsep meshfile]);
 dx = xn(2:end) - xn(1:end-1); nx = length(dx);
@@ -39,26 +39,25 @@ dy = min(dy);
 
 
 %% Plot mesh and obs
-
-h = set(figure, 'Position', [50 25 1500 1000]);
-[H, I, Dazm, D, Obsx, Obsy, Obsz, data, wd_full] = read_MAG3D_obs([work_dir dsep obsfile]);
+[H, BI, BD, MI, MD, dtype, Obsx, Obsy, Obsz, data, wd_full] = read_MAG3D_obs([work_dir dsep obsfile]);
 
 xx = min(Obsx):50:max(Obsx);
 yy = min(Obsy):50:max(Obsy);
 [YY,XX] = ndgrid(yy,xx);
 
-load([work_dir dsep 'Obs_flag']);
+%load([work_dir dsep 'Obs_flag']);
 
-F = scatteredInterpolant(Obsy, Obsx, data ,'natural');
+grid_d = griddata(Obsy, Obsx, data,YY,XX ,'linear');
 
-grid_d = F(YY,XX);
+% = F();
 
 h = set(figure, 'Position', [50 25 1500 1000]);
 % msh = mesh(Xn,Yn,ones(size(Xn)),'FaceColor','none'); hold on
 view([0 90]) 
 h = imagesc(xx,yy,grid_d);hold on
-set(h,'alphadata',~isnan(grid_d) .* flag)
-caxis([-250 250])
+scatter(Obsx, Obsy, 'k.')
+set(h,'alphadata',~isnan(grid_d) )
+%caxis([-250 250])
 colormap(jet)
 xlim([min(Obsx) max(Obsx)]); rangex = max(Obsx) - min(Obsx); 
 ylim([min(Obsy) max(Obsy)]); rangey = max(Obsy) - min(Obsy);
@@ -73,7 +72,7 @@ ylabel('Northing (m)')
 
 
 %% Load extra data
-load([work_dir '\Pipes43101']);
+%load([work_dir '\Pipes43101']);
 % 
 % for ii = 1 : size(Pipes43101,1)
 %     
@@ -277,7 +276,7 @@ ax = axes('Position',[0.8 .5 .1 .3]);
 
 cbar = colorbar(ax,'EastOutside');
 colormap(ax,jet);
-caxis([-250 250])
+% caxis([-250 250])
 % set(cbar,'Ticks',[0 0.2 0.4 0.6 0.8 1])
 % set(cbar,'TickLabels',round(cvec*10000)/10000)
 

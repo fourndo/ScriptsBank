@@ -1,4 +1,4 @@
-function [meshfile,obsfile,mstart,mref,esus,chi_target,alphas,beta,bounds,lp_vec,FLAG1,FLAG2] = MAGINV_TMVI_read_inp(inputfile)
+function [meshfile,obsfile,topofile,mstart,mref,esus,chi_target,alphas,beta,bounds,lp_vec,FLAG1,FLAG2] = MAGINV_TMVI_read_inp(inputfile)
 % Function [work_dir,meshfile,obsfile,wr_flag,chi_target,alphas,beta,pvec,qvec,lvec] = MAG3D_read_inp('inputfile')
 % Read input file for inversion
 
@@ -26,6 +26,17 @@ while line~=-1
         
     elseif count == 3
         
+        topofile = strtrim(arg{1});
+        
+        if isempty(regexp(topofile,'null','match'))==0
+            topofile = [];
+            fprintf('No topography - entire mesh used.\n');
+        else
+            fprintf('Topography: \t\t %s\n',topofile);
+        end
+        
+    elseif count == 4
+        
         mstart = strtrim(arg{1});
         
         if isempty(regexp(mstart,'VALUE','match'))==0
@@ -41,7 +52,7 @@ while line~=-1
         end
         
         
-    elseif count == 4
+    elseif count == 5
         
         mref = strtrim(arg{1});
         
@@ -57,7 +68,7 @@ while line~=-1
             
         end
          
-    elseif count == 5
+    elseif count == 6
         
         esus = strtrim(arg{1});
         
@@ -73,7 +84,7 @@ while line~=-1
             
         end
         
-    elseif count == 6
+    elseif count == 7
         
         chi_target = str2num(arg{1});
         
@@ -85,7 +96,7 @@ while line~=-1
         
         fprintf('Target chi factor: \t %f\n',chi_target);
         
-    elseif count == 7
+    elseif count == 8
         
         alphas = str2num(arg{1});
         
@@ -99,7 +110,7 @@ while line~=-1
         
         fprintf('Alpha values: \t\t %4.1e %4.1e %4.1e %4.1e\n',alphas);
         
-    elseif count == 8
+    elseif count == 9
         
        beta = str2num(arg{1});   
        
@@ -112,7 +123,7 @@ while line~=-1
           fprintf('Starting Beta: \t\t %f\n',beta); 
        end
     
-   elseif count == 9
+   elseif count == 10
         
         temp = strtrim(arg{1});
         
@@ -130,7 +141,7 @@ while line~=-1
             
         end
         
-    elseif count == 10
+    elseif count == 11
         
         temp = strtrim(arg{1});
         
@@ -148,7 +159,7 @@ while line~=-1
             
         end
         
-    elseif count == 11
+    elseif count == 12
         
         temp = strtrim(arg{1});
         
@@ -166,7 +177,7 @@ while line~=-1
             
         end
     
-    elseif count == 12
+    elseif count == 13
         
 
         if isempty(regexp(arg{1},'VALUE','match'))==0
@@ -194,7 +205,7 @@ while line~=-1
             	
         end
         
-    elseif count == 13
+    elseif count == 14
         
         if isempty(regexp(arg{1},'VALUE','match'))==0
             
@@ -221,7 +232,7 @@ while line~=-1
             	
         end
         
-    elseif count == 14
+    elseif count == 15
         
          if isempty(regexp(arg{1},'VALUE','match'))==0
             
@@ -248,7 +259,7 @@ while line~=-1
             	
          end
           
-    elseif count == 15
+    elseif count == 16
 
         FLAG1 = strtrim(arg{1});
         
@@ -262,7 +273,7 @@ while line~=-1
         fprintf('Gradient: \t\t\t %s\n',FLAG1);
         
     
-    elseif count == 16
+    elseif count == 17
 
         FLAG2 = strtrim(arg{1});
         

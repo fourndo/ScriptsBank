@@ -11,7 +11,7 @@ function [arg_out,beta_out] = cool_beta( beta_in , phi_d , dphim, target , arg_i
 % beta_out
 
 % If model update is smaller than tolerance, then finish the inversion
-if (dphim < dphim_min && arg_in == 2) || (phi_d > target * (1-tol) && phi_d < target * (1+tol) && arg_in == 2)
+if (dphim < dphim_min && arg_in == 2) && (phi_d > target * (1-tol) && phi_d < target * (1+tol) && arg_in == 2)
 
     arg_out = 3;
     beta_out = beta_in;

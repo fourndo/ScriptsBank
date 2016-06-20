@@ -41,7 +41,7 @@ close all
 
 addpath '.\Functions';
 
-work_dir    = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Bookpurnong\Modelling\EM1DFM';
+work_dir    = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Tli_Kwi_Cho\Modelling\Inversion\EM\DIGHEM\1D';
 
 dsep = '\';
 
@@ -107,81 +107,71 @@ else
 end
 
 
-%% Load topography
-if ~isempty(topofile) && isempty(nullfile)
-    
-    topo = read_UBC_topo([work_dir dsep topofile]);
-    [nullcell,temp,temp] = topocheck(xn,yn,zn,topo);
-    save([work_dir dsep 'nullcell.dat'],'-ascii','nullcell');
 
-elseif isempty(topofile) && ~isempty(nullfile)
-    
-    nullcell = load([work_dir dsep nullfile]);
-else
-    
-    nullcell = ones(mcell,1);
-    
-end
 %% Reformat data in array structure
 % Last entry specifies the minimum distance between points
 % freqin = [56000 7200 900];% 5001 901]; %DIGHEM
 % freqin = [396 1773 3247 8220 39880 132700]; % RESOLVE
-% limits(1,1:2) = [556650 7132560];
-% limits(2,1:2) = [557950 7135400];
-
-% Load raw for TKC
-% [data,xyz] = rawdata_2_EM1DFM([work_dir '\DIGHEM_data'],freqin,1,limits);
-
-% Load obs file in EM1DFM format
+% limits(2,1:2) = [557800 7134100];
+% limits(1,1:2) = [556800 7133200];
+% % 
+% % % Load raw for TKC
+% [data,xyz] = rawdata_2_EM1DFM([work_dir '\DIGHEM_data'],freqin,1,[-inf,-inf;inf,inf]);
+% 
+% % Load obs file in EM1DFM format
 data = load_EM1DFM_obs(work_dir,obsfile);
 xyz = [data{9}(1:3:end,1:2) -data{1}(1:3:end,3)];
 % data{7} = abs(data{7});
 
 nstn = size(xyz,1);
 
-% Create beta vector
+% % Create beta vector
 beta = ones(nstn,1)*beta;
 %% Change uncertainties
-% indx = data{3}(:)==56000;
-% data{8}(indx,1) = abs(data{7}(indx,1))*0.2 + 1;
-% data{8}(indx,2) = abs(data{7}(indx,2))*0.2 + 1;
+scal = 2;
+
+indx = data{3}(:)==56000;
+data{8}(indx,1) = 8;%abs(data{7}(indx,1))*0.1 + 1;
+data{8}(indx,2) = 8;%abs(data{7}(indx,2))*0.1 + 1;
+
+indx = data{3}(:)==7200;
+data{8}(indx,1) = 3;%abs(data{7}(indx,1))*0.1 + 1;
+data{8}(indx,2) = 3;%abs(data{7}(indx,2))*0.1 + 1;
+
+indx = data{3}(:)==900;
+data{8}(indx,1) = 1;
+data{8}(indx,2) = 1;%abs(data{7}(indx,2))*0.1 + 1;
+
+data{7} = data{7}*scal;
+% indx = data{3}(:)==396;
+% data{8}(indx,1) = abs(data{7}(indx,1))*0.1 + 1;
+% data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
 % 
-% indx = data{3}(:)==7200;
-% data{8}(indx,1) = abs(data{7}(indx,1))*0.2 + 1;
-% data{8}(indx,2) = abs(data{7}(indx,2))*0.2 + 1;
+% indx = data{3}(:)==1773;
+% data{8}(indx,1) = abs(data{7}(indx,1))*0.1 + 1;
+% data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
 % 
-% indx = data{3}(:)==900;
-% data{8}(indx,1) = abs(data{7}(indx,1))*0.2 + 1;
-% data{8}(indx,2) = abs(data{7}(indx,2))*0.2 + 1;
-
-indx = data{3}(:)==396;
-data{8}(indx,1) = abs(data{7}(indx,1))*0.1 + 1;
-data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
-
-indx = data{3}(:)==1773;
-data{8}(indx,1) = abs(data{7}(indx,1))*0.1 + 1;
-data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
-
-indx = data{3}(:)==8220;
-data{8}(indx,1) = abs(data{7}(indx,1))*0.1 + 1;
-data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
-
-indx = data{3}(:)==39880;
-data{8}(indx,1) = abs(data{7}(indx,1))*0.1 + 1;
-data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
-
-indx = data{3}(:)== 132700;
-data{8}(indx,1) = abs(data{7}(indx,1))*0.1 + 1;
-data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
+% indx = data{3}(:)==8220;
+% data{8}(indx,1) = abs(data{7}(indx,1))*0.1 + 1;
+% data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
+% 
+% indx = data{3}(:)==39880;
+% data{8}(indx,1) = abs(data{7}(indx,1))*0.1 + 1;
+% data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
+% 
+% indx = data{3}(:)== 132700;
+% data{8}(indx,1) = abs(data{7}(indx,1))*0.1 + 1;
+% data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
 %% Downsample data
 % figure;
 % scatter(xyz(:,1),xyz(:,2),3);hold on
 % 
-% indx = Filter_xy(xyz(:,1),xyz(:,2),15);
+% indx = Filter_xy(xyz(:,1),xyz(:,2),25);
 % 
 % scatter(xyz(indx==1,1),xyz(indx==1,2),3,'ro');
 % xyz = xyz(indx==1,:);
 % 
+% axis equal
 % % Kron the index by 3
 % indx = kron(indx,ones(3,1));
 % for ii = 1 : size(data,2)
@@ -191,14 +181,14 @@ data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
 % end
 % % 
 % % %Write EM1DFME data to file
-% obsfile = 'RESOLVE_BookPurnong_FLT_15m.obs';
-% writeem1dfmobs(work_dir,obsfile,data,'')
+% % obsfile = 'RESOLVE_BookPurnong_FLT_15m.obs';
+% % writeem1dfmobs(work_dir,obsfile,data,'')
 % 
 % 
 % % Write data out X Y Z Freq In Quad Uncert_In Uncert_Quad
 % data_out = [data{9}(:,1:3) data{3} data{7}(:,1:2) data{8}(:,1:2)];
-% save([work_dir '\Inv_Data_XYZ_ds15m.dat'],'-ascii','data_out');
-
+% save([work_dir '\Inv_Data_XYZ_ds5m.dat'],'-ascii','data_out');
+% writeem1dfmobs(work_dir,'DIGHEM_TKC_DO27_FLT_5m.obs',data,'')
 
 %% Write lines of data
 % Assign line number to data
@@ -216,6 +206,22 @@ data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
 %     writeem1dfmobs(work_dir,['DIGHEM_line' num2str(line(ii)) '.obs'],subdata,'')
 % 
 % end
+
+%% Load topography
+if ~isempty(topofile) && isempty(nullfile)
+    
+    topo = read_UBC_topo([work_dir dsep topofile]);
+    [nullcell,temp,temp] = topocheck(xn,yn,zn,topo);
+    save([work_dir dsep 'nullcell.dat'],'-ascii','nullcell');
+
+elseif isempty(topofile) && ~isempty(nullfile)
+    
+    nullcell = load([work_dir dsep nullfile]);
+else
+    
+    nullcell = ones(mcell,1);
+    
+end
 
 %% Create Querry (Q) matrix and interpolation (P) for 1D to 3D mesh
 % Search for interpolation matrix. If not in directory, then calculate
@@ -235,12 +241,12 @@ pred = zeros(size(data{7},1),8);
 
 % Count iterations
 ii = 1;
-max_iter = 4;
+max_iter = 12;
 
 % set(figure, 'Position', [25 50 1800 900])
 
 while ( ii <= max_iter || phid_all(end) <= phid_all(end-1) ) &&...
-        phid_all(end) > size(data{7},1)*2 && ii < 5
+        phid_all(end) > size(data{7},1)*2
 
     % Leave cell weights to unity (can be manually changed)
     w=ones(mcell,1);

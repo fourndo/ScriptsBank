@@ -28,11 +28,11 @@ nk = 3; %number of frequencies
 
 decay = -4;
 
-basis = 2;
+basis = 4;
 
 % Data noise
 amp_pct = 0.00;
-floor_pct = 0.05;
+floor_pct = 0.1;
 
 tol = 0.01;
 % Lp-norm parameters

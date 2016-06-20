@@ -10,7 +10,7 @@ s0 = p;
 sold= ( A' * r )' * s0;
 count=0;
 
-while count < length(x)
+while count < 100
     
     count = count + 1;
     q = A*p;

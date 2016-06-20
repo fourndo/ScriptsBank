@@ -7,7 +7,7 @@ rold=r'*r;
 count=0;
 
 normr = norm(r);
-while count < length(x) && normr > 1e-3
+while count < length(x) && normr > 1e-6
     
     count=count+1;
     Ap=A*p;
@@ -16,7 +16,7 @@ while count < length(x) && normr > 1e-3
     x=x+alpha.*p;
      
     r=r+alpha*Ap;      
-    rnew=r'*r;
+    rnew=PC*r'*r;
     p=-r+rnew/rold.*p;
     rold=rnew;
 
@@ -24,9 +24,9 @@ while count < length(x) && normr > 1e-3
     
     normr = norm(r);
     
-%     figure(3)
-%     semilogy (count,normr,'*');
-%     hold on
+    figure(100);
+    semilogy (count,normr,'*');
+    hold on
     
     
     

@@ -6,10 +6,13 @@ m2D = ones(nx,ny) * ndv;
 
 for ii = 1:nx;
     for jj = 1:ny
-        
+       
+       
        indx = find(m3D(:,ii,jj)~=ndv & ~isnan(m3D(:,ii,jj)));
        
-       m2D(ii,jj) = m3D(indx(dz),ii,jj);
+       if ~isempty(indx)
+          m2D(ii,jj) = m3D(indx(dz),ii,jj);
+       end
        
     end
 end

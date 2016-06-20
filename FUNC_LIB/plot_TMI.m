@@ -1,4 +1,4 @@
-function plot_TMI(obsx,obsy,data,pred,wd,head)
+function plot_TMI(obsx,obsy,data,pred,wd,head,scatteron)
 % Scatter plot of 3-component field mag.
 % Also output TMI, and magnitude of field
 % Input:
@@ -44,7 +44,9 @@ set(figure, 'Position', [25 100 1800 900])
 subplot(2,2,1);
 
 imagesc(x,y,data_interp);hold on
-scatter(obsx,obsy,2,'k.')
+if scatteron
+    scatter(obsx,obsy,2,'k.')
+end
 set(gca,'YDir','normal')
 % xlabel('\bfEasting (m)')
 ylabel('\bfNorthing (m)')
@@ -57,7 +59,9 @@ axis equal
 subplot(2,2,2);
 % scatter(obsx,obsy,30,By,'filled')
 imagesc(x,y,pred_interp);hold on
-scatter(obsx,obsy,2,'k.')
+if scatteron
+    scatter(obsx,obsy,2,'k.')
+end
 set(gca,'YDir','normal')
 xlabel('\bfEasting (m)')
 ylabel('\bfNorthing (m)')
@@ -70,7 +74,9 @@ axis equal
 subplot(2,2,3);
 % scatter(obsx,obsy,30,Bz,'filled')
 imagesc(x,y,r_interp);hold on
-scatter(obsx,obsy,2,'k.')
+if scatteron
+    scatter(obsx,obsy,2,'k.')
+end
 set(gca,'YDir','normal')
 xlabel('\bfEasting (m)')
 % ylabel('\bfNorthing (m)')
@@ -83,7 +89,9 @@ axis equal
 subplot(2,2,4);
 % scatter(obsx,obsy,30,TMI,'filled')
 imagesc(x,y,norm_r_interp);hold on
-scatter(obsx,obsy,2,'k.')
+if scatteron
+    scatter(obsx,obsy,2,'k.')
+end
 set(gca,'YDir','normal')
 xlabel('\bfEasting (m)')
 ylabel('\bfNorthing (m)')

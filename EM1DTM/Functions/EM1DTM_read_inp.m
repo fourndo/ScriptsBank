@@ -1,4 +1,4 @@
-function [meshfile,obsfile,topofile,nullfile,m_con,con_ref,m_sus,sus_ref,alpha_con,alpha_sus,beta,cooling,target,bounds,mtype,interp_n,interp_r,interp_s] = EM1DTM_read_inp(inputfile)
+function [meshfile,obsfile,topofile,nullfile,m_con,con_ref,alpha_con,beta,cooling,target,bounds,mtype,interp_n,interp_r,interp_s] = EM1DTM_read_inp(inputfile)
 % Function [meshfile,obsfile,topofile,nullcell,m_con,con_ref,m_sus,sus_ref,alphas,beta,cooling,target,bounds,mtype,interp_n,interp_r] = EM1DFM_read_inp([work_dir '\EM1DFM_LC.inp']); = MAG3D_read_inp('inputfile')
 % Read input file for inversion
 
@@ -7,7 +7,7 @@ line = fgets(fid);
 
 fprintf('Start reading input file\n')
 count = 1;
-while count < 15
+while count < 12
     
     arg = regexp(line,'!','split');
     
@@ -33,8 +33,9 @@ while count < 15
             nullfile = [];
         elseif ~isempty(regexp(topo,'NULL','match'))
             
+            temp = regexp(topo,'\s','split');
             topofile =[];
-            nullfile = 'nullcell.dat';
+            nullfile = strtrim(temp{2});
             fprintf('Nullcell file: \t\t %s\n',nullfile);
             
         else
@@ -83,42 +84,10 @@ while count < 15
             
         end
         
-    elseif count == 6
-        
-        m_sus = strtrim(arg{1});
-        
-        if ~isempty(regexp(m_sus,'VALUE','match'))
-            
-            temp = regexp(m_sus,'\s','split');
-            m_sus = str2num(temp{2});
-            fprintf('Start Susc model: \t\t %e\n',m_sus);
-            
-        else
-            
-            fprintf('Start Susc model: \t\t %s\n',m_sus);
-            
-        end
-        
-        
-    elseif count == 7
-        
-        sus_ref = strtrim(arg{1});
-        
-        if isempty(regexp(sus_ref,'VALUE','match'))==0
-            
-            temp = regexp(sus_ref,'\s','split');
-            sus_ref = str2num(temp{2});
-            fprintf('Ref Susc model: \t\t %e\n',sus_ref);
-            
-        else
-            
-            fprintf('Ref Susc model: \t\t %s\n',sus_ref);
-            
-        end
         
     
         
-    elseif count == 8
+    elseif count == 6
         
         target = str2num(arg{1});
         
@@ -130,7 +99,7 @@ while count < 15
         
         fprintf('Target chi factor: \t %f\n',target);
         
-    elseif count == 9
+    elseif count == 7
         
         alpha_con = str2num(arg{1});
         
@@ -144,21 +113,8 @@ while count < 15
         
         fprintf('Alpha conductivity values: \t\t %4.1e %4.1e %4.1e %4.1e\n',alpha_con);
         
-    elseif count == 10
-        
-        alpha_sus = str2num(arg{1});
-        
-        if isempty(alpha_sus)==1 || length(alpha_sus)~=4
-            
-            fprintf('Error in input file at line %i\n',count);
-            fprintf('Requires four numerical values (e.g.--> 0.001 1 1 1\n')
-            break
-            
-        end
-        
-        fprintf('Alpha susc values: \t\t %4.1e %4.1e %4.1e %4.1e\n',alpha_sus);
-        
-    elseif count == 11
+    
+    elseif count == 8
         
        temp = str2num(arg{1});   
        
@@ -177,7 +133,7 @@ while count < 15
           
        end
     
-   elseif count == 12
+   elseif count == 9
         
         temp = strtrim(arg{1});
         
@@ -196,7 +152,7 @@ while count < 15
         end
         
    
-    elseif count == 13
+    elseif count == 10
         
         mtype = str2num(arg{1});
         
@@ -211,7 +167,7 @@ while count < 15
         fprintf('Conductivity and Susceptibility\n');    
         end
         
-    elseif count == 14
+    elseif count == 11
 
         temp = str2num(arg{1});
         

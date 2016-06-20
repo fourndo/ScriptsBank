@@ -23,7 +23,7 @@ clear all
 close all
 
 % root_dir = pwd;
-% addpath(root_dir)
+addpath ..\functions
 
 %% INPUTS PARAMETERS
 % Load files
@@ -41,33 +41,10 @@ dsep = '\';
 % Input files
 mod_file{1} = [work_dir dsep 'East_Unconstrained_iter5.sus'];
 mod_file{2} = [work_dir dsep 'West_Unconstrained_iter4.sus'];
-% mod_file{3} = [work_dir '\' 'Tile35.sus'];
-% mod_file{4} = [work_dir '\' 'Tile32.sus'];
-% mod_file{5} = [work_dir '\' 'Tile28.sus'];
-% mod_file{6} = [work_dir '\' 'Tile24.sus'];
-% mod_file{7} = [work_dir '\' 'Tile20.sus'];
-% mod_file{8} = [work_dir '\' 'Tile27.sus'];
-% mod_file{9} = [work_dir '\' 'Tile24.sus'];
-% mod_file{10} = [work_dir '\' 'Tile12.sus'];
-% mod_file{11} = [work_dir '\' 'Tile16.sus'];
-% mod_file{12} = [work_dir '\' 'Tile19.sus'];
-% mod_file{2} = [work_dir '\' 'SouthTIle_compacthybrid_inversion.con'];
-% mod_file{3} = [work_dir '\' 'Tile2_ipinv3d_02.chg'];
+
 
 meshfile{1}=[work_dir dsep 'merge.msh'];
 meshfile{2}=[work_dir dsep 'merge.msh'];
-% meshfile{3}=[work_dir '\' 'Tile35.msh'];
-% meshfile{4}=[work_dir '\' 'Tile32.msh'];
-% meshfile{5}=[work_dir '\' 'Tile28.msh'];
-% meshfile{6}=[work_dir '\' 'Tile24.msh'];
-% meshfile{7}=[work_dir '\' 'Tile20.msh'];
-% meshfile{8}=[work_dir '\' 'Tile27.msh'];
-% meshfile{9}=[work_dir '\' 'Tile24.msh'];
-% meshfile{10}=[work_dir '\' 'Tile12.msh'];
-% meshfile{11}=[work_dir '\' 'Tile16.msh'];
-% meshfile{12}=[work_dir '\' 'Tile19.msh'];
-% meshfile{2}=[work_dir '\' 'SouthTile.msh'];
-% meshfile{3}=[work_dir '\' 'Mesh_East_25m_Tile2.msh'];
 
 
 % model{3}=importdata([work_dir '\' 'Tile3.den']);

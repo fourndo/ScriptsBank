@@ -37,7 +37,7 @@ while  count < length(x)
     sold=snew;
 
     
-    
+% % Plot change in residual if needed    
 %     figure(100)
 %     semilogy (count,(snew) / (norm(s0)),'*');
 %     hold on

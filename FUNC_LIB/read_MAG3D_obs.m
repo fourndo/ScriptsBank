@@ -1,4 +1,4 @@
-function [H, BI, BD, MI, MD, obsx, obsy, obsz, d, wd] = read_MAG3D_obs(Obsfile)
+function [H, BI, BD, MI, MD, dtype, obsx, obsy, obsz, d, wd] = read_MAG3D_obs(Obsfile)
 % [ObsX, ObsY, ObsZ, d, Wd, H, I, D] = read_UBCobs(Obsfile)
 % Load UBC observations and generate error weighting matrix
 

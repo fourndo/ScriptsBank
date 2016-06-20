@@ -1,4 +1,4 @@
-function [MOF,aVRWs,aVRWx,aVRWz,gamma] = get_lp_MOF_2D(m,mref,grad_MOF,s,t,V,Ws,Vx,Wx,Vz,Wz,wr,alpha,LP,FLAG1,FLAG2,FLAG3,delta_p,delta_q)
+function [MOF,aVRWs,aVRWx,aVRWz,gamma] = get_lp_MOF_2D(m,mref,grad_MOF,s,t,V,Ws,Vx,Gx,Vz,Gz,wr,alpha,LP,FLAG1,FLAG2,FLAG3,delta_p,delta_q)
 % Function get_lp_MOF_2D(m,mref,phim,s,t,V,Ws,Vx,Wx,Vz,Wz,wr,alpha,LP,FLAG1,FLAG2,FLAG3,delta)
 % Generates the elements of the model objective function for a specified
 % p-norm(m) and q-norm(grad m) and a ratio between the two (r)and for a
@@ -37,15 +37,15 @@ switch FLAG2
     case 'SMOOTH_MOD'
         % Compute gradients then compute magnitude 
        
-        dmx = Wx * m;
-        dmz = Wz * m;
+        dmx = Gx * m;
+        dmz = Gz * m;
         
     case 'SMOOTH_MOD_DIF'
         
         % Compute gradients then compute magnitude 
         
-        dmx = Wx * (m - mref);
-        dmz = Wz * (m - mref);
+        dmx = Gx * (m - mref);
+        dmz = Gz * (m - mref);
         
     otherwise
         fprintf('FLAG must be SMOOTH_MOD | SMOOTH_MOD_DIF\n')
@@ -77,7 +77,10 @@ tRs = zeros(mcell,1);
 tRx = zeros(mcell,1);
 tRz = zeros(mcell,1);
 
-        
+Ws = Wr*V;
+Wx = Wr*Vx;
+Wz = Wr*Vz;
+
 if FLAG3~=0
       
 
@@ -90,25 +93,21 @@ if FLAG3~=0
 
         rs = sqrt(1./ ( abs((m - mref)) .^2 + delta_p.^2 ).^(1 - pvec/2));
         rx = sqrt(1./ ( abs(GRADx) .^2 + (delta_q).^2 ).^(1 - qxvec/2));
-        rz = sqrt(1./ ( abs(GRADz) .^2 + (delta_q).^2 ).^(1 - qzvec/2));
-
-        Rs = spdiags( (rs)  ,0,length(rs),length(rs));
-
-        Rx = spdiags( (rx) ,0,size(Wx,1),size(Wx,1));
-
-        Rz = spdiags( (rz) ,0,size(Wz,1),size(Wz,1));    
+        rz = sqrt(1./ ( abs(GRADz) .^2 + (delta_q).^2 ).^(1 - qzvec/2));   
 
         
 %         S = spdiags(s(:,ii),0,mcell,mcell);
 
                         
-        avrws =  Rs * Ws ;
-        avrwx =  Rx * Wx  ;
-        avrwz =  Rz * Wz  ;   
+%         avrws =  Rs * Ws ;
+%         avrwx =  Rx * Gx  ;
+%         avrwz =  Rz * Gz  ;   
 
 %         eta_s = 1 / max(abs( (avrws)'* (avrws) * (m - mref)) ) ;
 %         eta_s = 1  / max(rs );
             eta_s = delta_p.^(1 - pvec/2);
+            eta_x = delta_q.^(1 - qxvec/2);
+            eta_z = delta_q.^(1 - qzvec/2);
 %         eta_s = 1;%mcell / (rs'*rs );
         % Scale the gradient p-norm on the smallest q-norm
         switch FLAG2
@@ -121,21 +120,20 @@ if FLAG3~=0
 %             eta_x = 1  / max(rx );
 %             eta_z = 1  / max(rz );
 
-            eta_x = delta_q.^(1 - qxvec/2);
-            eta_z = delta_q.^(1 - qzvec/2);
+            
 
         case 'SMOOTH_MOD_DIF'
 
             % Compute gradients then compute magnitude 
-            grad_x = 1 / max(abs( (avrwx)'* (avrwx) * (m - mref)) ) ;
-            grad_z = 1 / max(abs( (avrwz)'* (avrwz) * (m - mref)) ) ;
+%             grad_x = 1 / max(abs( (avrwx)'* (avrwx) * (m - mref)) ) ;
+%             grad_z = 1 / max(abs( (avrwz)'* (avrwz) * (m - mref)) ) ;
 
 
         end
 
-        tRs = tRs + sqrt(eta_s) .* rs;
-        tRx = tRx + sqrt(eta_x) .* rx;
-        tRz = tRz + sqrt(eta_z) .* rz;
+%         tRs = tRs + sqrt(eta_s) .* rs;
+%         tRx = tRx + sqrt(eta_x) .* rx;
+%         tRz = tRz + sqrt(eta_z) .* rz;
 
 %     end
     
@@ -143,13 +141,13 @@ if FLAG3~=0
 %     eta_x = mcell / (tRx'*tRx );
 %     eta_z = mcell / (tRz'*tRz );
 %     
-    tRs = spdiags( tRs,0,mcell,mcell);
-    tRx = spdiags( tRx,0,mcell,mcell);
-    tRz = spdiags( tRz,0,mcell,mcell);
+    tRs = spdiags( sqrt(eta_s) .* rs,0,mcell,mcell);
+    tRx = spdiags( sqrt(eta_x) .* rx,0,mcell,mcell);
+    tRz = spdiags( sqrt(eta_z) .* rz,0,mcell,mcell);
     
-    aVRWs = spdiags(sqrt( rvec * alpha(1) ),0,mcell,mcell) * Wr * tRs * V * Ws;
-    aVRWx = spdiags(sqrt( (2 - rvec) * alpha(2) ),0,mcell,mcell) * Wr * tRx * Vx * Wx;
-    aVRWz = spdiags(sqrt( (2 - rvec) * alpha(3) ),0,mcell,mcell) * Wr * tRz * Vz * Wz;
+    aVRWs = spdiags(sqrt( rvec * alpha(1) ),0,mcell,mcell) * Ws * tRs;
+    aVRWx = spdiags(sqrt( (2 - rvec) * alpha(2) ),0,mcell,mcell) * Wx * tRx  * Gx;
+    aVRWz = spdiags(sqrt( (2 - rvec) * alpha(3) ),0,mcell,mcell) * Wz * tRz  * Gz;
     
 %% ALTERNATIVE FORMULATION
 %     if size(LP,1) ~= 1;
@@ -177,9 +175,9 @@ aVRWz = sqrt(gamma) * aVRWz;
 else
 
     % Form the matrices by including the weights and volume
-    aVRWs =  sqrt( LP(1,4) * alpha(1) ) * Wr * V * Ws ;
-    aVRWx =  sqrt( ( 2.0 - LP(1,4) ) * alpha(2) ) * Wr * Vx * Wx  ;
-    aVRWz =  sqrt( ( 2.0 - LP(1,4) ) * alpha(3) ) * Wr * Vz * Wz  ;
+    aVRWs =  sqrt( LP(1,4) * alpha(1) ) * Ws ;
+    aVRWx =  sqrt( ( 2.0 - LP(1,4) ) * alpha(2) ) * Wx * Gx  ;
+    aVRWz =  sqrt( ( 2.0 - LP(1,4) ) * alpha(3) ) * Wz * Gz  ;
 
 end
 

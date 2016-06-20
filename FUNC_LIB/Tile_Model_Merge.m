@@ -19,10 +19,10 @@ close all
 
 %% INPUTS PARAMETERS
 % Load files
-work_dir ='C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Paul_Lake\Modeling\Inversion\Tile_AMI\ALL_Tiles';
+work_dir ='C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\MAG\Composite\ALL_Tiles';
 
 % Specify final mesh file 
-out_meshfile = '..\Mesh_100m.msh';
+out_meshfile = '..\Mesh_30m_padded.msh';
 
 % Or leave empty and specify discretization
 % out_meshfile = [];
@@ -34,12 +34,23 @@ out_meshfile = '..\Mesh_100m.msh';
 % cd(work_dir);
 
 % Maximum search radius (m), recommended x2 smallest cell size
-rangemax = 500;
+rangemax = 100;
 
 %No data value (usually -1(Mag), -100(Grav), -99999(Gocad), 1e-008(DC))
 ndv=-100;
 
 dsep = '\';
+
+% Flag for topography: 'no_topo' | 'topofile' | 'nullfile'
+% flag1 = 'no_topo';
+flag1 = 'topofile'; topofile = '..\..\DEM_30m.topo';
+% flag1 = 'nullfile'; nullfile = '..\nullcell.dat';
+
+% Flag to remove padding cells from tiles
+flag2 = 'rem_pad'; %'default'; % Either 'rem_pad'  | 'default'
+xpad = 5;
+ypad = 5;
+
 %% Generate list of input models
 
 mod_list=ls(work_dir);
@@ -68,15 +79,7 @@ end
 
 
 
-% Flag for topography: 'no_topo' | 'topofile' | 'nullfile'
-% flag1 = 'no_topo';
-% flag1 = 'topofile'; topofile = '..\CDED_76c_d_RandSUB.dat';
-flag1 = 'nullfile'; nullfile = '..\nullcell.dat';
 
-% Flag to remove padding cells from tiles
-flag2 = 'rem_pad'; %'default'; % Either 'rem_pad'  | 'default'
-xpad = 7;
-ypad = 7;
 
 
 %% \\\\\\\\\\\\\\\\\ %%

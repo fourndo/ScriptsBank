@@ -25,7 +25,7 @@ addpath C:\Users\dominiquef.MIRAGEOSCIENCE\Dropbox\Master\FUNC_LIB\
 % mu = ones(1,1)*1.0%[0.25 0.5 1 1.5 1.75]%0.1:0.4:1.9;
 
 % Inversion parameters
-FLAG1 = 'GRADm'; % Choose between GRADm | lGRADm|
+FLAG1 = 'GRADm'; % Choose between GRADm | lGRADml
 FLAG2 = 'SMOOTH_MOD'; % Choose between SMOOTH_MOD | SMOOTH_MOD_DIF
 
 % Model space
@@ -72,6 +72,8 @@ floor_pct = 0.05;
 % Percentile for cutoff
 pct_cutoff = 75;
 
+% Rotation angle 
+theta=0;
 %% Create zones and transition for lp,lq,lu
 
 % Create smoothing operator for transitions
@@ -88,15 +90,15 @@ A = A^3;
 A = spdiags(1./sum(A,2),0,mcell,mcell) *A;
 
 % Define zones {x,y,lp,lqx,lqz,ll}
-zone{1,1} = 10:29; zone{1,2}=10:50; 
-zone{2,1} = 32:50; zone{2,2}=10:50; 
-zone{3,1} = []; zone{3,2}=[];
-LP = [0 0 0 1;
-      0 2 2 1;
-      1 1 1 1];
+% zone{1,1} = 10:29; zone{1,2}=10:50; 
+% zone{2,1} = 32:50; zone{2,2}=10:50; 
+% zone{3,1} = []; zone{3,2}=[];
+% LP = [1 0 2 1;
+%       1 2 0 1;
+%       2 2 2 1];
 
-% zone{1,1} = 1:nx; zone{1,2}=1:nz; 
-% LP = [0 0 0 1];
+zone{1,1} = 1:nx; zone{1,2}=1:nz; 
+LP = [0 0.5 0.5 1];
     
 % Build background tile
 s = zeros(mcell,size(zone,1));
@@ -396,12 +398,51 @@ d = Wd * d;
 
 %% INVERSION
 % Create inversion parameters
-[ Wx, Wz, Vx, Vz ] = get_GRAD_op2D_SQUARE(dx,dz,nullcell);
-Ws = speye(mcell);
-V = spdiags(sqrt(dX(:).*dZ(:)),0,mcell,mcell);
+[Ws, gx, gz, V, Vx, Vz ] = get_GRAD_op2D_SQUARE_kron(dx,dz,nullcell,'FWR');
+[~, gx_b, gz_b, ~,~,~ ] = get_GRAD_op2D_SQUARE_kron(dx,dz,nullcell,'BACK');
+% Ws = speye(mcell);
+% V = spdiags(sqrt(dX(:).*dZ(:)),0,mcell,mcell);
+
+%% Rotate gradient operators
+
+Rz = @(x)   [cosd(x) -sind(x);
+            sind(x) cosd(x)];
+               
+ 
+Rot = Rz(theta);
 
 
-% Global constant
+rxx = spdiags(ones(mcell,1)*Rot(1,1),0,mcell,mcell);
+rxy = spdiags(ones(mcell,1)*Rot(1,2),0,mcell,mcell);
+ryx = spdiags(ones(mcell,1)*Rot(2,1),0,mcell,mcell);
+ryy = spdiags(ones(mcell,1)*Rot(2,2),0,mcell,mcell);
+
+
+Wx = rxx * gx + rxy * gz_b;
+Wz = ryx * gx + ryy * gz;
+
+% Show gradient
+% mm = zeros(nz,nx);
+% mm(round(nz/2),round(nx/2)) = 1;
+% 
+% figure; 
+% axes('Position',[0.05 .25 .5 .5])
+% imagesc(xc,zc,reshape(Wx*mm(:),nz,nx)); hold on
+% scatter(xc(round(nx/2)),zc(round(nz/2)),'ro')
+% caxis([-1 1]);
+% colorbar('EastOutside')
+% set(gca,'YDir','normal')
+% axis square
+% 
+% axes('Position',[0.5 .25 .5 .5])
+% imagesc(xc,zc,reshape(Wz*mm(:),nz,nx)); hold on
+% scatter(xc(round(nx/2)),zc(round(nz/2)),'ro')
+% caxis([-1 1]);
+% % colorbar('EastOutside')
+% set(gca,'YDir','normal')
+% axis square
+
+%% Global constant
 alpha(1) = 0.5 / min(dx) ^2;  %Smallnest term
 alpha(2) = 1.0;               %Smoothness term                     
 alpha(3) = 1.0;
@@ -502,8 +543,8 @@ while switcher ~= 3
                     
 %                     [eps_p,eps_q] = get_eps_v2(invmod,lp_mod,lqx_mod,Wx,Wz,[]);
                     [eps_p,eps_q] = get_eps(invmod,10,Wx,Wz,[]);
-%                     eps_p = 1e-8;
-%                     eps_q = 1e-8;
+                    eps_p = 1e-4;
+                    eps_q = 1e-4;
                     p_tresh = eps_p;%0.01;%prctile(abs(invmod(invmod > 0)),pct_cutoff);
                     
 %                     gradm = Wx * invmod;
@@ -585,7 +626,7 @@ while switcher ~= 3
 
                 end
 
-                if dphi_m(end) < 1  %&& traffic_p(end)*100 < 2 && traffic_q(end)*100 < 2 
+                if dphi_m(end) < 1  && delta_p(count) == eps_p && delta_q(count) == eps_q 
 
 %                             delta_q(count) = eps_q;
 %                             delta_p(count) = eps_p;

@@ -371,8 +371,8 @@ for ii = 1:nstn
     
     %% Run inversion and load model 
     cd(work_dir);
-
-    system('em1dfm.exe');
+    fprintf('Sounding %i / %i\n',ii,nstn);
+    [status,cmdout] = system('em1dfm.exe');
 
     cd(home_dir);
 
@@ -409,9 +409,10 @@ for ii = 1:nstn
             invout      = regexp(line,'\d*\.?\d*','match');
             itern(ii)   = str2double(invout{1});
             phid(ii)    = str2double(invout{2});
-            beta(ii)    = str2double(invout{3});
+            betafromfile    = str2num(invout{3});
             phim(ii)    = str2double(invout{4});
             phi(ii)     = str2double(invout{5});
+            fprintf('         phid = %g, phim = %g, beta = %g\n',phid(ii),phim(ii),betafromfile);
             
         end
         
@@ -459,7 +460,7 @@ for ii = 1:nstn
 %             
 %     end
 
-	fprintf('Sounding %i / %i\n',ii,nstn);
+
     
 end
 

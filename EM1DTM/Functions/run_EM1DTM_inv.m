@@ -1,55 +1,4 @@
-function [m_out, m_misfit, phid, phim, beta,pred,bHSpace] = run_EM1DTM_inv(work_dir,meshfile,data,pred,Q,phid,beta,m,m_ref,iter,txloc,txheight,rxloc,rxheight,uncert,component,tc,wf)
-% function [model, pred, phid, beta, phim,] = em1dtm(txloc,txheight,rxloc,rxheight,data,sd,component,tc,wf,layers,varargin)
-% call tem iD inversion code em1dtm as a function
-% this is very low-level; does not support object
-% all the variables are numeric, string, etc.
-%
-%                 [  point1x  point1y  ]
-%         txloc = [  point2x  point2y  ]
-%                 [    ...      ...    ]
-%                 [  pointnx  pointny  ]
-%
-%      txheight = [ TxHeight ] 
-%
-%                 [    RX1x     RX1y   ]
-%         rxloc = [    RX2x     RX2y   ]
-%                 [    ...      ...    ]
-%                 [    RXnx     RXny   ]
-%
-%      rxheight = [ RxHeight ] 
-%
-%                 [ DataRX1TC1  DataRX1TC2  ...  DataRX1TCn ]
-%          data = [ DataRX2TC1  DataRX2TC2  ...  DataRX2TCn ]
-%                 [     ...        ...      ...       ...   ]
-%                 [ DataRXnTC1  DataRXnTC2  ...  DataRXnTCn ]
-%
-%                 [ StdDevRX1TC1  StdDevRX1TC2  ...  StdDevRX1TCn ]
-%            sd = [ StdDevRX2TC1  StdDevRX2TC2  ...  StdDevRX2TCn ]
-%                 [      ...          ...       ...         ...   ]
-%                 [ StdDevRXnTC1  StdDevRXnTC2  ...  StdDevRXnTCn ]
-%
-%     component = { RX1Comp1; RX2Comp2; ... RXnCompn},
-%              where RX?Comp? can be 'Bx'/'By'/'Bz'/'dBxdt'/'dBydt'/'dBzdt'
-%
-%            tc = [TC1, TC2, ..., TCn]
-%
-%            wf = [Time1, Amp1; Time2, Amp2; ...; Timek, Ampk] or 'STEPOFF'
-%
-%        layers = [thick1; thick2; ...; thickp]
-%                   NOTE: a 0 will be added to the end of layers to
-%                   represent the basement in the inversion, but the
-%                   conductivity of basement will not be returned.
-%
-%    OPTIONAL ARGUMENTS:
-%
-%      inimodel = [con1; con2; ...; conp]
-%                   if missing, use best fitting halfspace
-%
-%     refsmodel = [con1; con2; ...; conp]  % Mref for smallest component
-%                   if missing, the same as inimodel
-%
-%     reffmodel = [con1; con2; ...; conp]  % Mref for flattest component
-%                   if missing, the same as refsmodel
+function [m_con1D, m_misfit, phid, phim, beta,pred,bHSpace] = run_EM1DTM_inv(work_dir,meshfile,data,m_start,m_ref,alpha,w,Q,phid,beta,cooling,target,iter,HSflag)
 %
 % 
 % ORIGINAL CODE FROM: SEOGI KANG
@@ -60,136 +9,67 @@ root_dir = pwd; % get the absolute path of this file
 
 % internal parameters
 huberekblom = [1000  2 0.0001  2 0.0001]; % Huber and Ekblom parameters
-alpha = [0.1 1]; % alpha_s  alpha_z
 tol = []; % convergence test
 hankle = []; % Hankle transform parameter
 fourier = []; % Fourier transform parameter
 output = 2; % amount of output
 
+pred = [];
 %% Load 3D mesh
-[meshfile]=get_UBC_mesh([work_dir '\' meshfile]);
-nx = meshfile(1,1); %size(X,1);    %number of cell in X
-ny = meshfile(1,2); %size(X,2);    %number of cell in Y
-nz = meshfile(1,3); %size(X,3);    %number of cell in Z
+[xn,yn,zn] = read_UBC_mesh([work_dir '\' meshfile]);
+nx = length(xn)-1;
+ny = length(yn)-1;
+nz = length(zn)-1;
 
-mcell = nx*ny*nz;
-
-% Cell size array
-dx = meshfile(3,1:nx);
-dy = meshfile(4,1:ny);
-dz = meshfile(5,1:nz);
+% Vertical discretization
+dz = zn(1:end-1) - zn(2:end);
 
 %% Re-shape model
-m = reshape(m,nz,nx,ny);
+% Reshape conductivity and susceptibility models
+m_start = reshape(m_start,nz,nx,ny);
 m_ref = reshape(m_ref,nz,nx,ny);
 
+w = reshape(w,nz,nx,ny);
+
+
+
 %% Pre-allocate for inversion output
-nsnds = size(data,1);
+nstn = size(data{1},1);
 
 % Create final 1D model result matrix. At most nz cells from 3D mesh
-m_out = ones(nz,nx,ny)*1e-8;
+% Create final 1D model result matrix. At most nz cells from 3D mesh
+m_con1D = ones(nz,nx,ny)*1e-8;
 m_misfit = ones(nz,nx,ny)*1e-8;
 bHSpace     = ones(nz,nx,ny)*1e-8;
 
 % Pre-allocate results
-itern   = zeros(nsnds,1);
-phim    = zeros(nsnds,1);
-phi     = zeros(nsnds,1);
-
-%% write waveform to file
-fid = fopen([work_dir '\em1dtm.wf'],'wt');
-if strcmpi(wf,'STEPOFF')
-    fprintf(fid,'STE\n');
-else
-    fprintf(fid,'%d\n',size(wf,1));
-    for p = 1:size(wf,1)
-        fprintf(fid,'%15.5e   %15.5e\n',wf(p,:));
-    end
-end
-fclose(fid);
-
-%% Load starting, reference model if provided
-% varargin = varargin{1};
-% nvarargin = length(varargin);
-% switch nvarargin
-%     case 0
-%         
-%         inimodel    = ones(nz,nx,ny)*1e-3;
-%         refsmodel   = ones(nz,nx,ny)*1e-3;
-%         reffmodel   = ones(nz,nx,ny)*1e-3;
-%         
-%     case 1
-%         
-%         inimodel    = reshape(varargin{1}(:),nz,nx,ny);
-%         refsmodel   = inimodel;
-%         reffmodel   = inimodel;
-% 
-%     case 2
-%         
-%         inimodel    = reshape(varargin{1}(:),nz,nx,ny);
-%         refsmodel   = reshape(varargin{2}(:),nz,nx,ny);
-%         reffmodel   = refsmodel;
-%         
-%     case 3
-%         
-%         inimodel    = reshape(varargin{1}(:),nz,nx,ny);
-%         refsmodel   = reshape(varargin{2}(:),nz,nx,ny);
-%         reffmodel   = reshape(varargin{3}(:),nz,nx,ny);
-%         
-% end
-
+itern   = zeros(nstn,1);
+phim    = zeros(nstn,1);
+phi     = zeros(nstn,1);
 
 
 %% Run all the stations in a loop
-for ii = 1 : nsnds
+% pooljob = parpool(3);
+for ii = 1 : nstn
     
-    ntcstr = num2str( sum( data(ii,:)<0 ) );
-%     ntcstr = num2str(length(tc));
-    nrx = size(rxloc,1);
-    ntc = length(tc);
-    compstr = cell(nrx,1);
+    % Change work_dir to workspace
+    inv_dir = [work_dir '\Workspace' num2str(ii)];
+    mkdir(inv_dir);
+    system(['copy ' work_dir '\em1dtm.wf ' inv_dir]);
     
-    if sum( data(ii,:)<0 )==0
+    data_sub= [];
+    for jj = 1 : size(data,2)
         
-        fprintf('STOP! no data at %i\n',ii);
+        data_sub{jj}   = data{jj}(ii);
         
     end
     
-    if ischar(component)
-        component = {component};
-    end
-
-    compstr = cell(nrx,1);
-
-    if ischar(component)
-        component = {component};
-    end
-
-    for p = 1:nrx
-        switch lower(component{p})
-            case 'bx'
-                compstr{p} = [' x ',ntcstr,' 4']; % nT for B field data (who did this? must use SI)
-                data(p,:) = data(p,:) * 1e9; 
-                uncert(p,:) = uncert(p,:) * 1e9; 
-            case 'by'
-                compstr{p} = [' y ',ntcstr,' 4']; % nT for B field data (who did this? must use SI)
-                data(p,:) = data(p,:) * 1e9; 
-                uncert(p,:) = uncert(p,:) * 1e9; 
-            case 'bz'
-                compstr{p} = [' z ',ntcstr,' 4']; % nT for B field data (who did this? must use SI)
-                data(p,:) = data(p,:) * 1e9; 
-                uncert(p,:) = uncert(p,:) * 1e9; 
-            case 'dbxdt'
-                compstr{p} = [' x ',ntcstr,' 3']; % V for dB/dt field data
-            case 'dbydt'
-                compstr{p} = [' y ',ntcstr,' 3']; % V for dB/dt field data
-            case 'dbzdt'
-                compstr{p} = [' z ',ntcstr,' 3']; % V for dB/dt field data
-        end
-    end
+       
+    % Write observation file
+    write_EM1DTM_obs([inv_dir '\em1dtm.obs'],data_sub,[])
     
     %% write input file
-    fid = fopen([work_dir,'\','em1dtm.in'],'wt');
+    fid = fopen([inv_dir,'\','em1dtm.in'],'wt');
     fprintf(fid,'em1dtm\n');
     fprintf(fid,'em1dtm.obs\n');
     
@@ -205,20 +85,10 @@ for ii = 1 : nsnds
     fprintf(fid,'%f  %f  %f  %f  %f\n',huberekblom);
     fprintf(fid,'%f  %f\n',alpha);
     
-%     if iter == 1
-%         
-%         fprintf(fid,'2\n');
-%         fprintf(fid,'1 0.5\n');%beta(ii),beta(ii)/2,0.5);
-%         fprintf(fid,'50 \n');
-%     
-%     else
-        
-        fprintf(fid,'1\n');
-        fprintf(fid,'%f %f %f\n',beta(ii)/10,beta(ii)/5,0.5);
-        fprintf(fid,'1\n');
-        
-%     end
-        
+    fprintf(fid,'1  ! inv type\n');
+    fprintf(fid,'%9.5e  ! inv parameters\n',beta(ii));
+    fprintf(fid,'1\n');
+
     if isempty(tol)
         fprintf(fid,'DEFAULT\n');
     else
@@ -237,93 +107,72 @@ for ii = 1 : nsnds
     fprintf(fid,'%d\n',output);
     fclose(fid);
 
-    %% write obs file
-    fid = fopen([work_dir,'\','em1dtm.obs'],'wt');
-    fprintf(fid,'1\n');
-    fprintf(fid,'%f %f %f\n',rxloc(1),rxloc(2),txheight(ii));
-    fprintf(fid,'%d  ', length(txloc) );
-
-    for jj = 1 : size(txloc,1)
-    fprintf(fid,' %f  %f ',txloc(jj,1:2));
-    end
-
-    fprintf(fid,'%f\n',-txheight(ii)); % horizontal tx loop, so all vertex co-planar
-    fprintf(fid,'em1dtm.wf\n');
-    fprintf(fid,'%d  3\n',nrx); % use second for time
-%     for p = 1:nrx % loop over rx
-    nnztc = data(ii,:)<0; %nntzc(1:3) = 0;
-    temp = data(ii,nnztc==1);
-    temptc = tc(nnztc==1);
-    tempsd = uncert(ii,nnztc==1);
-    for p = 1 : nrx
-        fprintf(fid,'1  %f  %f  %f %s\n',rxloc(p,1:2),-rxheight(ii),compstr{p});
-        for q = 1 : sum(nnztc)
-            fprintf(fid,'  %e  1  %e  v  %e\n',temptc(q),temp(q), tempsd(q));% 0.05 * abs(temp(q)) + tempsd(q));
-        end
-    end
-%     for p = 1 : nrx
-%         fprintf(fid,'1  %f  %f  %f z %f 4\n',rxloc(p,1:2),-rxheight(ii),13);
-%         for q = 3 : size(data,2)
-%             fprintf(fid,'  %e  1  %e  v  %e\n',tc(q),data(ii,q),sd(q));
-%         end
-%     end
-    fclose(fid);
-
     %%
     % Create layer conductivity, susc and weights
-    
     dz_layer = dz(Q(ii,3):end)';
-    condin = m(Q(ii,3):end,Q(ii,1),Q(ii,2));
-    condref = m_ref(Q(ii,3):end,Q(ii,1),Q(ii,2));
+    cond = m_start(Q(ii,3):end,Q(ii,1),Q(ii,2));
+    cond_ref = m_ref(Q(ii,3):end,Q(ii,1),Q(ii,2));
+    wght = w(Q(ii,3):end,Q(ii,1),Q(ii,2));
     
     ncells = length(dz_layer);
     
     % Check if phid has reached misfit, if no then continue
-    if phid(ii) <= sum(nnztc);
+    if phid(ii) <= target;
         
-        m_out(:,Q(ii,1),Q(ii,2)) = m(:,Q(ii,1),Q(ii,2));
-        m_misfit(:,Q(ii,1),Q(ii,2)) =  phid(ii);
+        beta(ii) = beta(ii);
+        fprintf('##\nStation %i has reached the target misfit\n##\n',ii)
+        fprintf('##\nKeep current beta and re-invert\n##\n')
+    
+    else
         
-         beta(ii) = beta(ii);
-        fprintf('##\nStation %i has al ready reached the target misfit\n##\n',ii)
-        continue
+        beta(ii) = beta(ii)*cooling; 
+          
     end
     
-    fid1 = fopen([work_dir '\inimodel.con'],'wt');
+    % Write reference and starting model
+    fid1 = fopen([inv_dir '\inimodel.con'],'wt');
     fprintf(fid1,'%i\n',ncells+1);
     
-    fid2 = fopen([work_dir '\refmodel.con'],'wt');
+    fid2 = fopen([inv_dir '\refmodel.con'],'wt');
     fprintf(fid2,'%i\n',ncells+1);
     
     
     for jj = 1 : ncells
         
-        % If first iteration then right out best fitting half-space
-%         if iter == 1
-%             fprintf(fid1,'%12.4f\t%12.8e\n',dz_layer(jj),condin(jj));
-%             
-%         else
-            
-            fprintf(fid1,'%12.4f\t%12.8e\n',dz_layer(jj),condin(jj));
-            
-%         end
+
+        fprintf(fid2,'%12.4f%12.4e\t\n',dz_layer(jj),cond_ref(jj));
         
-        fprintf(fid2,'%12.4f\t%12.8e\n',dz_layer(jj),condref(jj));
+        if iter==1 && HSflag == 0
+            
+            fprintf(fid1,'%12.4f\n',dz_layer(jj));
+           
+        else
+        
+            fprintf(fid1,'%12.4f\t%12.8e\n',dz_layer(jj),cond(jj));
+        
+        end
         
         
     end
     
-    fprintf(fid1,'%12.4f\t%12.8e\n',0.0,condin(jj));
+    if iter==1 && HSflag == 0
+        fprintf(fid1,'%12.4f\n',0.0);
+    else
+        fprintf(fid1,'%12.4f\t%12.8e\n',0.0,cond(jj));
+    end
     fclose(fid1);
     
-    fprintf(fid2,'%12.4f\t%12.8e\n',0.0,condref(jj));
+    fprintf(fid2,'%12.4f\t%12.8e\n',0.0,cond_ref(jj));
     fclose(fid2);
 
     %% run code
-    cd(work_dir);
-    system('em1dtm');
-    cd(root_dir);
-    fid = fopen([work_dir,'\em1dtm.con'],'r');
+    fprintf('Sounding %i / %i\n',ii,nstn);
+    %cd(inv_dir);
+    [status,cmdout] = system(['em1dtm ' inv_dir '\em1dtm.in']);
+    %cd(root_dir);
+    
+    
+    fid = fopen([inv_dir,'\em1dtm.con'],'r');
     tline = fgetl(fid);
     nlayer = str2num(tline);
     
@@ -337,42 +186,28 @@ for ii = 1 : nsnds
     fclose(fid);
 
     % Project back to 3D mesh
-    m_out(Q(ii,3):end,Q(ii,1),Q(ii,2)) = model(1:end-1);
+%     m_con1D{ii} = model(1:end-1);
+    m_con1D(Q(ii,3):end,Q(ii,1),Q(ii,2)) = model(1:end-1);
     
     % Copy top cell all the way up the mesh to avoid 
     % interpolating air cells later
-    m_out(1:Q(ii,3),Q(ii,1),Q(ii,2)) = model(1);
+    m_con1D(1:Q(ii,3),Q(ii,1),Q(ii,2)) = model(1);
     
     % read pred
-    fid = fopen([work_dir,'\em1dtm.prd'],'r');
-    tline = fgetl(fid);
-    tline = fgetl(fid);
-    tline = fgetl(fid);
-    tline = fgetl(fid);
-    tline = fgetl(fid);
-    
-    for p = 1:nrx
-        rxline = fgetl(fid);
-        temp = regexp(rxline,'\s*','split');
-        npred = str2num(temp{end-1});
-        
-        for q = 1:npred
-            tline = fgetl(fid);
-            temp = sscanf(tline,'%f');
-            pred(ii,q) = temp(3);
-        end
-        
-        % Move time channels to proper slot
-        pred(ii,nnztc==1) = pred(ii,1:npred);
-        pred(ii,nnztc==0) = nan;
-%         if strcmp(rxline(end),'4') % nT for B field
-%             pred(ii,1:npred) = pred(ii,1:npred); % go back to SI
-%         end
-    end
-    fclose(fid);
+    pred_out = read_EM1DTM_pre([inv_dir '\em1dtm.prd']);
 
+    for jj = 1 : size(data,2)
+        
+        pred{jj}{ii,1}   = pred_out{jj}{:};
+        
+    end
+    % Add uncertainties and location from original obs
+    pred{5}{ii}{1}{6} = data{5}{ii}{1}{6};
+    pred{5}{ii}{1}{2} = data{5}{ii}{1}{2};
+    pred{5}{ii}{1}{7}(:,2) = data{5}{ii}{1}{7}(:,2);
+    
     % read em1dtm.out
-    fid = fopen([work_dir,'\em1dtm.out'],'r');
+    fid = fopen([inv_dir,'\em1dtm.out'],'r');
     line = fgets(fid);
     while line~=-1
         
@@ -382,10 +217,11 @@ for ii = 1 : nsnds
             
             invout      = regexp(line,'(?<=\=)[a-zA-Z_0-9+.- ][^,]*','match');
             phid(ii)    = str2num(invout{1});
-            beta(ii)    = str2num(invout{2});
-            phim(ii)    = str2num(invout{3});
-%             phi(ii)     = str2num(invout{4});
-            
+            betafromfile(ii)    = str2num(invout{2});
+            phim(ii)    = str2num(invout{3});            
+            % Print to screen result
+            fprintf('         phid = %g, phim = %g, beta = %g\n',phid(ii),phim(ii),betafromfile(ii));
+
         end
         
         temp = regexp(line,'Best-fitting','match');
@@ -403,9 +239,10 @@ for ii = 1 : nsnds
 
     m_misfit(:,Q(ii,1),Q(ii,2)) =  phid(ii);
 %     cd(oldFolder); % get beck to previous directory
+    system(['rmdir /S /Q ' inv_dir]);
 end
-    
-m_out = reshape(m_out,nz*nx*ny,1);
+% delete(pooljob);
+m_con1D = reshape(m_con1D,nz*nx*ny,1);
 
 m_misfit = reshape(m_misfit,nz*nx*ny,1);
 bHSpace  = reshape(bHSpace,nz*nx*ny,1);

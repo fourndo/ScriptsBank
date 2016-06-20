@@ -15,16 +15,24 @@ close all
 addpath C:\Users\dominiquef.MIRAGEOSCIENCE\Dropbox\Master\FUNC_LIB
 
 %% USER INPUT
-work_dir    = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Tli_Kwi_Cho\Modelling\Inversion\EM\DIGHEM\3D\DO27\Inv41_10pct_1ppmfloor';
-obsfile     = 'DIGHEMdwn.txt';
-predfile    = 'e3d_data_FREESPACE.txt';
+work_dir    = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Tli_Kwi_Cho\Modelling\Inversion\EM\DIGHEM\3D\Real_topo\Inv12_PPMx2';
+obsfile     = 'dighem_dwns_20m_ALLfreq_ppm_Ztopo.dat';
+predfile    = 'FWR_dighem_dwns_20m_ALLfreq_TField_Ztopo.dat';
+outfile     = 'Data_TotalField_0pct_varflr_PPMx2.dat';
 
+pct_e = 0.0;
 %% SCRIPT STARTS HERE
 % Load data
 [trx,data] = load_E3D_obs([work_dir '\' obsfile]);
 
+% Scale data by 1/2 for co-planar_x2
+data(:,[25 27]) = data(:,[25 27])*2.0;
+
 % Load pred
-Hp = load_E3D_pred([ work_dir '\' predfile]);
+[~,pred] = load_E3D_obs([work_dir '\' predfile]);
+Hp = pred(:,1:16);
+
+% Hp = load_E3D_pred([ work_dir '\' predfile]);
 
 
 %% Write obsfile from FWR modelled data
@@ -39,7 +47,7 @@ Hp = load_E3D_pred([ work_dir '\' predfile]);
 
 %% Re lines in obsfile
 filein = fopen([work_dir '\' obsfile],'r');
-fileout = fopen([work_dir '\Data_TotalField_10pct_1flr.dat'],'w');
+fileout = fopen([work_dir '\' outfile],'w');
 
 freq = unique(data(:,1));
 
@@ -50,71 +58,117 @@ freq = unique(data(:,1));
 uncert(1,1) = 1;%(std(data(data(:,1)==900,end-3))) * uncert_pct;
 uncert(1,2) = 1;%(std(data(data(:,1)==900,end-1))) * uncert_pct;
 
-uncert(2,1) = 1;%(std(data(data(:,1)==7200,end-3))) * uncert_pct;
-uncert(2,2) = 1;%(std(data(data(:,1)==7200,end-1))) * uncert_pct;
+uncert(2,1) = 2;%(std(data(data(:,1)==7200,end-3))) * uncert_pct;
+uncert(2,2) = 2;%(std(data(data(:,1)==7200,end-1))) * uncert_pct;
 
-uncert(3,1) = 1;%(std(data(data(:,1)==56000,end-3))) * uncert_pct;
-uncert(3,2) = 1;%(std(data(data(:,1)==56000,end-1))) * uncert_pct;
+uncert(3,1) = 3;%(std(data(data(:,1)==56000,end-3))) * uncert_pct;
+uncert(3,2) = 3;%(std(data(data(:,1)==56000,end-1))) * uncert_pct;
 
 % uncert = [uncert abs(std(obs(1:2,end))) * 1e-1;]; %+ 0.01 * std((obs(:,end)));
 
-line = fgets(filein);
-count = 1;
-while line~=-1
-    
-    if isempty(regexp(line,'N_RECV','match'))==0
-        
-        fprintf(fileout,'%s',line);
-        nrecv =regexp(line,'\s\d*','match');
-        nrecv = str2num(nrecv{1});
-        count_recv = 0;
-        while count_recv < nrecv
-            line = fgets(filein);
-            
-            if isempty(str2num(line))==0
-                
-                temp = str2num(line);
-                
-%                 if temp(end-3) == 0 || temp(end-1)==0
-%                     
-%                     temp(end-3:2:end-1) = NaN;
-%                     temp(end-2:2:end) = NaN;
-%                     
-%                 else
+indx = ones(size(data,1),1);
 
-                    % Add floor
-                    temp(end-2) = abs(temp(end-3))*0.1 + uncert( freq==data(count,1) , 1 );%uncert;
-                    temp(end)   = abs(temp(end-1))*0.1 + uncert( freq==data(count,1) , 2 );%uncert;
-                    
-                    % Convert data and uncertianties to total field
-                    temp(end-3:end) = temp(end-3:end) *1e-6 * Hp(count,end-1);
-                    
-                    % Add primary to in-phase data only
-                    temp(end-3) = temp(end-3) + Hp(count,end-1);
-                    
-%                 end
-                
-                for kk = 1 : length(temp); 
-                    fprintf(fileout,'%12.8e ',temp(kk));
-                end
-                
-                fprintf(fileout,'\n');
-                
-                count = count + 1;
-                count_recv = count_recv+1;
-            end
-            
-        end
+for ii = 1 : size(data,1)
+    
+    if data(ii,25) <=0
+        
+        data(ii,25:26) = NaN;
         
     else
         
-        fprintf(fileout,'%s\n',line);
+        data(ii,26) = abs(data(ii,25))*pct_e + uncert( freq==data(ii,1) , 1 );
+    
+    end
+    
+    if data(ii,27) >=0
+        
+        data(ii,27:28) = NaN;
+        
+    else
+        
+        data(ii,28) = abs(data(ii,27))*pct_e + uncert( freq==data(ii,1) , 2 );
+    
+    end
+    
+    if isnan(data(ii,[25 27]))
+        
+        indx(ii) = 0;
         
     end
     
-    line = fgets(filein);
+    % Convert data and uncertianties to total field
+    data(ii,25:28) = data(ii,25:28) *1e-6 * Hp(ii,end-1);
+
+    % Add primary to in-phase data only
+    data(ii,25) = data(ii,25) + Hp(ii,end-1);
     
 end
-    
-      
-fclose all
+
+trx = trx(indx==1,:);
+tid = kron(1:size(trx,1),ones(1,3));
+
+data = data(indx==1,:);
+tid = tid(indx==1);
+write_e3d_obs([work_dir '\' outfile],trx,data)
+
+
+% line = fgets(filein);
+% count = 1;
+% while line~=-1
+%     
+%     if isempty(regexp(line,'N_RECV','match'))==0
+%         
+%         fprintf(fileout,'%s',line);
+%         nrecv =regexp(line,'\s\d*','match');
+%         nrecv = str2num(nrecv{1});
+%         count_recv = 0;
+%         while count_recv < nrecv
+%             line = fgets(filein);
+%             
+%             if isempty(str2num(line))==0
+%                 
+%                 temp = str2num(line);
+%                 
+% %                 if temp(end-3) == 0 || temp(end-1)==0
+% %                     
+% %                     temp(end-3:2:end-1) = NaN;
+% %                     temp(end-2:2:end) = NaN;
+% %                     
+% %                 else
+% 
+%                     % Add floor
+%                     temp(end-2) = abs(temp(end-3))*pct_e + uncert( freq==data(count,1) , 1 );%uncert;
+%                     temp(end)   = abs(temp(end-1))*pct_e + uncert( freq==data(count,1) , 2 );%uncert;
+%                     
+%                     % Convert data and uncertianties to total field
+%                     temp(end-3:end) = temp(end-3:end) *1e-6 * Hp(count,end-1);
+%                     
+%                     % Add primary to in-phase data only
+%                     temp(end-3) = temp(end-3) + Hp(count,end-1);
+%                     
+% %                 end
+%                 
+%                 for kk = 1 : length(temp); 
+%                     fprintf(fileout,'%12.8e ',temp(kk));
+%                 end
+%                 
+%                 fprintf(fileout,'\n');
+%                 
+%                 count = count + 1;
+%                 count_recv = count_recv+1;
+%             end
+%             
+%         end
+%         
+%     else
+%         
+%         fprintf(fileout,'%s\n',line);
+%         
+%     end
+%     
+%     line = fgets(filein);
+%     
+% end
+%     
+%       
+% fclose all;

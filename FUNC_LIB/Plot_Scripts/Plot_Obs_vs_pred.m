@@ -18,24 +18,24 @@ clear all
 addpath '..\.'
 
 %% INPUT VARIABLES
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Paul_Lake\Modeling\Inversion\VOI_Tiles\ALL_Tiles';
+work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Desktop\Data_plot_4_Nate';
 
 % obsfile = '..\..\Obs_Paul_Lake_SUB_5pc_5nT_DETREND.dat';
-obsfile = 'Merged_MVI_TMI.pre';
-prefile = 'PRED_TMI_ALL.pre';
+obsfile = 'Tile_data.dat';
+prefile = 'Tile1_MVI.pre';
 dsep = '\';
 
-lx = 1000;
-
+% lx = 1000;
+dx = 25;
 clim = [-300 300];
 
 %% Plot mesh and obs
 set(figure, 'Position', [50 25 900 600]);
 
-[H, I, Dazm, D, Obsx, Obsy, Obsz, data, wd_full] = read_MAG3D_obs([work_dir dsep obsfile]);
-
-xx = min(Obsx):50:max(Obsx);
-yy = min(Obsy):50:max(Obsy);
+[H, HI, HD, MI, MD, dtype,Obsx, Obsy, Obsz,  data, wd_full] = read_MAG3D_obs([work_dir dsep obsfile]);
+% [H, HI, HD, MI, MD, Obsx, Obsy, Obsz, data, wd_full]=1
+xx = min(Obsx):dx:max(Obsx);
+yy = min(Obsy):dx:max(Obsy);
 [YY,XX] = ndgrid(yy,xx);
 
 F = scatteredInterpolant(Obsy, Obsx, data ,'natural');
@@ -56,14 +56,14 @@ grid_wd = F(YY,XX);
 %     
 % end
 % save([work_dir dsep 'Obs_flag'],'flag');
-load([work_dir dsep '..\..\Obs_flag']);
+% load([work_dir dsep '..\..\Obs_flag']);
 
 %%
 % msh = mesh(Xn,Yn,ones(size(Xn)),'FaceColor','none'); hold on
 ax1 = axes('Position',[0.1 .55 .4 .4]);
 view([0 90]) 
 h = imagesc(xx,yy,grid_d);hold on
-set(h,'alphadata',~isnan(grid_d) .* flag)
+set(h,'alphadata',~isnan(grid_d))
 caxis(ax1,clim)
 bb = colormap(jet);
 xlim([min(Obsx) max(Obsx)]); rangex = max(Obsx) - min(Obsx); 
@@ -93,7 +93,7 @@ text(2,-.1,'$(nT)$', 'interpreter', 'latex','FontSize',10,'HorizontalAlignment',
 
 
 %% Load predicted and grid
-[~, ~, ~, ~, Obsx, Obsy, Obsz, pred, ~] = read_MAG3D_obs([work_dir dsep prefile]);
+[~, ~, ~, ~, ~, ~, Obsx, Obsy, Obsz, pred, ~] = read_MAG3D_obs([work_dir dsep prefile]);
 
 F = scatteredInterpolant(Obsy, Obsx, pred ,'natural');
 
@@ -104,7 +104,7 @@ grid_pred = F(YY,XX);
 ax2 = axes('Position',[0.58 .55 .4 .4]);
 view([0 90]) 
 h = imagesc(xx,yy,grid_pred);hold on
-set(h,'alphadata',~isnan(grid_d) .* flag)
+set(h,'alphadata',~isnan(grid_d))
 caxis(ax2,clim)
 bb = colormap(jet);
 xlim([min(Obsx) max(Obsx)]); rangex = max(Obsx) - min(Obsx); 
@@ -119,12 +119,19 @@ title('$Predicted\;data$', 'interpreter', 'latex','FontSize',12)
 hold on
 text(5.1e+5,7.155e+6,'$(b)$', 'interpreter', 'latex','FontSize',14,'HorizontalAlignment','center')
 %% Plot residual
+
+grid_res = (grid_d - grid_pred);
+cvec = [min(grid_res(:)) 0 max(grid_res(:))]*1.02;
+bb = interp1([cvec'],[0 0 238;255 255 255;255 0 0]/255,min(grid_res(:)):1e-3:max(grid_res(:)),'linear');
+
+
+
 ax3 = axes('Position',[0.33 .075 .4 .4]);
+
 view([0 90]) 
 h = imagesc(xx,yy,(grid_d - grid_pred)./grid_wd);hold on
-set(h,'alphadata',~isnan(grid_d) .* flag)
-caxis(ax3,[-5 5])
-bb = colormap(jet);
+set(h,'alphadata',~isnan(grid_d))
+colormap(ax3,bb);
 xlim([min(Obsx) max(Obsx)]); rangex = max(Obsx) - min(Obsx); 
 ylim([min(Obsy) max(Obsy)]); rangey = max(Obsy) - min(Obsy);
 set(gca,'Ydir','normal')
@@ -136,20 +143,20 @@ xlabel('East (m)');
 title('$Residual\;data$', 'interpreter', 'latex','FontSize',12)
 hold on
 text(5.1e+5,7.155e+6,'$(c)$', 'interpreter', 'latex','FontSize',14,'HorizontalAlignment','center')
-
+colorbar
 %% Add color bar
-ax = axes('Position',[0.75 .15 .1 .3]);
-
-% bb = interp1([cvec'],[255 255 255;77 190 238;255 255 0;255 127 0;255 0 0;255 153 200]/255,0:1e-4:mmax);
-
-cbar = colorbar(ax,'EastOutside');
-colormap(ax,jet);
-caxis(ax,[-5 5])
-% set(cbar,'Ticks',[0 0.2 0.4 0.6 0.8 1])
-% set(cbar,'TickLabels',round(cvec*10000)/10000)
-
-set(gca,'Visible','off');
-text(2,-.1,'$\mathbf{W_d(d^{obs} - d^{pre})}$', 'interpreter', 'latex','FontSize',10,'HorizontalAlignment','center')
+% ax = axes('Position',[0.75 .15 .1 .3]);
+% 
+% % bb = interp1([cvec'],[255 255 255;77 190 238;255 255 0;255 127 0;255 0 0;255 153 200]/255,0:1e-4:mmax);
+% 
+% cbar = colorbar(ax,'EastOutside');
+% colormap(ax,bb);
+% % caxis(ax,[-5 5])
+% % set(cbar,'Ticks',[0 0.2 0.4 0.6 0.8 1])
+% % set(cbar,'TickLabels',round(cvec*10000)/10000)
+% 
+% set(gca,'Visible','off');
+% text(2,-.1,'$\mathbf{(d^{obs} - d^{pre})}$', 'interpreter', 'latex','FontSize',10,'HorizontalAlignment','center')
 
 
 

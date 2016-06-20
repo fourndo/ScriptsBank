@@ -10,9 +10,9 @@
 % Last update: October 5, 2015
 
 clear all 
-close all
 
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Desktop\elPoma\Inv1_UBC_MVI';
+
+work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Osborne\Inversion\ROT40\CMI\CMI_NEW';
 % vec_file = 'Tile31_MVI.fld';
 % msh_file = 'Tile31.msh';
 
@@ -21,35 +21,35 @@ work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Desktop\elPoma\Inv1_UBC_MVI';
 % loc_file = '..\..\XYloc.dat';
 dsep = '\';
 
-obsfile = 'tmvinv_004.pre';
-vecfile = 'tmvinv_004.fld';
-meshfile = '..\Mesh_15m_Local_South.msh';
+obsfile = 'Tile1_MVI.pre';
+vecfile = 'Tile1_MVI.fld';
+meshfile = 'Tile1.msh';
 
 
 dir_ls = ls(work_dir);
 
 %% Load data and plot
 
-[H, avg_I, Dazm, avg_D, Obsx, Obsy, Obsz, data, wd_full] = read_MAG3D_obs([work_dir dsep obsfile]);
+[H, HI, HD, MI, MD, Obsx, Obsy, Obsz, data, wd_full] = read_MAG3D_obs([work_dir dsep obsfile]);
 
 xx = min(Obsx):50:max(Obsx);
 yy = min(Obsy):50:max(Obsy);
 [YY,XX] = ndgrid(yy,xx);
 
-F = scatteredInterpolant(Obsy, Obsx, data ,'natural');
-
-grid_d = F(YY,XX);
-
-h = set(figure, 'Position', [50 25 1500 1000]);
-% msh = mesh(Xn,Yn,ones(size(Xn)),'FaceColor','none'); hold on
-view([0 90]) 
-imagesc(xx,yy,grid_d);hold on
-% caxis([-500 250])
-colormap(jet)
-xlim([min(Obsx) max(Obsx)]); rangex = max(Obsx) - min(Obsx); 
-ylim([min(Obsy) max(Obsy)]); rangey = max(Obsy) - min(Obsy);
-set(gca,'Ydir','normal')
-axis equal tight
+% F = scatteredInterpolant(Obsy, Obsx, data ,'natural');
+% 
+% grid_d = F(YY,XX);
+% 
+% h = set(figure, 'Position', [50 25 1500 1000]);
+% % msh = mesh(Xn,Yn,ones(size(Xn)),'FaceColor','none'); hold on
+% view([0 90]) 
+% imagesc(xx,yy,grid_d);hold on
+% % caxis([-500 250])
+% colormap(jet)
+% xlim([min(Obsx) max(Obsx)]); rangex = max(Obsx) - min(Obsx); 
+% ylim([min(Obsy) max(Obsy)]); rangey = max(Obsy) - min(Obsy);
+% set(gca,'Ydir','normal')
+% axis equal tight
 
 %% Load entire model
 [xn,yn,zn] = read_UBC_mesh([work_dir dsep meshfile]);
@@ -182,6 +182,7 @@ idx = sub2ind(size(nullcell),ind_2D(:,1)+count,ind_2D(:,2),ind_2D(:,3));
 temp = reshape(mamp(idx),nx,ny);
 imagesc(temp');
 set(gca,'YDir','normal')
+title(['Depth: ' num2str(zc(count+1))]); 
 colormap(jet)
 % caxis([0 1])
 [temp] = ginput(1);

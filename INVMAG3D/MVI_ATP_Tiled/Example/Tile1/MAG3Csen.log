@@ -1,0 +1,32 @@
+MAG3Csen
+Generates sparse matrices for magnetostatic forward modeling: Tx, Ty, Tz
+Topographic model: nullcell.dat
+DISTANCE | DEPTH weighting: wr.dat
+
+Written by: Dominique Fournier
+Last update: July 14th, 2014
+
+INPUT FILES: 
+Weighting: 			 NONE 
+Computed 0 pct of data in  0.03675 sec
+Computed 5 pct of data in  0.20554 sec
+Computed 10 pct of data in  0.38920 sec
+Computed 15 pct of data in  0.56592 sec
+Computed 20 pct of data in  0.74471 sec
+Computed 25 pct of data in  0.91615 sec
+Computed 30 pct of data in  1.10454 sec
+Computed 35 pct of data in  1.27069 sec
+Computed 40 pct of data in  1.44940 sec
+Computed 45 pct of data in  1.60664 sec
+Computed 50 pct of data in  1.78489 sec
+Computed 55 pct of data in  1.96261 sec
+Computed 60 pct of data in  2.12034 sec
+Computed 65 pct of data in  2.29947 sec
+Computed 70 pct of data in  2.45820 sec
+Computed 75 pct of data in  2.64549 sec
+Computed 80 pct of data in  2.81341 sec
+Computed 85 pct of data in  3.00550 sec
+Computed 90 pct of data in  3.17096 sec
+Computed 95 pct of data in  3.37255 sec
+Computed 100 pct of data in  3.53677 sec
+Sensitivity calculation completed in: 0.058952 min
