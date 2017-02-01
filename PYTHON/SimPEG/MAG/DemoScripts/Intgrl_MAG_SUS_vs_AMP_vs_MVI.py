@@ -290,7 +290,7 @@ invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
 #betaest = Directives.BetaEstimate_ByEig()
 
 # Here is where the norms are applied
-IRLS = Directives.Update_IRLS(norms=([2, 2, 2, 2]),
+IRLS = Directives.Update_IRLS(norms=([1, 2, 2, 2]),
                               eps=None, f_min_change=1e-4,
                               minGNiter=3, beta_tol=1e-2,
                               coolingRate=3)
@@ -304,7 +304,7 @@ inv = Inversion.BaseInversion(invProb,
                               directiveList=[IRLS, update_Jacobi, ])
 
 mrec_MVI_S = inv.run(mstart)
-    
+mrec_MVI_S = PF.Magnetics.atp2xyz(mrec_MVI_S)
 #%% # RUN CMI WITH LP # #
 # Create rescaled weigths
 mamp = (mrec_MAI[actv]/mrec_MAI[actv].max() + 1e-2)**-1.

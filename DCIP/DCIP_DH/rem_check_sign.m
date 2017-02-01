@@ -10,12 +10,16 @@ clear all
 close all
 
 %% USER INPUT
-work_dir = 'C:\Projects\4160_Abitibi_Windfall\Inversion';
+work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Desktop\Stan';
 check_file = [work_dir '\check_sign.txt'];
-obs_file = [work_dir '\Obs_AcrossHole_Tx1_DC_err.dat'];
+obs_file = [work_dir '\Arrow_PD_edit_dc.txt'];
 
 % Name for edited output observation file
-obs_file_out = [work_dir '\Obs_AcrossHole_Tx1_DC_err_EDT.dat'];
+obs_file_out = [work_dir '\Arrow_PD_edit_dc_SignChecked.txt'];
+
+
+flag = '639';
+dtype = 4; % Number of columns (surface format [Ax, Bx, Mx, Nx] =4, general [Ax, Az, ..., Nx, Nz] = 8) 
 
 
 %% ||| SCRIPT STARTS HERE |||
@@ -23,38 +27,34 @@ fsign = fopen(check_file,'r');
 % Import check sign data
 line = fgets(fsign);
 
+
+% First fix the sign file, usually the first and second coordinates are
+% stuck to each other
 % Pre-allocate 2D array
-checksign = zeros(1,8);
+checksign = zeros(1,dtype+2);
 count = 0;
+
 while line~=-1
     
-    
+    line = fgets(fsign);
+    line = regexprep(line,['(' flag ')'],' $1');
     if isempty(str2num(line))==1
-        
-        
-        line = fgets(fsign);
-        line = regexprep(line,'\.[0-9]+(543)[0-9]+\.',' 543');
-        
-        continue
-        
+   
+        continue     
     else
         
         count= count+1;
+        
+        
+  
         line = fgets(fsign);
-        
-        repstr = regexp(line,'543[0-9]+\.','match');
-        repstr{1} =[' ' repstr{1}];
-        repstr{2} =[' ' repstr{2}];
-        
-        line = regexprep(line,'543[0-9]+\.',repstr{1});
+        line = regexprep(line,['(\.+[0-9]*)(' flag ')([0-9]*+\.)'],'$1 $2$3');
         
         data = str2num(line);
         
-        data(5) = str2num(repstr{2});
         % Extract data and round to precision
-%         data([1 3 4 6]) = data([1 3 4 6])*1e+1;
-        data(end) = data(end)*1e+2;
-        checksign(count,1:7) = fix(data);
+        data(1:dtype) = fix(data(1:dtype));
+        checksign(count,1:dtype+1) = data;
 
         
     end
@@ -77,12 +77,9 @@ while line~=-1
     
     data = str2num(line);
         
-    if isempty(data)==0 && length(data)==8
+    if isempty(data)==0 && length(data)==dtype+2
         
-        data = data(1:end-1);
-%         data([1 3 4 6]) = data([1 3 4 6])*1e+1;
-        data(end) = data(end)*1e+2;
-        data = fix(data);
+        data(1:dtype) = fix(data(1:dtype));
         
 %         X = fix(data(1));
 %         Y = fix(data(2));
@@ -90,17 +87,25 @@ while line~=-1
 %         
 %         datum = fix(data(end-1) * 1e+4) / 1e+4;
         
-        index = ((data(1) == checksign(:,1)) .* (data(2) == checksign(:,2)) .*...
-             (data(3) == checksign(:,3)) .* (data(4) == checksign(:,4)) .*...
-             (data(6) == checksign(:,6)) .* (data(5) == checksign(:,5)) .*...
-             (data(7) == checksign(:,7)))==1;
+        index = ones(size(checksign,1),1);
+        for ii = 1:dtype
+            index = (index.*(data(ii) == checksign(:,ii)))==1;
+            if sum(index)==0
+                break
+            end
+        end
+
         % If current line has a checksign flag, skip to next line
         if (sum(index)~=0)% && sum(Z == checksign(index,3))~=0 && sum(X == checksign(index,1))~=0 && sum(Y == checksign(index,2))~=0)
             
+            % flip the sign
+            checksign(index,end) = checksign(index,end)+1;
+            data(end-1) = data(end-1)*-1;
             
-            checksign(index,8) = checksign(index,8)+1;
-            
-            
+            fprintf(obs_out,'%.2f ',data(1:end-2));
+
+            fprintf(obs_out,'%12.8e %12.8e\n',data(end-1:end));
+
             line = fgets(obs_in);
             
             continue
