@@ -1,0 +1,21 @@
+Mesh_40m.msh			! Mesh file
+Obs_loc_TMI_I45_D30.obs		! Obsfile
+null 				! Topofile
+VALUE 1e-4			! Starting model
+VALUE 0.0			! Reference model
+DEFAULT 			! Magnetization vector model
+1				! target chi factor | DEFAULT=1
+1 1 1 1				! alpha s, x ,y ,z
+DEFAULT				! Starting beta numvalue or DEFAULT
+VALUE 0 10			! Lower and Upper Bounds for p-component
+VALUE -0.5 0.5			! Lower and Upper Bounds for s-component
+VALUE -1 1 			! Lower and Upper Bounds for t-component
+VALUE 0 1 1 1 1 		! lp-norm for p-component FILE pqxqyqzr.dat  ! Norms VALUE p, qx, qy, qz, r | FILE m-by-5 matrix
+VALUE 2 0 0 0 1 		! lp-norm for s-component inversion FILE pqxqyqzr.dat  ! Norms VALUE p, qx, qy, qz, r | FILE m-by-5 matrix
+VALUE 2 0 0 0 1 		! lp-norm for t-component inversion FILE pqxqyqzr.dat  ! Norms VALUE p, qx, qy, qz, r | FILE m-by-5 matrix
+DEFAULT 			! Effective zero for lp norm on amplitude: EZ val1 val2 | DEFAULT
+DEFAULT				! Cell based weight file
+SMOOTH_MOD 			! Reference model applied to gradient term SMOOTH_MOD_DIFF | or not SMOOTH_MOD
+dmdx				! Gradient penality applied to the cartesian direction or total varation: dmdx | GRADm
+NONE 				! Tile file made of SW-NE corners for each tile to be inverted (one tile per row) | NONE
+VALUE 0 0 0 			! Rotation angles of the regularization along three axies done in sequance (Z -> Y -> X) counterclockwise

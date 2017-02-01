@@ -2,7 +2,7 @@ function [indx] = Filter_xy(x,y,radius)
 %function Filter_xy
 %Decimate point set from 2D distance to neighbour
 %Input
-% XYZd: [X(:) Y(:) Z(:) data(:,:)]
+% Filter_xy(x,y,radius)
 %
 %
 %Written: December 4th, 2014

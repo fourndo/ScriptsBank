@@ -17,21 +17,8 @@
 % Inv_MOD_iterX.con: 3D conductivity model
 % Inv_PRED_iter1.pre: Data matrix for plotting -->
 %
-% % OPTIONAL SUB-FUNCTIONS
-%
-% Change the uncertainties. 
-% See line 135
 % 
-% Downsample the date in 2D
-% See line 153
-%
-% Write EM1DFM file
-% See line 171
-%
-% Find line ID numbers of data and write to individual files
-% See line 181
-% 
-% Last update: August 23, 2015
+% Last update: November 23, 2016
 % D Fournier
 % fourndo@gmail.com
 
@@ -41,10 +28,12 @@ close all
 
 addpath '.\Functions';
 
-work_dir    = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Tli_Kwi_Cho\Modelling\Inversion\EM\DIGHEM\1D';
-
+work_dir    = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Documents\GIT\UBC_GIF\em_examples\geophysical_survey\FDEM\EM1DFM';
+% work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Maysam\DIGHEM';
 dsep = '\';
 
+% dataHead = [1,2,14,13,3,4,5,6,7,8]; % Data header for [x,y,xOffset,height,
+% ds_r = 100; % Downsampling radius
 %% Load input file
 [meshfile,obsfile,topofile,nullfile,m_con,con_ref,m_sus,sus_ref,alpha_con,alpha_sus,beta,cooling,target,bounds,mtype,interp_n,interp_r,interp_s] = EM1DFM_read_inp([work_dir dsep 'EM1DFM_LC.inp']);
 
@@ -110,17 +99,28 @@ end
 
 %% Reformat data in array structure
 % Last entry specifies the minimum distance between points
-% freqin = [56000 7200 900];% 5001 901]; %DIGHEM
-% freqin = [396 1773 3247 8220 39880 132700]; % RESOLVE
-% limits(2,1:2) = [557800 7134100];
-% limits(1,1:2) = [556800 7133200];
-% % 
-% % % Load raw for TKC
-% [data,xyz] = rawdata_2_EM1DFM([work_dir '\DIGHEM_data'],freqin,1,[-inf,-inf;inf,inf]);
-% 
+freqin = [875 4920 33000];% 5001 901]; %DIGHEM
+
+% Load data matrix and reformat to structure
+% dataMat = load([work_dir '\data']);
+
+% rawdata:  Matlab array for data
+% frequin:  Unique frequencies
+% radius:   Minimum distance between points. Used to filter out data.
+% limits:   xmin,xmax,ymin,ymax limit extent
+% indx:     index for the following colums [x,y,dx,dz,freq1_I,freq1_Q,...]
+% [data,xyz] = rawdata_2_EM1DFM(dataMat.data,freqin,ds_r,[],dataHead);
+
+% Write out the same data to EM1DFM data format
+% writeem1dfmobs(work_dir,'EM1DFM_data.obs',data,'')
+
 % % Load obs file in EM1DFM format
 data = load_EM1DFM_obs(work_dir,obsfile);
-xyz = [data{9}(1:3:end,1:2) -data{1}(1:3:end,3)];
+[stnID,IA,IC] = unique(data{9}(:,3));
+
+xy = data{9}(IA,1:2);
+xy(:,1) = xy(:,1) - data{1}(IA,1);
+xyz = [xy -data{1}(IA,3)];
 % data{7} = abs(data{7});
 
 nstn = size(xyz,1);
@@ -128,40 +128,17 @@ nstn = size(xyz,1);
 % % Create beta vector
 beta = ones(nstn,1)*beta;
 %% Change uncertainties
-scal = 2;
+freqs = unique(data{3}(:));
+floor = ones(length(freqs))*10;%1:length(freqs);
+pct = ones(length(freqs))*.1;
 
-indx = data{3}(:)==56000;
-data{8}(indx,1) = 8;%abs(data{7}(indx,1))*0.1 + 1;
-data{8}(indx,2) = 8;%abs(data{7}(indx,2))*0.1 + 1;
+for ii = 1:length(freqs)
+    indx = data{3}(:)==freqs(ii);
+    data{8}(indx,1) = abs(data{7}(indx,1)) * pct(ii) + floor(ii);
+    data{8}(indx,2) = abs(data{7}(indx,2)) * pct(ii) + floor(ii);
+end
 
-indx = data{3}(:)==7200;
-data{8}(indx,1) = 3;%abs(data{7}(indx,1))*0.1 + 1;
-data{8}(indx,2) = 3;%abs(data{7}(indx,2))*0.1 + 1;
-
-indx = data{3}(:)==900;
-data{8}(indx,1) = 1;
-data{8}(indx,2) = 1;%abs(data{7}(indx,2))*0.1 + 1;
-
-data{7} = data{7}*scal;
-% indx = data{3}(:)==396;
-% data{8}(indx,1) = abs(data{7}(indx,1))*0.1 + 1;
-% data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
-% 
-% indx = data{3}(:)==1773;
-% data{8}(indx,1) = abs(data{7}(indx,1))*0.1 + 1;
-% data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
-% 
-% indx = data{3}(:)==8220;
-% data{8}(indx,1) = abs(data{7}(indx,1))*0.1 + 1;
-% data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
-% 
-% indx = data{3}(:)==39880;
-% data{8}(indx,1) = abs(data{7}(indx,1))*0.1 + 1;
-% data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
-% 
-% indx = data{3}(:)== 132700;
-% data{8}(indx,1) = abs(data{7}(indx,1))*0.1 + 1;
-% data{8}(indx,2) = abs(data{7}(indx,2))*0.1 + 1;
+data{7}(:,2)=abs(data{7}(:,2));
 %% Downsample data
 % figure;
 % scatter(xyz(:,1),xyz(:,2),3);hold on
@@ -179,16 +156,11 @@ data{7} = data{7}*scal;
 %     data{ii} = data{ii}(indx==1,:);
 %     
 % end
-% % 
-% % %Write EM1DFME data to file
-% % obsfile = 'RESOLVE_BookPurnong_FLT_15m.obs';
-% % writeem1dfmobs(work_dir,obsfile,data,'')
-% 
-% 
+
 % % Write data out X Y Z Freq In Quad Uncert_In Uncert_Quad
-% data_out = [data{9}(:,1:3) data{3} data{7}(:,1:2) data{8}(:,1:2)];
-% save([work_dir '\Inv_Data_XYZ_ds5m.dat'],'-ascii','data_out');
-% writeem1dfmobs(work_dir,'DIGHEM_TKC_DO27_FLT_5m.obs',data,'')
+data_out = [data{9}(:,1:3) data{3} data{7}(:,1:2) data{8}(:,1:2)];
+save([work_dir '\Inv_Data_XYZ.dat'],'-ascii','data_out');
+writeem1dfmobs(work_dir,'EM1DFM_data.obs',data,'')
 
 %% Write lines of data
 % Assign line number to data

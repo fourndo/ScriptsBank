@@ -8,11 +8,11 @@ from pylab import get_current_fig_manager
 from scipy.interpolate import NearestNDInterpolator
 #%%
 home_dir = 'C:\\Users\\dominiquef.MIRAGEOSCIENCE\\ownCloud\\Research\\MtIsa\\Data'
-obs_file = 'ip3d_all.ip'
+obs_file = 'ip3d_all_QC.ip'
 topo_file  = 'MIM_SRTM_Local.topo'
 dsep = '\\'
 
-outfile = 'ip3d_all_3D.ip'
+outfile = 'ip3d_all_QC.ip'
 
 topo = np.genfromtxt(home_dir + dsep + topo_file,skip_header=1)
 Ftopo = NearestNDInterpolator(topo[:,:2], topo[:,2])
@@ -20,7 +20,7 @@ Ftopo = NearestNDInterpolator(topo[:,:2], topo[:,2])
 dtype = 'volt'
 plt.close('all')
 #%% load obs file 3D
-survey3D = DC.readUBC_DC3Dobs(home_dir + dsep + obs_file, dtype = 'IP')
+survey3D = DC.readUBC_DC3Dobs(home_dir + dsep + obs_file, rtype = 'IP')
 DCsurvey = survey3D['DCsurvey']
 
 # Data convertion to Chargeability
@@ -161,7 +161,7 @@ for ii in range(len(uID)):
         ax1 = plt.subplot(1,1,1)
         
         
-        ph = DC.plot_pseudoSection(survey,ax1,stype = 'pdp', dtype = dtype, colorbar=True, contour=[0])
+        ph = DC.plot_pseudoSection(survey,ax1,stype = 'pdp', dtype = dtype, colorbar=True)
         
         # Call a ginput to delete points on pseudo-section
         #uncert = np.hstack([uncert,src_uncert])
@@ -203,5 +203,5 @@ DCsurvey_out.std = DCsurvey.std[np.where(keeper==1)[0]]
 #DCsurvey.uncert = uncert
 
 # Write new obsfile out
-DC.writeUBC_DCobs(home_dir+dsep+outfile,DCsurvey_out, stype='GENERAL', iptype=1)
+DC.writeUBC_DCobs(home_dir+dsep+outfile,DCsurvey_out,'3D', surveyType='GENERAL', iptype=1)
 

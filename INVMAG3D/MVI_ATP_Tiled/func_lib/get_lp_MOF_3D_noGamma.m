@@ -81,11 +81,35 @@ for jj = 1 : nspace
     
     switch FLAG1
         case 'SMOOTH_MOD'
-            % Compute gradients then compute magnitude         
-            dmx = Gx * m;
-            dmy = Gy * m;
-            dmz = Gz * m;
+            % Compute gradients then compute magnitude   
+            
+            if jj == 3
+                
+                gx = Gx *  m;
+                
+                temp = gx;
+                temp(abs(temp)>pi) = -sign(temp(abs(temp)>pi)).*(2*pi-abs(temp(abs(temp)>pi)));
+                gx = temp;
 
+
+                gy = Gy *  m;
+                temp = gy;
+                temp(abs(temp)>pi) = -sign(temp(abs(temp)>pi)).*(2*pi-abs(temp(abs(temp)>pi)));
+                gy = temp;
+                
+                gz = Gz *  m;
+                temp = gz;
+                temp(abs(temp)>pi) = -sign(temp(abs(temp)>pi)).*(2*pi-abs(temp(abs(temp)>pi)));
+                gz = temp;
+                
+                dmx = gx;
+                dmy = gy;
+                dmz = gz;
+            else
+                dmx = Gx * m;
+                dmy = Gy * m;
+                dmz = Gz * m;
+            end
         case 'SMOOTH_MOD_DIF'
 
 
@@ -131,7 +155,7 @@ for jj = 1 : nspace
 %         else
             
             temp = (m - mref);
-            scl = max(m);
+%             scl = max(m);
             
 %         end
         rs = sqrt( 1./ ( abs(temp) .^2 + delta_s(jj).^2 ).^ (1 - pvec/2)  );
@@ -146,10 +170,17 @@ for jj = 1 : nspace
 %         Ry = spdiags( ry ,0,size(Wy,1),size(Wy,1)); 
 %         Rz = spdiags( rz ,0,size(Wz,1),size(Wz,1));                  
 
-        eta_s = delta_s(jj).^(1 - pvec/2);
-        eta_x = delta_xyz(jj).^(1 - qxvec/2);
-        eta_y = delta_xyz(jj).^(1 - qyvec/2);
-        eta_z = delta_xyz(jj).^(1 - qzvec/2);
+        if jj == 1
+            eta_s = delta_s(jj).^(1 - pvec/2);
+            eta_x = delta_xyz(jj).^(1 - qxvec/2);
+            eta_y = delta_xyz(jj).^(1 - qyvec/2);
+            eta_z = delta_xyz(jj).^(1 - qzvec/2);
+        else
+            eta_s = 1;
+            eta_x = 1;
+            eta_y = 1;
+            eta_z = 1;
+        end
                  
         tRs = spdiags( sqrt(eta_s) .* rs,0,mcell,mcell);
         tRx = spdiags( sqrt(eta_x) .* rx,0,mcell,mcell);
@@ -157,9 +188,9 @@ for jj = 1 : nspace
         tRz = spdiags( sqrt(eta_z) .* rz,0,mcell,mcell);
     
         avrws =  spdiags(sqrt( rvec * alpha(jj,1)  ),0,mcell,mcell) * Ws * tRs;
-        avrwx =  spdiags(sqrt( (2 - rvec)  * alpha(jj,2)  ),0,mcell,mcell) * Wx * tRx * Gx  ;
-        avrwy =  spdiags(sqrt( (2 - rvec)  * alpha(jj,3)  ),0,mcell,mcell) * Wy * tRy * Gy  ;
-        avrwz =  spdiags(sqrt( (2 - rvec)  * alpha(jj,4)  ),0,mcell,mcell) * Wz * tRz * Gz  ;                    
+        avrwx =  spdiags(sqrt( (2 - rvec)  * alpha(jj,2)  ),0,mcell,mcell) * Wx * tRx   ;
+        avrwy =  spdiags(sqrt( (2 - rvec)  * alpha(jj,3)  ),0,mcell,mcell) * Wy * tRy   ;
+        avrwz =  spdiags(sqrt( (2 - rvec)  * alpha(jj,4)  ),0,mcell,mcell) * Wz * tRz   ;                    
                        
 
 %     Form the final model objective function

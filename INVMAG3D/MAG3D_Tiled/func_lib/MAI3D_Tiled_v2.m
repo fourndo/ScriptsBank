@@ -239,8 +239,6 @@ lp_count = 0;
 eps_p = 1;
 eps_q = 1;
 
-tresh_p = eps_p;
-tresh_q = eps_q;
 
 dphim = 100;
 while switcher ~= 3 && count~=max_iter 
@@ -314,11 +312,16 @@ while switcher ~= 3 && count~=max_iter
 
         lp_count = lp_count+1;
 
-        if lp_count == 1
+        if lp_count == 1 && delta_FLAG==0
             
             [eps_p,eps_q] = get_eps(invmod,10,Gx,Gy,Gz);                
             eps_p = eps_p/5;
             eps_q = eps_q/5;
+            
+        else
+            
+            eps_p = delta_tresh(1);
+            eps_q = delta_tresh(2);
             
         end
 
@@ -384,36 +387,15 @@ while switcher ~= 3 && count~=max_iter
     
     % Save current model
     m_in = invmod;
-%     dmdx = sqrt( (Wx * invmod).^2 + (Wy * invmod).^2 + (Wz * invmod).^2 );
-    
+
     tncg = 0;
     ggdm = 1;       % Mesure the relative change in rel|dm|
     ddm = [1 1];    % Mesure of change in model update |dm|
     solves = 1;
-      
-
-%         magB   = ampB(invmod)  ;
-%         bx  = spdiags( Fx * invmod , 0 , ndata, ndata);
-%         by  = spdiags( Fy * invmod , 0 , ndata, ndata);
-%         bz  = spdiags( Fz * invmod , 0 , ndata, ndata);
-% 
-%         magB   = ampB(invmod)  ;
-% 
-%         lBl   = spdiags( magB.^-1 , 0 , ndata, ndata);
-% 
-%         J   = lBl * ([bx by bz] *  ([Fx;Fy;Fz] * spdiags(invmod,0,mactv,mactv)) );    
-
-
-                  
-    
+   
     
     while solves < 10 && ggdm > 1e-3 
-%         [MOF,aVRWs,aVRWx,aVRWy,aVRWz] = get_lp_MOF_3D_v2(invmod,mref,phi_m(end),Ws,Wx,Wy,Wz,Gx,Gy,Gz,t,alphas,LP,FLAG1,FLAG2,switcher,delta_p(count),delta_q(count));
 
-%         if solves == 1
-%             invmod = pz*invmod;
-%             
-%         end
         magB   = ampB(G,Wd,invmod)  ;
 
         bx  = spdiags( Wd * ( G{1} * (invmod) ) , 0 , ndata, ndata);
@@ -427,10 +409,6 @@ while switcher ~= 3 && count~=max_iter
         B{1} = Wd * lBl * bx;
         B{2} = Wd * lBl * by;
         B{3} = Wd * lBl * bz;
-            
-%         bb = lBl * [bx by bz];
-        
-%         J   = B *  ([Fx;Fy;Fz]) ;
         
         diagJ = zeros(1,mactv);
         bbx = spdiags(B{1});
@@ -472,20 +450,15 @@ while switcher ~= 3 && count~=max_iter
         switch FLAG1
 
             case 'SMOOTH_MOD'
-%                 g = [- (magB - d) ; ...
-%             - sqrt( beta(count) ) * (  Wr* aVRWs * (invmod-mref) ) ;...
-%             - sqrt( beta(count) ) * (  Wr* aVRWx * (invmod) ) ;...
-%             - sqrt( beta(count) ) * (  Wr* aVRWy * (invmod) ) ;...
-%             - sqrt( beta(count) ) * (  Wr* aVRWz * (invmod) ) ];
+
 
                 g = - Gtvec(G, B,(magB - d)) - beta(count) * (mof * invmod);           
         
             case 'SMOOTH_MOD_DIF'%
-%                 g = [- (magB - d) ; ...
-%             - sqrt( beta(count) ) * ( aVRWs * (invmod-mref) ) ;...
-%             - sqrt( beta(count) ) * ( aVRWx * (invmod-mref) ) ;...
-%             - sqrt( beta(count) ) * ( aVRWy * (invmod-mref) ) ;...
-%             - sqrt( beta(count) ) * ( aVRWz * (invmod-mref) ) ];
+
+                fprintf('Not implemented for now\n')
+                break
+                
         end 
         
         phi(count) = comp_phi(invmod, mof,beta(count));
@@ -493,7 +466,7 @@ while switcher ~= 3 && count~=max_iter
         %% Projected steepest descent
         dm = zeros(mactv,1);
         %[dm,~,ncg] = PCGLSQ( dm, A , g, PreC, Pac);
-        [dm,~,ncg] = CG_Lin( dm, G, B, beta(count) * mof , g,speye(mactv), PreC, Pac );
+        [dm,~,ncg] = CG_Lin( dm, G, B, beta(count) * mof , g, speye(mactv), PreC, Pac );
 %         fprintf('CG iter %i \n',ncg);
         
         %% Step length, line search                
@@ -568,12 +541,7 @@ while switcher ~= 3 && count~=max_iter
          
     end
     
-%     dmdx = sqrt( (Wx * invmod).^2 + (Wy * invmod).^2 + (Wz * invmod).^2 );
-    
-%     group_s(count) = sum(abs(m_in) <= tresh_p);
-%     group_xyz(count) = sum(abs(dmdx) <= tresh_q);
-    
-    clear A 
+ 
     %% Save results and update beta       
     % Measure the update length
     if count==1 

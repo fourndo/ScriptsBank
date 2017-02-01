@@ -38,7 +38,8 @@ nz = nzn-1;
 % Yn = Yn(:);
 
 % Create topo surface
-ztopo_n = griddata( topo(:,1) , topo(:,2) , topo(:,3),Xn,Yn,'linear' );
+F = scatteredInterpolant(topo(:,1) , topo(:,2) , topo(:,3),'linear' ,'linear');
+ztopo_n = F( Xn,Yn);
 
 % Look at 8 corner of each cell and form a logical matrices 
 % depending on their location with respect to topography
@@ -58,8 +59,8 @@ for ii = 1 : nx
         flag = 0;
         while count <= nz && flag == 0;
 
-            if sum((ztopo_n(ii:ii+1,jj:jj+1) <= zn(count)) +...
-                    (ztopo_n(ii:ii+1,jj:jj+1) <= zn(count+1)) ) > 0
+            if sum((ztopo_n(ii:ii+1,jj:jj+1) < zn(count)) +...
+                    (ztopo_n(ii:ii+1,jj:jj+1) < zn(count+1)) ) > 0
                 
                 nullcell(count,ii,jj) = 0;    
                 count = count + 1;

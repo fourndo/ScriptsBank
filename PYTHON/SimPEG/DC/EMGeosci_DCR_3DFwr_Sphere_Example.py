@@ -20,7 +20,8 @@
 
 #%%
 from SimPEG import *
-import SimPEG.DCIP as DC
+from SimPEG.EM.Static import DC
+import SimPEG.EM.Static.Utils as DCUtils
 import pylab as plt
 from pylab import get_current_fig_manager
 import time
@@ -30,8 +31,8 @@ from matplotlib import animation
 from JSAnimation import HTMLWriter
 
 # Specify survey type
-stype = 'pdp'
-dtype = 'appc'
+stype = 'pole-dipole'
+dtype = "appConductivity"
 
 # Survey parameters
 a = 20 # Tx-Rx seperation
@@ -155,11 +156,14 @@ var = np.c_[np.asarray(gin),np.ones(2).T*nz[-1]]
 indx = Utils.closestPoints(mesh, var )
 endl = np.c_[mesh.gridCC[indx,0],mesh.gridCC[indx,1],np.ones(2).T*nz[-1]]
 
-[survey2D, Tx, Rx] = DC.gen_DCIPsurvey(endl, mesh, stype, a, b, n)
+survey2D = DCUtils.gen_DCIPsurvey(endl, mesh, stype, a, b, n)
+
+Tx = DCUtils.getSrc_locs(survey2D)
+Rx = survey2D.srcList[0].rxList[0].locs
 
 dl_len = np.sqrt( np.sum((endl[0,:] - endl[1,:])**2) )
-dl_x = ( Tx[-1][0,1] - Tx[0][0,0] ) / dl_len
-dl_y = ( Tx[-1][1,1] - Tx[0][1,0]  ) / dl_len
+dl_x = ( Tx[-1][0] - Tx[0][0] ) / dl_len
+dl_y = ( Tx[-1][1] - Tx[0][1]  ) / dl_len
 azm =  np.arctan(dl_y/dl_x)
 
 #%% Create a 2D mesh along axis of Tx end points and keep z-discretization
@@ -219,10 +223,10 @@ axs.add_artist(circle1)
 axs.add_artist(circle2)
 
 for ss in range(survey2D.nSrc):
-    tx = survey2D.srcList[ss].loc[0]
+    tx = survey2D.srcList[ss].loc
     axs.scatter(tx[0],tx[2],c='b',s=25)
 
-tx = survey2D.srcList[1].loc[0]
+tx = survey2D.srcList[1].loc
 axs.scatter(tx[0],tx[2],c='r',s=50, marker='v')
 
 fig.savefig('TwoSphere_model.png')
@@ -244,7 +248,7 @@ im4 = axs.scatter([],[], c='r', s=200)
 im5 = axs.scatter([],[], c='r', s=200)
 
 
-problem = DC.ProblemDC_CC(mesh)
+
 tinf = np.squeeze(Rx[-1][-1,:3]) + np.array([dl_x,dl_y,0])*10*a
 def animate(ii):
     
@@ -253,18 +257,18 @@ def animate(ii):
     
     
     
-    if not re.match(stype,'pdp'):
+    if not re.match(stype,'pole-dipole'):
         
-        inds = Utils.closestPoints(mesh, np.asarray(Tx[ii]).T )
-        RHS = mesh.getInterpolationMat(np.asarray(Tx[ii]).T, 'CC').T*( [-1,1] / mesh.vol[inds] )
-    
+        inds = Utils.closestPoints(mesh, np.asarray(Tx[ii].reshape((2,3))) )
+        RHS = mesh.getInterpolationMat(np.asarray(Tx[ii].reshape((2,3))), 'CC').T*( [-1,1] / mesh.vol[inds] )   
+        
     else:
     
         # Create an "inifinity" pole
-        tx =  np.squeeze(Tx[ii][:,0:1])
+#        tx =  np.squeeze(Tx[ii][:,0:1])
         #tinf = tx + np.array([dl_x,dl_y,0])*dl_len
-        inds = Utils.closestPoints(mesh, np.c_[tx,tinf].T)
-        RHS = mesh.getInterpolationMat(np.c_[tx,tinf].T, 'CC').T*( [-1,1] / mesh.vol[inds] )
+        inds = Utils.closestPoints(mesh, np.asarray(Tx[ii]).T)
+        RHS = mesh.getInterpolationMat(np.asarray(Tx[ii]).T, 'CC').T*( [-1] / mesh.vol[inds] )
     
     
     if re.match(slvr,'BiCGStab'):
@@ -314,7 +318,7 @@ def animate(ii):
     
     global im2, cbar
     axs.pcolormesh(mesh2d.vectorCCx,mesh2d.vectorCCy,np.log10(m2D), alpha=0.25, cmap = 'gray')
-    im2 = axs.pcolormesh(mesh2d.vectorCCx,mesh2d.vectorCCy,Q_sub, alpha=0.25, vmin=-1e-4,vmax = 1e-4)
+    im2 = axs.pcolormesh(mesh2d.vectorCCx,mesh2d.vectorCCy,Q_sub, cmap = 'RdBu', alpha=0.25, vmin=-1e-4,vmax = 1e-4)
     
     # Add colorbar
     cbar = fig.colorbar(im2, orientation="horizontal",ticks=np.linspace(-1,1, 3))
@@ -325,10 +329,14 @@ def animate(ii):
     im3 = axs.streamplot(xx, zz, jx_CC_sub/J_rho.max(), jy_CC_sub/J_rho.max(),color='k',density=0.5, linewidth = lw)
     
     global im4
-    im4 = axs.scatter(Tx[ii][0,0],Tx[ii][2,0], c='b', s=100, marker='v' )
+    im4 = axs.scatter(Tx[ii][0],Tx[ii][1], c='b', s=100, marker='v' )
     
     global im5
-    im5 = axs.scatter(Tx[ii][0,1],Tx[ii][2,1], c='r', s=100, marker='v' )
+    if stype == "dipole-dipole":
+        im5 = axs.scatter(Tx[ii][2],Tx[ii][3], c='r', s=100, marker='v' )
+        
+    else:
+        im5 = axs.scatter(Tx[ii][0],Tx[ii][1], c='b', s=100, marker='v' )
         
     plt.ylim(zz[0],zz[-1]+3*dx)
     plt.xlim(xx[0]-dx,xx[-1]+dx)
@@ -353,7 +361,7 @@ def removeStream():
     
     global im2, cbar
     im2.remove()  
-    cbar.remove()
+
     global im3
     im3.lines.remove()
     axs.patches = []
@@ -372,6 +380,6 @@ def removeStream():
 #interact(viewInv,msh = mesh2d, iteration = IntSlider(min=0, max=len(txii)-1 ,step=1, value=0))
 # set embed_frames=True to embed base64-encoded frames directly in the HTML
 anim = animation.FuncAnimation(fig, animate,
-                               frames=survey2D.nSrc, interval=500)
+                               frames=1, interval=500)
                          #      
 anim.save('TwoSphere_Current_Anim.html', writer=HTMLWriter(embed_frames=True,fps=1))

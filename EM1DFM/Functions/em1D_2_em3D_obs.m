@@ -24,22 +24,22 @@ GIFtools_addPath
 
 %% USER INPUT PARAMETERS
 
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Tli_Kwi_Cho\Modelling\Inversion\EM\DIGHEM\1D\DIGHEM_TKC_Line10';
+work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Tli_Kwi_Cho\Modelling\In';
 
 obsfile = 'DIGHEM_line10.obs';
 topofile = 'CDED_076c05_NAD27.topo';
 
 
 % Name of project to save
-svtitle = '.\EMproj.mat';
+% svtitle = '.\EMproj.mat';
 
 
 %% Start GIFTools Project
-EMproj = GIFproject();
+% EMproj = GIFproject();
 
 
 %% Create data structure
-d_E3D = FEMdata(EMproj);
+% d_E3D = FEMdata(EMproj);
 
 % Path to DIGHEM ASCII FILE
 % datahandle = '\..\..\Datasets\DIGHEM\TKC_DIGHEM_ASCII.dat';
@@ -51,10 +51,10 @@ d_E3D = FEMdata(EMproj);
 % item = EMproj.getItem(1);
 
 %% Load topo and grid for referencing Z on em1d data
-TOPOdata(EMproj);
+% TOPOdata(EMproj);
 
-topo = EMproj.getItem(2); 
-topo.importXYZ([work_dir '\' topofile]);
+% topo = EMproj.getItem(2); 
+% topo.importXYZ([work_dir '\' topofile]);
 
 % grid Topo and get topo at our measurement points
 gridTopo = TriScatteredInterp( topo.getData(:,1), topo.getData(:,2), topo.getData(:,3) );

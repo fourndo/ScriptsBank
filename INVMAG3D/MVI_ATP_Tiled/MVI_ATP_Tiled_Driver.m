@@ -22,14 +22,22 @@ addpath 'func_lib';
 
 dsep = '\';
 % Project folders
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Nut_Cracker\Tiled_CMI';
+% work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Nut_Cracker\Tiled_CMI';
 % work_dir ='C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\CraigModel\MAG';
 % work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\SingleBlock\CMI';
 % work_dir ='C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Triple_Block_lined';
 % work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Tli_Kwi_Cho\Modelling\Inversion\MAG';
 % work_dir = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\MAG\Composite\North_Main';
-% work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Dipping_Prism_Li';
-% work_dir = 'Example';
+% work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\PLexample';
+% work_dir ='C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Dipping_Prism_Li';
+% work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Shared\KrisDom\BlockModel\SingleBlock';
+% work_dir = 'C:\LC\Private\dominiquef\Projects\Gervais_Solado\Processing\Inversion';
+% work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Shared\KrisDom\Nutcracker';
+% work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Osborne\Inversion\ROT40\ATP';
+% work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Desktop\Paul_Lake\Modeling\Inversion\Misery';
+work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\SingleBlock\Simpeg';
+
+
 out_dir = [work_dir dsep 'ALL_Tiles'];
 mkdir(out_dir);
 
@@ -111,8 +119,8 @@ if ischar(m_vec)==1
         
     end
     % Make sure the vectors are unity
-    temp = sqrt( sum( m_vec.^2 , 2 ) );
-    m_vec = spdiags( 1./ temp(:) ,0,mcell,mcell) * m_vec;
+%     temp = sqrt( sum( m_vec.^2 , 2 ) );
+%     m_vec = spdiags( 1./ temp(:) ,0,mcell,mcell) * m_vec;
     
 else
     
@@ -120,6 +128,8 @@ else
     
 end
 
+M_xyz = m_vec;
+beta_in = 1e+7;
 %% Load topography
 if isempty(topofile)==1
     [Zn,Xn,Yn] = ndgrid(zn,xn,yn);
@@ -243,6 +253,8 @@ for ii = 1:ntiles
     [nullcell,tcell,~] = topocheck(xn_t,yn_t,zn_t,topo+1e-5);
     save([tile_dir dsep 'nullcell.dat'],'-ascii','nullcell');
     
+%     nullcell = load([work_dir '\nullcell.dat']);
+    
     mactv = sum(nullcell);
     
     mag_azmdip = [ones(mcell_t,1)*MD ones(mcell_t,1)*MI];
@@ -265,31 +277,48 @@ for ii = 1:ntiles
     mref_t = zeros(mcell_t,1);
     mstart_t = ones(mcell_t,1)*1e-4;
     esus = ones(mcell_t,1); % Effective Susceptibility model as constraint
-    bounds_PST = ones(3,2);
-    bounds_PST(:,1) = -1;
+    bounds_PST = ones(3,2)*10;
+    bounds_PST(:,1) = -10;
     
-    [M_xyz] = MVI3D_PST_Tiled(tile_dir,out_dir,dsep,xn_t,yn_t,zn_t,H, HI,...
-        HD, obsx, obsy, obsz, G, d, wd, mstart_t, mref_t, esus,...
-        chi_target,alphas,[],bounds_PST,LP,t,lp_tresh{1},...
-        lp_tresh{2} ,FLAG1,FLAG2,1 );
+%     [M_xyz,beta_in] = MVI3D_PST_Tiled(tile_dir,out_dir,dsep,xn_t,yn_t,zn_t,H, HI,...
+%         HD, obsx, obsy, obsz, G, d, wd, mstart_t, mref_t, esus,...
+%         2,alphas,[],bounds_PST,kron([1 1 1],[2 2 2 2 1]),t,lp_tresh{1},...
+%         lp_tresh{2} ,FLAG1,FLAG2,5 );
+%     
+%     
     
     % Convert from xyz to atp
     aa = sum(M_xyz.^2,2).^0.5;
-    tt = asin(M_xyz(:,3)./(aa));
-    pp = acos((M_xyz(:,1)./(aa)./cos(tt)));
+    
+    tt = zeros(mactv,1);
+    pp = zeros(mactv,1);
+    
+    tt(aa>0) = asin(M_xyz(aa>0,3)./(aa(aa>0)));
+    
+    
+    dydx = M_xyz(aa>0,2)./M_xyz(aa>0,1);
+    pp(aa>0) = atan(dydx);
+    pp(M_xyz(:,2)>0 & M_xyz(:,1)<0) = pp(M_xyz(:,2)>0 & M_xyz(:,1)<0) + pi;
+    pp(M_xyz(:,2)<0 & M_xyz(:,1)<0) = pp(M_xyz(:,2)<0 & M_xyz(:,1)<0) - pi;
 
+    amp = aa; amp(nullcell==0) = -1;
+
+    save([tile_dir dsep 'Tile' num2str(ii) '_MVI_PST.fld'],'-ascii','M_xyz')
+    save([tile_dir dsep 'Tile' num2str(ii) '_MVI_PST.amp'],'-ascii','amp')
     %% Second run the spherical
     mref_t = zeros(3*mcell_t,1);
     
     temp = randn(mactv,1);
     temp = temp/max(abs(temp));
-    mstart_t = [aa;tt/pi;pp/pi];
+    mstart_t = [aa;tt;pp];
     
+    bounds(2,:) = [-pi/2 pi/2];
+    bounds(3,:) = [-pi pi];
     
     esus = ones(mcell_t,1);
-	beta_in = [];
-    max_iterMVI = 20;
-    [M] = MVI3D_ATP_Tiled(tile_dir,...
+% 	beta_in = [];
+    max_iterMVI = 45;
+    [M] = MVI3D_ATP_Tiled_v5(tile_dir,...
         out_dir,dsep,ii,xn_t,yn_t,zn_t,H, HI, HD, obsx, obsy, obsz, G,...
         d,wd,mstart_t,mref_t,chi_target,alphas,beta_in,bounds,LP,t,...
         lp_tresh{1},lp_tresh{2} ,FLAG1,FLAG2,max_iterMVI,ROT);

@@ -59,13 +59,13 @@ t = x*t;
 fprintf('Loading Sensitivity...\n');
 
 % Case sperical
-m_uvw = @(a,t,p) [a.*cos(pi*t).*cos(pi*p);...
-    a.*cos(pi*t).*sin(pi*p);...
-    a.*sin(pi*t)];
+m_uvw = @(a,t,p) [a.*cos(t).*cos(p);...
+    a.*cos(t).*sin(p);...
+    a.*sin(t)];
 
-sProj = @(a,theta,phi)[spdiags(cos(pi*theta).*cos(pi*phi),0,mactv,mactv) spdiags(-a.*sin(pi*theta).*cos(pi*phi)*pi,0,mactv,mactv) spdiags(-a.*cos(pi*theta).*sin(pi*phi)*pi,0,mactv,mactv);
-    spdiags(cos(pi*theta).*sin(pi*phi),0,mactv,mactv) spdiags(-a.*sin(pi*theta).*sin(pi*phi)*pi,0,mactv,mactv) spdiags(a.*cos(pi*theta).*cos(pi*phi)*pi,0,mactv,mactv);
-    spdiags(sin(pi*theta),0,mactv,mactv) spdiags(a.*cos(pi*theta)*pi,0,mactv,mactv) sparse(mactv,mactv)];
+sProj = @(a,theta,phi)[spdiags(cos(theta).*cos(phi),0,mactv,mactv) spdiags(-a.*sin(theta).*cos(phi),0,mactv,mactv) spdiags(-a.*cos(theta).*sin(phi),0,mactv,mactv);
+    spdiags(cos(theta).*sin(phi),0,mactv,mactv) spdiags(-a.*sin(theta).*sin(phi),0,mactv,mactv) spdiags(a.*cos(theta).*cos(phi),0,mactv,mactv);
+    spdiags(sin(theta),0,mactv,mactv) spdiags(a.*cos(theta),0,mactv,mactv) sparse(mactv,mactv)];
 
 %% Create gradient matrices and corresponding volume vectors
 [A, GRAD, ~] = get_GRAD_op3D_TENSIL_Kron(dx,dy,dz,nullcell,'FWR');
@@ -208,6 +208,7 @@ lp_count = 0;
 %     
 % end
 alphas = kron(alphas,ones(3,1));
+% alphas(2:3,:) = 1/pi;
 alphas(2:3,1) = 0;
 dphim = 100;
 scl_t = 1;
@@ -244,14 +245,15 @@ while switcher ~= 3 && count ~= max_iter
 
         
         phi_a = (invmod(1:mactv))'*(Ws'*spdiags(wr(1:mactv),0,mactv,mactv)*Ws)*(invmod(1:mactv)) + invmod(1:mactv)'*(Gx'*Wx'*spdiags(wr(1:mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1:mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1:mactv),0,mactv,mactv)*Wz*Gz)*invmod(1:mactv);
-        phi_tp = invmod(1+mactv:2*mactv)'*(Gx'*Wx'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wz*Gz)*invmod(1+mactv:2*mactv)+...
-                 invmod(1+2*mactv:3*mactv)'*(Gx'*Wx'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wz*Gz)*invmod(1+2*mactv:3*mactv);
+        phi_t = invmod(1+mactv:2*mactv)'*(Gx'*Wx'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wz*Gz)*invmod(1+mactv:2*mactv);
+        phi_p = invmod(1+2*mactv:3*mactv)'*(Gx'*Wx'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wz*Gz)*invmod(1+2*mactv:3*mactv);
 
-        scl = (phi_a/phi_tp)/2;
-
+        scl_t = (phi_a/phi_t);
+        scl_p = (phi_a/phi_p);
+        
         wr(1:mactv)= wr(1:mactv);
-        wr(1+mactv:2*mactv)= wr(1+mactv:2*mactv)*scl;%/(max(wr(1:mcell))/max(wr(1+mcell:2*mcell))) ;
-        wr(1+2*mactv:3*mactv)= wr(1+2*mactv:3*mactv)*scl;%/(max(wr(1:mcell))/max(wr(1+2*mcell:3*mcell)));
+        wr(1+mactv:2*mactv)= wr(1+mactv:2*mactv)*scl_t;%/(max(wr(1:mcell))/max(wr(1+mcell:2*mcell))) ;
+        wr(1+2*mactv:3*mactv)= wr(1+2*mactv:3*mactv)*scl_p;%/(max(wr(1:mcell))/max(wr(1+2*mcell:3*mcell)));
 
         Wr = spdiags(wr,0,3*mactv,3*mactv);
 
@@ -262,7 +264,7 @@ while switcher ~= 3 && count ~= max_iter
 
             temp = randn(3*mactv,1);
             temp = temp/max(temp)*.5;
-            beta = sum(((Gvec(G,Wd,temp))).^2) / (temp'*mof*temp) * 1e+2 ;
+            beta = sum(((Gvec(G,Wd,temp))).^2) / (temp'*mof*temp) * 1e+0 ;
 
         end
 
@@ -383,8 +385,8 @@ while switcher ~= 3 && count ~= max_iter
 
     if switcher ~=0
         temp = (invmod-mref);
-%                 temp(1+mactv:2*mactv) = sin(pi*2*temp(1+mactv:2*mactv));
-%                 temp(1+2*mactv:3*mactv) = sin(pi*temp(1+2*mactv:3*mactv)); 
+%                 temp(1+mactv:2*mactv) = sin(2*temp(1+mactv:2*mactv));
+%                 temp(1+2*mactv:3*mactv) = sin(temp(1+2*mactv:3*mactv)); 
         
         gamma = phi_m(end) /(...
                     (temp)'* ( aVRWs'*Wr*aVRWs * (temp) ) +...
@@ -422,24 +424,18 @@ while switcher ~= 3 && count ~= max_iter
         end
         
         wr = abs(sqrt(wr+1e-8))';
-
-        
         wr = wr / max(wr);
         
-        if switcher == 0
-            phi_a = (invmod(1:mactv)-mref(1:mactv))'*(Ws'*spdiags(wr(1:mactv),0,mactv,mactv)*Ws)*(invmod(1:mactv)-mref(1:mactv)) + invmod(1:mactv)'*(Gx'*Wx'*spdiags(wr(1:mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1:mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1:mactv),0,mactv,mactv)*Wz*Gz)*invmod(1:mactv);
-            phi_tp = invmod(1+mactv:2*mactv)'*(Gx'*Wx'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wz*Gz)*invmod(1+mactv:2*mactv)+...
-                    invmod(1+2*mactv:3*mactv)'*(Gx'*Wx'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wz*Gz)*invmod(1+2*mactv:3*mactv);
+        phi_a = (invmod(1:mactv))'*(Ws'*spdiags(wr(1:mactv),0,mactv,mactv)*Ws)*(invmod(1:mactv)) + invmod(1:mactv)'*(Gx'*Wx'*spdiags(wr(1:mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1:mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1:mactv),0,mactv,mactv)*Wz*Gz)*invmod(1:mactv);
+        phi_t = invmod(1+mactv:2*mactv)'*(Gx'*Wx'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wz*Gz)*invmod(1+mactv:2*mactv);
+        phi_p = invmod(1+2*mactv:3*mactv)'*(Gx'*Wx'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wz*Gz)*invmod(1+2*mactv:3*mactv);
 
-            scl = (phi_a/phi_tp)/2;
-       
-            fprintf('Scale t: %f\t',scl)
-
-        end
-
+        scl_t = (phi_a/phi_t);
+        scl_p = (phi_a/phi_p);
+        
         wr(1:mactv)= wr(1:mactv);
-        wr(1+mactv:2*mactv)= wr(1+mactv:2*mactv)*scl;%/(max(wr(1:mcell))/max(wr(1+mcell:2*mcell))) ;
-        wr(1+2*mactv:3*mactv)= wr(1+2*mactv:3*mactv)*scl;%/(max(wr(1:mcell))/max(wr(1+2*mcell:3*mcell)));
+        wr(1+mactv:2*mactv)= wr(1+mactv:2*mactv)*scl_t/2;%/(max(wr(1:mcell))/max(wr(1+mcell:2*mcell))) ;
+        wr(1+2*mactv:3*mactv)= wr(1+2*mactv:3*mactv)*scl_p;%/(max(wr(1:mcell))/max(wr(1+2*mcell:3*mcell)));
 
         Wr = spdiags(wr,0,3*mactv,3*mactv);
 
@@ -670,9 +666,9 @@ while switcher ~= 3 && count ~= max_iter
 
 
     pred_TMI = Gvec(G,speye(ndata),m_uvw(aa,tt,pp));
-    write_MAG3D_TMI([work_dir dsep 'Tile' num2str(tile_id) '_MVI.pre'],H,HI,HD,HI,HD,obsx,obsy,obsz,pred_TMI,wd);
-    save([work_dir dsep 'Tile' num2str(tile_id) '_MVI.fld'],'-ascii','M')
-    save([work_dir dsep 'Tile' num2str(tile_id) '_MVI.amp'],'-ascii','Mamp')
+    write_MAG3D_TMI([work_dir dsep 'Tile' '_MVIatp.pre'],H,HI,HD,HI,HD,obsx,obsy,obsz,pred_TMI,wd);
+    save([work_dir dsep 'Tile'  '_MVIatp.fld'],'-ascii','M')
+    save([work_dir dsep 'Tile'  '_MVIatp.amp'],'-ascii','Mamp')
 %     write_MAG3D_TMI([work_dir dsep 'Tile' num2str(idx) '_iter_' num2str(count) '.pre'],H,I,Dazm,obsx,obsy,obsz,(G*invmod).*wd,wd);
 end
 

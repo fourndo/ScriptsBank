@@ -11,6 +11,7 @@ close all
 %% INPUT PARAMETERS
 
 work_dir = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\PhysProp\20160423';
+addpath 'C:\Users\dominiquef.MIRAGEOSCIENCE\Dropbox\Master\FUNC_LIB';
 
 % data_file = 'CHEM_den_Susc_VAR.txt';
 litho_file = 'LithoCodes_Log.csv';
@@ -21,6 +22,8 @@ phys_file = 'LAS_combined_vDF.dat';
 
 meshfile = 'MinSim_VO_Local.msh';
 FM_model = 'Formation.dat';
+modelfile{1} = 'VPmg_Homo_Round1.den';
+XMLfile = 'Formation.xml';
 
 markfile = 'FM_markers.dat';
 
@@ -39,7 +42,7 @@ rl = 1;
 ll = 2;
 
 % Flag for variable transformation: 0:Linear | 1:Log10
-logflag = [0 0 0 0 0 1 0 0];
+logflag = [0 0 0 0 0 1 0 0 0 0 0];
 
 % Specify color scheme
 cbar = [236 116 240;7 140 25;30 30 30;255 0 0;0 255 34]/255;
@@ -65,7 +68,7 @@ ylbl{1} = 'Density (g/cc)';
 
 ccode = ['b', 'r', 'g' , 'm' , 'k', 'c']; 
 
-lims = [2.4 3.6;0 300;-25 50;250 5000;3000 7500;1.5 5.5];
+lims = [2.4 3.6;0 300;-25 50;250 5000;3000 7500;1.5 5.5;2.4 3.6];
 %% Load data and format
 % Rcode is a from-to file
 litho = importdata([work_dir dsep litho_file],',');
@@ -167,6 +170,115 @@ for jj = 1 : length(dhID)
     
 end
 
+%% Load grid properties
+
+[xn,yn,zn] = read_UBC_mesh([work_dir dsep meshfile]);
+xc = mean([xn(2:end) ; xn(1:end-1)]); nx = length(xn)-1;
+yc = mean([yn(2:end) ; yn(1:end-1)]); ny = length(yn)-1;
+zc = mean([zn(1:end-1) ; zn(2:end)]); nz = length(zn)-1;
+
+
+model{1} = load([work_dir dsep modelfile{1}]);
+model{1} = reshape(model{1},nz,nx,ny)+2.7;
+
+FM_model = load([work_dir dsep FM_model]);
+FM_model = reshape(FM_model,nz,nx,ny);
+
+[ID,label] = Sort_XML([work_dir dsep XMLfile]);
+%% Cycle through the unique holes and extract grid physprop
+ndata = size(dbase_dwns.data,2);
+
+% Extract all data with same holeID
+for jj = 1 : length(dhID)      
+
+    % Get rock code hole
+    indx = strcmpi(dhID{jj}, litho.litho(:)); 
+    
+    % Get physprop interval for current hole
+    indh = strcmpi(dhID{jj}, dbase_dwns.label(:,1));
+    hphys = dbase_dwns.data(indh,:);
+    
+    physprop = [];
+    
+    for kk = 1 : sum(indh)% Cycle through the intervals
+
+        [~,indx] = min(abs(hphys(kk,1) - xc)) ;
+        [~,indy] = min(abs(hphys(kk,2) - yc)) ;
+        [~,indz] = min(abs(hphys(kk,3) - zc)) ;
+
+        % Make sure an interval is found
+        if length(indx) == 1 && length(indy) == 1 && length(indz) == 1
+            
+            physprop = [physprop;model{1}(indz,indx,indy)];
+%             fm_code = [fm_code;dh_lith(indi,7)];
+            
+%         elseif sum(indi) > 1
+%             
+%             ind = find(indi);
+%             rck_code = [rck_code;dh_lith(ind(1),5)];
+%             fm_code = [fm_code;dh_lith(ind(1),7)];
+            
+        else
+            
+            
+            physprop = [physprop;0];
+            
+        end
+
+    end 
+
+    % Append rock code to database
+    dbase_dwns.data(indh,ndata+1) = physprop(:);
+    
+end
+
+
+%% Cycle through the unique holes and extract grid Formation units
+% ndata = size(dbase_dwns.data,2);
+
+% Extract all data with same holeID
+% for jj = 1 : length(dhID)      
+% 
+%     % Get rock code hole
+%     indx = strcmpi(dhID{jj}, litho.litho(:)); 
+%     
+%     % Get physprop interval for current hole
+%     indh = strcmpi(dhID{jj}, dbase_dwns.label(:,1));
+%     hphys = dbase_dwns.data(indh,:);
+%     
+% %     physprop = [];
+%     
+%     for kk = 1 : sum(indh)% Cycle through the intervals
+% 
+%         [~,indx] = min(abs(hphys(kk,1) - xc)) ;
+%         [~,indy] = min(abs(hphys(kk,2) - yc)) ;
+%         [~,indz] = min(abs(hphys(kk,3) - zc)) ;
+% 
+%         % Make sure an interval is found
+%         if length(indx) == 1 && length(indy) == 1 && length(indz) == 1
+%             
+%             physprop{kk} = ID{label==FM_model(indz,indx,indy)};
+% %             fm_code = [fm_code;dh_lith(indi,7)];
+%             
+% %         elseif sum(indi) > 1
+% %             
+% %             ind = find(indi);
+% %             rck_code = [rck_code;dh_lith(ind(1),5)];
+% %             fm_code = [fm_code;dh_lith(ind(1),7)];
+%             
+%         else
+%             
+%             
+%             physprop = [physprop;0];
+%             
+%         end
+% 
+%     end 
+% 
+%     % Append rock code to database
+%     dbase_dwns.label(indh,4) = physprop(:);
+%     
+% end
 
 %% For each formation, plot all holes physical properties
 ff = 7;
@@ -181,40 +293,59 @@ rockID = unique(lower(litho.litho(:,rcolm)));
 cmap1 = hsv(length(rockID));
   
 
-    % Cycle through the phys props and create new figure
-    for jj = 1 : 6
+    % Cycle through the holes and create new figure
+    for ii = 1 : length(dhID)
+    
         
         set(figure, 'Position', [25 0 2000 1200])
-                
+        % Grab drillholes
+        indx = strcmpi(dhID{ii}, dbase_dwns.label(:,1));
+        sub_dbase.data = dbase_dwns.data(indx,:);
+        sub_dbase.label = dbase_dwns.label(indx,:);
         count = 0;
         max_depth = -1;
-        for ii = 1 : length(dhID)
+        
+        % Add rock 
 
-            % Grab drillholes
-            indx = strcmpi(dhID{ii}, dbase_dwns.label(:,1));
-            
-            sub_dbase.data = dbase_dwns.data(indx,:);
-            sub_dbase.label = dbase_dwns.label(indx,:);
-    
-            % Check if Hidden Fm is intersected
-            indx = find(strcmpi(fmID{ff}, sub_dbase.label(:,3)));
+        ax = axes('Position',[0.05 0.075 .1 .8]);
+        indx = find(strcmpi(dhID{ii}, litho.litho(:,1)));
 
-            if isempty(indx)==1
-                
-                continue
-                
-            else
-                
-                count = count + 1;
-                
-            end
+        for kk = 1 : length(indx)
+
+            zz = litho.data(indx(kk),:) ;
+
+            % Plot rock code
+            plot([1 1],[zz(1) zz(2)],'Color',...
+                cmap1(strcmpi(rockID,litho.litho(indx(kk),rcolm)),:),...
+                'LineWidth',10); hold on
+
+            text(1,mean([zz(1) zz(2)]),litho.litho(indx(kk),rcolm),'HorizontalAlignment','left','VerticalAlignment','middle')
+
+            % Plot formation code
+            plot([2 2],[zz(1) zz(2)],'Color',...
+                cmap2(strcmpi(fmID,litho.litho(indx(kk),fcolm)),:),...
+                'LineWidth',10); hold on
+
+            text(2,mean([zz(1) zz(2)]),litho.litho(indx(kk),fcolm),'HorizontalAlignment','right','VerticalAlignment','middle')
+
+        end
+           
+        set(gca,'Ydir','reverse')
+        
+        for jj = [1 7]
+
             
-            % Grab all data around the bottom of Hidden
-            zmarker = sub_dbase.data(indx(end),4);
-            indx = (sub_dbase.data(:,4) > zmarker-intv) & (sub_dbase.data(:,4) < zmarker+intv);
+            
+
+   
+            count = count + 1;
+            
+%             % Grab all data around the bottom of Hidden
+%             zmarker = sub_dbase.data(indx(end),4);
+%             indx = (sub_dbase.data(:,4) > zmarker-intv) & (sub_dbase.data(:,4) < zmarker+intv);
             
             % Create axis
-            ax = axes('Position',[0.05+(count-1)*0.15 0.075 .1 .8]);
+            ax = axes('Position',[0.05+(count)*0.15 0.075 .1 .8]);
             sub_data = sub_dbase.data(:,jj+4);
             depth = sub_dbase.data(:,4);
 
@@ -227,7 +358,7 @@ cmap1 = hsv(length(rockID));
             x = depth(indx2);
             
             % Shift depth to first marker
-            x = x - zmarker;
+%             x = x - zmarker;
             
             % Find the maximum depth for scaling the plot
 %             if max_depth > min(x);
@@ -260,28 +391,7 @@ cmap1 = hsv(length(rockID));
 % 
 %             end
 
-            % Add rock markers
-            indx = find(strcmpi(dhID{ii}, litho.litho(:,1)));
-            
-            for kk = 1 : length(indx)
-               
-                zz = litho.data(indx(kk),:) - zmarker;
-                
-                % Plot rock code
-                plot([lims(jj,1) lims(jj,1)],[zz(1) zz(2)],'Color',...
-                    cmap1(strcmpi(rockID,litho.litho(indx(kk),rcolm)),:),...
-                    'LineWidth',10); hold on
-                
-                text(lims(jj,1),mean([zz(1) zz(2)]),litho.litho(indx(kk),rcolm),'HorizontalAlignment','center','VerticalAlignment','middle')
-                
-                % Plot formation code
-                plot([lims(jj,2) lims(jj,2)],[zz(1) zz(2)],'Color',...
-                    cmap2(strcmpi(fmID,litho.litho(indx(kk),fcolm)),:),...
-                    'LineWidth',10); hold on
-                
-                text(lims(jj,2),mean([zz(1) zz(2)]),litho.litho(indx(kk),fcolm))
-                
-            end
+
             
             % Plot phys prop, mean and markers
             plot(sub_data,x,'r'); hold on
@@ -295,9 +405,9 @@ cmap1 = hsv(length(rockID));
 %             ax.YTickLabelRotation=90;
 %             set(gca,'color','none')
 
-            val = regexp(dbase.textdata(1,jj+5),'_','split');
+%             val = regexp(dbase.textdata(1,jj+5),'_','split');
 
-            xlabel(val{1}(2));
+%             xlabel(val{1}(2));
 
 
 
@@ -322,7 +432,7 @@ cmap1 = hsv(length(rockID));
                 title(dhID{ii});
 
             end
-            ylim([-100 100]);
+            ylim([0 max(depth)]);
             xlim([lims(jj,1) lims(jj,2)]);
             
         end

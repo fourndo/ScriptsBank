@@ -27,7 +27,7 @@ line = fgets(fid);
 data = regexp(strtrim(line),'\s*','split');
 
 
-if dtype==1 
+if dtype~=0 
     ndata = str2double(data{1});
     
     d = zeros( ndata , 1 ) ;

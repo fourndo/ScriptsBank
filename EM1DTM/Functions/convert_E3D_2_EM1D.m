@@ -53,7 +53,7 @@ for tx = 1:nsnds
          
     end
     % Generate loop segments
-    [x, y] = circfun(trx{tx}(1), trx{tx}(2), trx{tx}(4), nseg);
+    [x, y] = circfun(0, 0, trx{tx}(4), nseg);
     data{2}{tx,1}    = nseg; % Tx loop locations
     
     for jj = 1 : nseg
@@ -74,10 +74,10 @@ for tx = 1:nsnds
         
         if ~isempty(topo)
             ztopo = F(d{tx}{rx}(1,1),d{tx}{rx}(1,2));
-            data{5}{tx,1}{rx}{2}    = [d{tx}{rx}(1,1:2) ztopo-d{tx}{rx}(1,3)]; % receivers [mom_r, x, y, -dz]
+            data{5}{tx,1}{rx}{2}    = [trx{tx}(1:2)-d{tx}{rx}(1,1:2) ztopo-d{tx}{rx}(1,3)]; % receivers [mom_r, x, y, -dz]
         else
             
-            data{5}{tx,1}{rx}{2}    = [d{tx}{rx}(1,1:2) 0]; % receivers [mom_r, x, y, -dz]
+            data{5}{tx,1}{rx}{2}    = [trx{tx}(1:2)-d{tx}{rx}(1,1:2) 0]; % receivers [mom_r, x, y, -dz]
             
         end
             

@@ -129,14 +129,16 @@ def animate(ii):
     plt.xlim([xmin,xmax])
     plt.ylim([zmin,zmax])
     plt.gca().set_aspect('equal', adjustable='box')
+    z = np.linspace(np.min(ph[2]),np.max(ph[2]), 5)
+    z_label = np.linspace(20,1, 5)
     ax1.set_yticks(map(int, z))
-    ax1.set_yticklabels(map(str, map(int, z)),rotation='vertical')
-    ax1.set_ylabel('Depth (m)', fontsize=8)
+    ax1.set_yticklabels(map(str, map(int, z_label)),size=8)
+    ax1.set_ylabel('n-spacing',fontsize=8)
     
     # Add colorbar
     pos =  ax1.get_position()
     cbarax = fig.add_axes([pos.x0 + 0.72 , pos.y0 + 0.05,  pos.width*0.05, pos.height*0.5])  ## the parameters are the specified position you set
-    cb = fig.colorbar(ph,cax=cbarax, orientation="vertical", ticks=np.linspace(vmin,vmax, 3), format="$10^{%.1f}$")
+    cb = fig.colorbar(ph[0],cax=cbarax, orientation="vertical", ticks=np.linspace(vmin,vmax, 3), format="$10^{%.1f}$")
     cb.set_label("App. Cond. (S/m)",size=8)
     
     ax2 = plt.subplot(2,1,2)    
@@ -148,13 +150,15 @@ def animate(ii):
     plt.gca().set_aspect('equal', adjustable='box')
     ax2.set_title('Observed P-DP', fontsize=10)
     ax2.set_xlabel('Easting (m)', fontsize=8)
+    z = np.linspace(np.min(ph[2]),np.max(ph[2]), 5)
+    z_label = np.linspace(20,1, 5)
     ax2.set_yticks(map(int, z))
-    ax2.set_yticklabels(map(str, map(int, z)),rotation='vertical')
-    ax2.set_ylabel('Depth (m)', fontsize=8)
+    ax2.set_yticklabels(map(str, map(int, z_label)),size=8)
+    ax2.set_ylabel('n-spacing',fontsize=8)
     # Add colorbar
     pos =  ax2.get_position()
     cbarax = fig.add_axes([pos.x0 + 0.72 , pos.y0 + 0.05,  pos.width*0.05, pos.height*0.5])  ## the parameters are the specified position you set
-    cb = fig.colorbar(ph,cax=cbarax, orientation="vertical", ticks=np.linspace(vmin,vmax, 3), format="$10^{%.1f}$")
+    cb = fig.colorbar(ph[0],cax=cbarax, orientation="vertical", ticks=np.linspace(vmin,vmax, 3), format="$10^{%.1f}$")
     cb.set_label("App. Cond. (S/m)",size=8)
             
     

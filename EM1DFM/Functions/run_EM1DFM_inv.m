@@ -93,6 +93,7 @@ for ii = 1:nstn
     
     logic = (data{9}(:,3) == data{9}(index(ii),3) );%& data{3}(:)==900);
        
+    nfreq   = sum(logic);
     freq    = data{3}(logic);
     tx      = data{1}(logic,:);
     rx      = data{2}(logic,:);
@@ -102,10 +103,10 @@ for ii = 1:nstn
     obs     = data{7}(logic,:);
     pre     = pred_in(logic,:);
     uncert  = data{8}(logic,:);
-    X       = kron( [1;1;1] , xyz(ii,1) );
-    Y       = kron( [1;1;1] , xyz(ii,2) );
-    Z       = kron( [1;1;1] , xyz(ii,3) );
-    nfreq   = sum(logic);
+    X       = kron( ones(nfreq,1) , xyz(ii,1) );
+    Y       = kron( ones(nfreq,1) , xyz(ii,2) );
+    Z       = kron( ones(nfreq,1) , xyz(ii,3) );
+    
     
         
     fid = fopen([work_dir '\Obs1D.dat'],'wt');
@@ -134,7 +135,7 @@ for ii = 1:nstn
 %     end
     
 %     nfreq = temp;
-    fprintf(fid, '%f  %f  %i\n', X(1) , Y(1), temp); 
+    fprintf(fid, '%f  %f  %i\n', X(1) , Y(1), nfreq); 
              
     for ff = 1 : nfreq
                      

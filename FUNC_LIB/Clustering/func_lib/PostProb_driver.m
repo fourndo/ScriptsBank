@@ -10,22 +10,23 @@ addpath C:\Users\dominiquef.MIRAGEOSCIENCE\Dropbox\Master\FUNC_LIB
 index = '1';
 
 % work_dir = ['C:\LC\Private\dominiquef\Projects\3796_AGIC_Research\HyperCube\Processing\MtDore_files_for_Hypercube\Targeting_2015\WofE\Training_Set_' index];
-work_dir = ['C:\LC\Private\dominiquef\Projects\3796_AGIC_Research\HyperCube\Processing\MtDore_files_for_Hypercube\Targeting_2015\HyperCube\HighCoverage\Subset' index];
+% work_dir = ['C:\LC\Private\dominiquef\Projects\3796_AGIC_Research\HyperCube\MtDore_files_for_Hypercube\Targeting_2015\HyperCube\HighCoverage\Subset' index];
 % work_dir = 'C:\LC\Private\dominiquef\Projects\3796_AGIC_Research\HyperCube\Processing\MtDore_files_for_Hypercube\Targeting_2015\HyperCube\LowFiltering\12K_rules';
-% work_dir = 'C:\LC\Private\dominiquef\Projects\3796_AGIC_Research\HyperCube\Processing\MtDore_files_for_Hypercube\Targeting_2015\HyperCube\HighCoverage\Combined';
+work_dir = 'C:\LC\Private\dominiquef\Projects\3796_AGIC_Research\HyperCube\MtDore_files_for_Hypercube\Targeting_2015\HyperCube\HighCoverage\Combined';
 % work_dir = 'C:\LC\Private\dominiquef\Projects\3796_AGIC_Research\HyperCube\Processing\MtDore_files_for_Hypercube\Targeting_2015\HyperCube\LowFiltering\4K_rules';
 
 % rulefile = ['weights_training_set' index '.csv'];
-rulefile = ['Mira_' index '_CT0,01 - PI0,0001 - CI0,001 - C1-5.csv'];
+% rulefile = ['Mira_' index '_CT0,01 - PI0,0001 - CI0,001 - C1-5.csv'];
 % rulefile = 'Mira 1 - All - 12000.csv';
 % rulefile = 'Mira 1 - P0.5 - 4000.csv';
+rulefile = 'Mira_HighCover_Merged.csv';
 
-datafile = '\..\..\..\Dataset_all_training.dat';
-data_training = ['\..\..\..\buffer_zones_SUB' index '.dat'];
+datafile = 'C:\LC\Private\dominiquef\Projects\3796_AGIC_Research\HyperCube\MtDore_files_for_Hypercube\Targeting_2015\Dataset_all_training.dat';
+data_training = ['C:\LC\Private\dominiquef\Projects\3796_AGIC_Research\HyperCube\MtDore_files_for_Hypercube\Targeting_2015\buffer_zones_SUB' index '.dat'];
 
-criteria_list = [work_dir '\..\..\..\Datamtrix_header.txt'];
+load('C:\LC\Private\dominiquef\Projects\3796_AGIC_Research\HyperCube\MtDore_files_for_Hypercube\Targeting_2015\head');
 
-nullcell = load([work_dir '\..\..\..\activecell.dat']);
+nullcell = load(['C:\LC\Private\dominiquef\Projects\3796_AGIC_Research\HyperCube\MtDore_files_for_Hypercube\Targeting_2015\activecell.dat']);
 
 % Choose WofE or HC
 var = 'HC';
@@ -34,8 +35,8 @@ drange = 18;
 flag = 0;
 %% Reformat data entry
 % Load data
-database = load([work_dir '\' datafile]);
-OUTvar = load([work_dir '\' data_training]); 
+database = load([datafile]);
+OUTvar = load([data_training]); 
 OUTvar = OUTvar(nullcell==1);
 OUTvar(OUTvar==-99999) = flag;
 
@@ -57,7 +58,7 @@ switch var
     case 'WofE'
     [criteria_name,ruleID,rule_lift,rules,Lbound,Ubound] = get_WofE_rules([work_dir '\' rulefile],criteria_list);
     otherwise
-    [criteria_name,ruleID,rule_lift,rules,Lbound,Ubound] = get_rules_v2([work_dir '\' rulefile],criteria_list,11);
+    [criteria_name,ruleID,rule_lift,rules,Lbound,Ubound] = get_rules_v2([work_dir '\' rulefile],head,11);
 
 end
 nrules = length(ruleID);
@@ -76,9 +77,6 @@ nrules = length(ruleID);
 % Lbound = [44.91676 18.82986 95.6636];
 
 %% Compute weights
-
-
-
 switch var
     
     case 'WofE'

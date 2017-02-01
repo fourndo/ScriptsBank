@@ -21,7 +21,8 @@
 
 #%%
 from SimPEG import np, Utils, Mesh, mkvc, sp
-import simpegDCIP as DC
+import SimPEG.EM.Static.DC as DC
+import SimPEG.EM.Static.Utils as DCUtils
 import pylab as plt
 from pylab import get_current_fig_manager
 from scipy.interpolate import griddata
@@ -51,11 +52,11 @@ model = Mesh.TensorMesh.readModelUBC(mesh,home_dir + '\MtIsa_20m.con')
 
 #model = model**0 * 1e-2
 # Specify survey type
-stype = 'dpdp'
+stype = 'pole-dipole'
 
 # Survey parameters
-a = 60
-b = 60
+a = 50
+b = 500
 n = 40
 
 # Forward solver
@@ -146,38 +147,45 @@ var = np.c_[np.asarray(gin),np.ones(2).T*nz[-1]]
 indx = Utils.closestPoints(mesh, var )
 endl = np.c_[mesh.gridCC[indx,0],mesh.gridCC[indx,1],np.ones(2).T*nz[-1]]
       
-[Tx, Rx] = DC.gen_DCIPsurvey(endl, mesh, stype, a, b, n)
+survey = DCUtils.gen_DCIPsurvey(endl, mesh, stype, a, b, n)
  
+#survey = DC.Survey(SrcList)
+
+Tx = DCUtils.getSrc_locs(survey)
+Rx = survey.srcList[0].rxList[0].locs
+
 dl_len = np.sqrt( np.sum((endl[0,:] - endl[1,:])**2) ) 
-dl_x = ( Tx[-1][0,1] - Tx[0][0,0] ) / dl_len
-dl_y = ( Tx[-1][1,1] - Tx[0][1,0]  ) / dl_len
+dl_x = ( Tx[-1][3] - Tx[0][0] ) / dl_len
+dl_y = ( Tx[-1][4] - Tx[0][1]  ) / dl_len
 azm =  np.arctan(dl_y/dl_x)
   
 # Plot stations along line   
-plt.scatter(Tx[0][0,:],Tx[0][1,:],s=20,c='g')
+plt.scatter(Tx[:,[0,3]],Tx[:,[1,4]],s=20,c='g')
 plt.scatter(Rx[0][:,0::3],Rx[0][:,1::3],s=20,c='y')
 
 #%% Forward model data
 data = []#np.zeros( nstn*nrx )
 unct = []
-problem = DC.ProblemDC_CC(mesh)
+problem = DC.Problem3D_CC(mesh)
     
 for ii in range(len(Tx)):
     
     start_time = time.time()
     
+    Rx = survey.srcList[ii].rxList[0].locs
+    
     # Select dipole locations for receiver
-    rxloc_M = np.asarray(Rx[ii][:,0:3])
-    rxloc_N = np.asarray(Rx[ii][:,3:])
+    rxloc_M = np.asarray(Rx[0])
+    rxloc_N = np.asarray(Rx[1])
     
     # Number of receivers
     nrx = rxloc_M.shape[0]
 
     
     
-    if not re.match(stype,'pdp'):
-        inds = Utils.closestPoints(mesh, np.asarray(Tx[ii]).T )
-        RHS = mesh.getInterpolationMat(np.asarray(Tx[ii]).T, 'CC').T*( [-1,1] / mesh.vol[inds] )   
+    if not re.match(stype,'pole-dipole'):
+        inds = Utils.closestPoints(mesh, np.asarray(Tx[ii].reshape((2,3))) )
+        RHS = mesh.getInterpolationMat(np.asarray(Tx[ii].reshape((2,3))), 'CC').T*( [-1,1] / mesh.vol[inds] )   
         
     else: 
         
@@ -216,28 +224,36 @@ for ii in range(len(Tx)):
     # Compute potential at each electrode
     dtemp = (P1*phi - P2*phi)*np.pi
     
-    data.append( dtemp )     
-    unct.append( np.abs(dtemp) * pct + flr)
+    data = np.hstack([data, dtemp] )     
+    unct = np.hstack([unct, np.abs(dtemp) * pct + flr])
    
     print("--- %s seconds ---" % (time.time() - start_time))  
     
 
 #%% Run 2D inversion if pdp or dpdp survey
 # Otherwise just plot and apparent susceptibility map
+
+survey.dobs = np.asarray(data)
+survey.std = np.asarray(unct)
+
 if not re.match(stype,'gradient'):
     
     #%% Write data file in UBC-DCIP3D format
-    DC.writeUBC_DCobs(home_dir+'\FWR_data3D.dat',Tx,Rx,data,unct,'3D')     
+    DCUtils.writeUBC_DCobs(home_dir+'\FWR_data3D.dat',survey,'3D','GENERAL')     
     
     
     #%% Load 3D data
-    [Tx, Rx, data, wd] = DC.readUBC_DC3Dobs(home_dir + '\FWR_data3D.dat')
+    DCfile = DCUtils.readUBC_DC3Dobs(home_dir + '\FWR_data3D.dat')
     
+    survey = DCfile['DCsurvey']
     
     #%% Convert 3D obs to 2D and write to file
-    [Tx2d, Rx2d] = DC.convertObs_DC3D_to_2D(Tx,Rx)
+    lineID = DCUtils.xy_2_lineID(survey)
     
-    DC.writeUBC_DCobs(home_dir+'\FWR_3D_2_2D.dat',Tx2d,Rx2d,data,unct,'2D')        
+    survey2D = DCUtils.convertObs_DC3D_to_2D(survey,lineID)
+    
+    
+    DCUtils.writeUBC_DCobs(home_dir+'\FWR_3D_2_2D.dat',survey2D,'2D','SURFACE')        
     
     #%% Create a 2D mesh along axis of Tx end points and keep z-discretization    
     dx = np.min( [ np.min(mesh.hx), np.min(mesh.hy) ])
@@ -252,8 +268,8 @@ if not re.match(stype,'gradient'):
     mesh2d = Mesh.TensorMesh([h1, mesh.hz], x0=(-np.sum(padx)-dx/2,mesh.x0[2]))
     
     # Create array of points for interpolating from 3D to 2D mesh
-    xx = Tx[0][0,0] + mesh2d.vectorCCx * np.cos(azm)
-    yy = Tx[0][1,0] + mesh2d.vectorCCx * np.sin(azm)
+    xx = Tx[0][0] + mesh2d.vectorCCx * np.cos(azm)
+    yy = Tx[0][3] + mesh2d.vectorCCx * np.sin(azm)
     zz = mesh2d.vectorCCy
     
     [XX,ZZ] = np.meshgrid(xx,zz)
@@ -267,7 +283,7 @@ if not re.match(stype,'gradient'):
     F = interpolation.NearestNDInterpolator(mesh.gridCC,model)
     m2D = np.reshape(F(xyz2d),[mesh2d.nCx,mesh2d.nCy]).T
     
-     
+    
     #==============================================================================
     # mesh2d = Mesh.TensorMesh([mesh.hx, mesh.hz], x0=(mesh.x0[0]-endl[0,0],mesh.x0[2]))
     # m3D = np.reshape(model, (mesh.nCz, mesh.nCy, mesh.nCx))
@@ -285,8 +301,8 @@ if not re.match(stype,'gradient'):
     #mesh2d.plotImage(mkvc(m2D), grid=True, ax=axs)
     
     #%% Plot pseudo section
-    
-    DC.plot_pseudoSection(Tx2d,Rx2d,data,nz[-1],stype)
+    ax2 = plt.subplot(2,1,2)
+    DCUtils.plot_pseudoSection(survey2D,ax2)
     plt.colorbar
     plt.show()
 
@@ -360,21 +376,21 @@ if not re.match(stype,'gradient'):
 #%% Othrwise it is a gradient array, plot surface of apparent resisitivty
 elif re.match(stype,'gradient'):
     
-    rC1P1 = np.sqrt( np.sum( (npm.repmat(Tx[0][0:2,0],Rx[0].shape[0], 1) - Rx[0][:,0:2])**2, axis=1 ))
-    rC2P1 = np.sqrt( np.sum( (npm.repmat(Tx[0][0:2,1],Rx[0].shape[0], 1) - Rx[0][:,0:2])**2, axis=1 ))
-    rC1P2 = np.sqrt( np.sum( (npm.repmat(Tx[0][0:2,0],Rx[0].shape[0], 1) - Rx[0][:,3:5])**2, axis=1 ))
-    rC2P2 = np.sqrt( np.sum( (npm.repmat(Tx[0][0:2,1],Rx[0].shape[0], 1) - Rx[0][:,3:5])**2, axis=1 )) 
+    rC1P1 = np.sqrt( np.sum( (npm.repmat(Tx[0][0:2],Rx[0].shape[0], 1) - Rx[0][:,0:2])**2, axis=1 ))
+    rC2P1 = np.sqrt( np.sum( (npm.repmat(Tx[0][3:5],Rx[0].shape[0], 1) - Rx[0][:,0:2])**2, axis=1 ))
+    rC1P2 = np.sqrt( np.sum( (npm.repmat(Tx[0][0:2],Rx[0].shape[0], 1) - Rx[1][:,0:2])**2, axis=1 ))
+    rC2P2 = np.sqrt( np.sum( (npm.repmat(Tx[0][3:5],Rx[0].shape[0], 1) - Rx[1][:,0:2])**2, axis=1 )) 
     
-    rC1C2 = np.sqrt( np.sum( (npm.repmat(Tx[0][0:2,0]-Tx[0][0:2,1],Rx[0].shape[0], 1) )**2, axis=1 ))
-    rP1P2 = np.sqrt( np.sum( (Rx[0][:,0:2] - Rx[0][:,3:5])**2, axis=1 ))
+    rC1C2 = np.sqrt( np.sum( (npm.repmat(Tx[0][0:2]-Tx[0][3:5],Rx[0].shape[0], 1) )**2, axis=1 ))
+    rP1P2 = np.sqrt( np.sum( (Rx[0][:,0:2] - Rx[1][:,0:2])**2, axis=1 ))
     
-    rho = np.abs(data[0]) *np.pi *2. / ( 1/rC1P1 - 1/rC2P1 - 1/rC1P2 + 1/rC2P2 )#*((rC1P1)**2 / rP1P2)#
+    rho = np.abs(data) *np.pi *2./ ( 1/rC1P1 - 1/rC2P1 - 1/rC1P2 + 1/rC2P2 )#*((rC1P1)**2 / rP1P2)# 
 
-    Pmid = (Rx[0][:,0:2] + Rx[0][:,3:5])/2  
+    Pmid = (Rx[0][:,0:2] + Rx[1][:,0:2])/2  
  
     # Grid points
-    grid_x, grid_z = np.mgrid[np.min(Rx[0][:,[0,3]]):np.max(Rx[0][:,[0,3]]):a/10, np.min(Rx[0][:,[1,4]]):np.max(Rx[0][:,[1,4]]):a/10]
-    grid_rho = griddata(np.c_[Pmid[:,0],Pmid[:,1]], (abs(rho.T)), (grid_x, grid_z), method='linear')
+    grid_x, grid_z = np.mgrid[np.min([Rx[0][:,0],Rx[1][:,0]]):np.max([Rx[0][:,0],Rx[1][:,0]]):a/10, np.min([Rx[0][:,0],Rx[1][:,1]]):np.max([Rx[0][:,0],Rx[1][:,1]]):a/10]
+    grid_rho = griddata(np.c_[Pmid[:,0],Pmid[:,1]], (abs(1/rho.T)), (grid_x, grid_z), method='linear')
     
     
     #plt.subplot(2,1,2)
@@ -385,3 +401,5 @@ elif re.match(stype,'gradient'):
     plt.title(var)
     plt.colorbar()
     plt.contour(grid_x,grid_z,grid_rho, colors='k')
+    
+    DCUtils.writeUBC_DCobs(home_dir+'\FWR_data3D.dat',survey,'3D','SURFACE')

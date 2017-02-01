@@ -1,4 +1,4 @@
-function [M] = MVI3D_PST_Tiled(work_dir,out_dir,dsep,xn,yn,zn,H, HI, HD, obsx, obsy, obsz, G, d, wd,mstart,mref,esus,chi_target,alphas,beta,bounds,LP,t,eps_FLAG,eps_tresh,FLAG1,FLAG2,max_iter)
+function [M,beta_out] = MVI3D_PST_Tiled(work_dir,out_dir,dsep,xn,yn,zn,H, HI, HD, obsx, obsy, obsz, G, d, wd,mstart,mref,esus,chi_target,alphas,beta,bounds,LP,t,eps_FLAG,eps_tresh,FLAG1,FLAG2,max_iter)
 % Magnetic Vector Invertion in cartesian coordinates
 % Written by: D Fournier 
 % Created: 2014/07/23
@@ -35,7 +35,7 @@ end
 
 mref = kron(ones(3,1), mref );
 % 
-mstart = kron(ones(3,1), mstart );
+mstart = kron([0;0;1], mstart );
 
 % Need to create I/O for cell base weights
 w = ones(4*mcell,1);
@@ -90,7 +90,7 @@ toc
 
 d = Wd * d;
 %% Create gradient matrices and corresponding volume vectors
-[~, Gx, Gy, Gz, ~, ~, ~, ~] = get_GRAD_op3D_SQUARE_Kron(dx,dy,dz,nullcell,x);
+[~, Gx, Gy, Gz, V, Vx, Vy, Vz] = get_GRAD_op3D_SQUARE_Kron(dx,dy,dz,nullcell,x);
 % [Ws, V ] = getWs3D(dx,dy,dz,X);
 
 Ws =  spdiags(x * ( w(1:mcell) ) ./wj ,0,mactv,mactv);
@@ -186,13 +186,13 @@ while switcher ~= 3 && count ~= max_iter
 
                     [pp,qq] = get_eps(m,10,Gx,Gy,Gz);
 
-                    delta_p(pst) = pp;
-                    delta_q(pst) = qq;
+                    delta_p(pst,1:3) = pp;
+                    delta_q(pst,1:3) = qq;
 
                 else
 
-                    delta_p(pst) = eps_p(pst);
-                    delta_q(pst) = eps_q(pst);
+                    delta_p(pst,1:3) = eps_p(pst);
+                    delta_q(pst,1:3) = eps_q(pst);
 
                 end
                 
@@ -245,7 +245,7 @@ while switcher ~= 3 && count ~= max_iter
         end
                     
         fprintf('# # LP-LQ ITER# #\n');
-        [MOF,aVRWs,aVRWx,aVRWy,aVRWz] = get_lp_MOF_3D(invmod,mref,phi_m(end),Ws,Wx,Wy,Wz,Gx,Gy,Gz,t,alphas,LP,FLAG1,FLAG2,switcher,delta_p(count,:),delta_q(count,:));
+        [MOF,aVRWs,aVRWx,aVRWy,aVRWz] = get_lp_MOF_3D(invmod,mref,phi_m(end),Ws,Wx,Wy,Wz,Gx,Gy,Gz,t,alphas,LP,FLAG1,FLAG2,switcher,delta_p,delta_q);
 
         
     end
@@ -267,8 +267,8 @@ while switcher ~= 3 && count ~= max_iter
     %% Gauss-Newton steps
     fprintf('\n# # # # # # # # #\n');
     fprintf('BETA ITER: \t %i  \nbeta: \t %8.5e \n',count,beta(count));
-    fprintf('eps_q: \t %8.5e \t eps_q*: \t %8.5e\n',delta_p(count),eps_p)
-    fprintf('eps_p: \t %8.5e \t eps_p*: \t %8.5e\n',delta_q(count),eps_q)
+%     fprintf('eps_q: \t %8.5e \t eps_q*: \t %8.5e\n',delta_p(count,1),eps_p)
+%     fprintf('eps_p: \t %8.5e \t eps_p*: \t %8.5e\n',delta_q(count,1),eps_q)
     
      
     [invmod, ncg, Pac] = GN_CG_Lin_solver( G, Wd, invmod, mref, d, phi(end), beta(count) , PreC, Pac, lowBvec, uppBvec, mof, aVRWs, aVRWx, aVRWy, aVRWz, FLAG1 );
@@ -325,11 +325,14 @@ while switcher ~= 3 && count ~= max_iter
     M = reshape(model_out,mcell,3);
     Mamp = sum(M.^2,2).^0.5;
     Mamp(nullcell==0) = -100;
-      
     pred_TMI = Gvec(G,speye(ndata),invmod);
+    
+    save([work_dir dsep 'Tile_MVI_PST.fld'],'-ascii','M')
+    save([work_dir dsep 'Tile_MVI_PST.amp'],'-ascii','Mamp')
+    write_MAG3D_TMI([work_dir dsep 'Tile_MVI_PST.pre'],H,HI,HD,HI,HD,obsx,obsy,obsz,pred_TMI,wd);
+   
+    
 end
-  
-save([out_dir dsep 'Tile_MVI_PST_Iter0.fld'],'-ascii','M')
-save([out_dir dsep 'Tile_MVI_PST_Iter0.amp'],'-ascii','Mamp')
-write_MAG3D_TMI([out_dir dsep 'Tile_MVI_PST_Iter0.pre'],H,HI,HD,HI,HD,obsx,obsy,obsz,pred_TMI,wd);
+beta_out = beta(count);
+
 fclose(fid);

@@ -36,8 +36,8 @@ floor_pct = 0.02;
 
 tol = 0.01;
 % Lp-norm parameters
-pQ = 0:0.1:2;%[0 1 2];%0%
-qQ = 0:0.1:2;%[0 1 2];%0%
+pQ = [0 1 2];%0:0.1:2;%0%
+qQ = [0 1 2];%0:0.1:2;%0%
 lQ = 1;%ones(1,1)*1.0%[0.25:0.25:1.75]%0.1:0.4:1.9;
 
 % Add an extra test to find best starting beta for lplq
@@ -47,8 +47,8 @@ chi_vec = 1%[2 3 4 5 7.5 10 20 30];
 % Percentile for cutoff
 pct_cutoff = 75;
 
-eps_p = 1e-4;
-eps_q = 5e-4;
+eps_p = 1e-3;
+eps_q = 1e-3;
 %% SCRIPT STARTS HERE
 %% % Generate kernel functions and depth weighting
 x = (0 : 1/(nx) : 1);
@@ -259,9 +259,9 @@ for ll= 1:length(lQ)
 
                     if switcher == 0   %First iteration
 
-                        delta_p(count) = 1e-1;%max(invmod);%prctile(abs(invmod(invmod ~= 0)),pct_cutoff);
+                        delta_p(count) = eps_p;%max(invmod);%prctile(abs(invmod(invmod ~= 0)),pct_cutoff);
                         dmdx = abs(Wx * invmod);
-                        delta_q(count) = 1e-1;%max(dmdx);%prctile(gradm(gradm~=0),pct_cutoff);
+                        delta_q(count) = eps_q;%max(dmdx);%prctile(gradm(gradm~=0),pct_cutoff);
 %                         delta_q(count) = max(abs(invmod));                        
                         % Initial beta trace(G'G) / trace(phim)
  
@@ -551,26 +551,26 @@ for ll= 1:length(lQ)
             misfit(pp,qq,ll) = phi_d(count);
             models_out(pp,qq,ll,:) = invmod(:);
             iter_num(pp,qq,ll) = count;
-%             axes(plot_h(counter));
-%             plot(1:mcell,model); hold on
-%             plot(1:mcell, invmod,'r','LineWidth',2); 
-%             text(25,0.55,['$\mathbf{p: ' num2str(pQ(pp)) ',\; q:' num2str(qQ(qq)) '}$'],'interpreter', 'latex','FontSize',12)
-%             text(25,0.48,['$\mathbf{\phi_d} = ' num2str(round(phi_d(count)*100)/100) '$'],'interpreter', 'latex','FontSize',10)
-%             text(25,0.43,['$\epsilon = 10^{' num2str(round(log10(delta_p(end))*10)/10) '}$'],'interpreter', 'latex','FontSize',10)
-%             text(25,0.38,['$\|\mathbf{m - m^*}\|$ = ' num2str(round(l1(pp,qq,ll)*100)/100)],'interpreter', 'latex','FontSize',10)
-% 
-%             hold off
-%             grid on
-%             axis([0 mcell -.1 0.6]);
-% %             set(gca,'YTickLabel',[]);
-%             axis square
-%             xlabel('$x$','interpreter','latex')
-%             
-%             if qq == 1
-%             ylabel('$m$','interpreter','latex')
-%             else
-%                 set(gca,'YTickLabel',[]);
-%             end
+            axes(plot_h(counter));
+            plot(1:mcell,model); hold on
+            plot(1:mcell, invmod,'r','LineWidth',2); 
+            text(25,0.55,['$\mathbf{p: ' num2str(pQ(pp)) ',\; q:' num2str(qQ(qq)) '}$'],'interpreter', 'latex','FontSize',12)
+            text(25,0.48,['$\mathbf{\phi_d} = ' num2str(round(phi_d(count)*100)/100) '$'],'interpreter', 'latex','FontSize',10)
+            text(25,0.43,['$\epsilon = 10^{' num2str(round(log10(delta_p(end))*10)/10) '}$'],'interpreter', 'latex','FontSize',10)
+            text(25,0.38,['$\|\mathbf{m - m^*}\|$ = ' num2str(round(l1(pp,qq,ll)*100)/100)],'interpreter', 'latex','FontSize',10)
+
+            hold off
+            grid on
+            axis([0 mcell -.1 0.6]);
+%             set(gca,'YTickLabel',[]);
+            axis square
+            xlabel('$x$','interpreter','latex')
+            
+            if qq == 1
+            ylabel('$m$','interpreter','latex')
+            else
+                set(gca,'YTickLabel',[]);
+            end
 
 
             ldml(counter) = norm(model-invmod,2);

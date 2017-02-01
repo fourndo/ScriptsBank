@@ -11,8 +11,8 @@ close all
 
 addpath ..\FUNC_LIB\;
 % Project folders
-work_dir = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\MAG\Composite';
-inpfile   = 'MAG3D_Tile.inp'; 
+work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Nut_Cracker\Induced_MAG3C';
+inpfile   = 'MAG3Cinv.inp'; 
 
 dsep = '\';
 

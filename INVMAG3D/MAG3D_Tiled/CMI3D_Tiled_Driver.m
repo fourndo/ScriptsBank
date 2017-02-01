@@ -21,8 +21,8 @@ addpath 'func_lib';
 
 dsep = '\';
 % Project folders
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\SingleBlock\CMI';
-% work_dir ='C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\CraigModel\MAG';
+work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Nut_Cracker\Tiled_CMI';
+work_dir ='C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\SingleBlock\Simpeg';
 out_dir = [work_dir dsep 'ALL_Tiles'];
 mkdir(out_dir);
 
@@ -333,12 +333,12 @@ for ii = 1:ntiles
         fprintf('\nMVI STEP\n')
     end
     %% Run Inversion
-%     [M,pred_TMI,betaMVI,phidMVI,MOF_MVI,switchMVI] = MVI3D_Tiled_v2(tile_dir,out_dir,dsep,ii,xn_t,yn_t,zn_t,H, HI, HD, obsx, obsy, obsz, G, d, wd,mstart_t,mref_t*0,esus_MAI,chi_target,phidMVI,MOF_MVI,alphas,betaMVI,bounds,LP,t,lp_tresh{1},lp_tresh{2} ,switchMVI,FLAG1,FLAG2,max_iterMVI );
-    mstart_t = ones(3*mcell_t,1)*1e-4;
-    esus_MAI = ones(mcell_t,1)*1e-4;
-    MOF_MVI = speye(size(G{1},2));
-    max_iterMVI = 30;
-    [M,pred_TMI,beta_out,phid_out,MOF_out,switcher] = MVI3D_APD_Tiled_v2(tile_dir,out_dir,dsep,ii,xn_t,yn_t,zn_t,H, HI, HD, obsx, obsy, obsz, G, d, wd,mstart_t,mref_t*0,esus_MAI,chi_target,phidMVI,MOF_MVI,alphas,betaMVI,bounds,LP,t,lp_tresh{1},lp_tresh{2} ,0,FLAG1,FLAG2,max_iterMVI);
+    [M,pred_TMI,betaMVI,phidMVI,MOF_MVI,switchMVI] = MVI3D_Tiled_v2(tile_dir,out_dir,dsep,ii,xn_t,yn_t,zn_t,H, HI, HD, obsx, obsy, obsz, G, d, wd,mstart_t,mref_t*0,esus_MAI,chi_target,phidMVI,MOF_MVI,alphas,betaMVI,bounds,LP,t,lp_tresh{1},lp_tresh{2} ,switchMVI,FLAG1,FLAG2,max_iterMVI );
+%     mstart_t = ones(3*mcell_t,1)*1e-4;
+%     esus_MAI = ones(mcell_t,1)*1e-4;
+%     MOF_MVI = speye(size(G{1},2));
+%     max_iterMVI = 30;
+%     [M,pred_TMI,beta_out,phid_out,MOF_out,switcher] = MVI3D_APD_Tiled_v2(tile_dir,out_dir,dsep,ii,xn_t,yn_t,zn_t,H, HI, HD, obsx, obsy, obsz, G, d, wd,mstart_t,mref_t*0,esus_MAI,chi_target,phidMVI,MOF_MVI,alphas,betaMVI,bounds,LP,t,lp_tresh{1},lp_tresh{2} ,0,FLAG1,FLAG2,max_iterMVI);
 
     % Normalize magnetization vector
 %     esus_MVI = sqrt( sum( M.^2 , 2 ) );

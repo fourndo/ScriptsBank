@@ -399,7 +399,7 @@ while switcher ~= 3
     fprintf('Number of CGS iterations: %i\n\n',ncg);
 
     % Get next beta
-    [switcher,beta(count+1)] = cool_beta(beta(count),phi_d(count),rdm(count),target,switcher,0.25,1e-2);
+    [switcher,beta(count+1)] = cool_beta(beta(count),phi_d(count),rdm(count),target,switcher,0.75,5e-2);
 
 
     % Right log file
@@ -418,11 +418,11 @@ while switcher ~= 3
 
     model_out =  X'*invmod;
     model_out(nullcell==0) = -100;
-    save([work_dir dsep 'Tile' num2str(tileid) '_MAG3D_lplq.sus'],'-ascii','model_out')
-    write_MAG3D_TMI([work_dir dsep 'Tile' num2str(tileid) '_MAG3D_lplq.pre'],H, BI, BD, MI, MD,obsx,obsy,obsz,Gvec(G,speye(ndata),invmod),wd);
+    save([work_dir dsep 'Tile' num2str(tileid) '_MAG3D_lplq' num2str(count) '.sus'],'-ascii','model_out')
+    write_MAG3D_TMI([work_dir dsep 'Tile' num2str(tileid) '_MAG3D_lplq' num2str(count) '.pre'],H, BI, BD, MI, MD,obsx,obsy,obsz,Gvec(G,speye(ndata),invmod),wd);
 
 %     Plot3D_model_frame(xn,yn,zn,model_out);
-%     
+    
 %     axes('Position',[0.75 .5 .225 .3]);
 % 
 %    [h,line1,line2] = plotyy(1:count,phi_d,1:count,phi_m);
@@ -431,12 +431,36 @@ while switcher ~= 3
 %             ylabel('\phi_d');
 %     xlim(h(1),[0 25]);
 %     xlim(h(2),[0 25]);
+%     ylim(h(1),[0 4e+3]);
+%     ylim(h(2),[0 4e-3]);
 %     
 %     ax1 = axes('Position',[0.75 .1 .225 .3]);
-%     hist(invmod(invmod>1e-6),200)
-%     axis(ax1,[1e-6 1e-2 0 1000]);hold on
-%     plot([delta_p(count) delta_p(count)],[0 1000],'r')
-%     plot([eps_p eps_p],[0 1000],'b')
+%     
+%     [n, xout] =hist(abs(invmod),200); hold off
+%     mm = 0:delta_p(end):max(invmod);
+%     gradmm = mm./(mm.^2 + delta_p(end)^2).^(1-LP(1,1)/2);
+%     [h_plot,h1,h2] = plotyy(xout,n,mm,gradmm/max(gradmm),'bar','plot');  
+%     hold(h_plot(1),'on');
+%     hold(h_plot(2),'on');
+%     set(h2,'LineWidth',1)
+% 
+% %         ylim(h_plot(1),[0 100]);
+%     xlim(h_plot(1),[-1e-4 max(invmod)])
+%     xlim(h_plot(2),[-1e-4 max(invmod)])
+% 
+%     axis(h_plot(1),'square')
+%     axis(h_plot(2),'square')
+% %                 [n, xout] =hist(h_plot(1),abs(invmod),100);
+%     set(h1,'barwidth', 1, 'basevalue', 1,'FaceColor',[0.7 0.7 0.7],'LineWidth',0.5);
+% 
+%     plot(h_plot(2),sqrt([delta_p(end) delta_p(end)]),[0 max(n)],'r--','LineWidth',2)
+% 
+%     set(h_plot(1),'yscale','log')
+%     
+%     ylim(h_plot(1),[1 3000]);
+%     
+% %     plot([delta_p(count) delta_p(count)],[0 1000],'r')
+% %     plot([eps_p eps_p],[0 1000],'b')
 %     ylabel('Hist(m)')
 %     xlabel('m')
 %     
@@ -444,9 +468,9 @@ while switcher ~= 3
 %     im = frame2im(frame);
 %     [imind,cm] = rgb2ind(im,256);
 %     if count == 1;
-%       imwrite(imind,cm,[work_dir '\field.gif'],'gif', 'Loopcount',inf,'DelayTime',0.25);
+%       imwrite(imind,cm,[work_dir '\field.gif'],'gif', 'Loopcount',inf,'DelayTime',0.5);
 %     else
-%       imwrite(imind,cm,[work_dir '\field.gif'],'gif','WriteMode','append','DelayTime',0.25);
+%       imwrite(imind,cm,[work_dir '\field.gif'],'gif','WriteMode','append','DelayTime',0.5);
 %     end
 % 
 %     close(figure(1))

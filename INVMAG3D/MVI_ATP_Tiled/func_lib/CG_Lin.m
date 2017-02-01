@@ -1,24 +1,24 @@
 function [x,r,count]=CG_Lin(x,G, W,MOF,RHS, Proj, PreC, Patv)
 
-r= Patv*RHS - (Patv*Proj'*Gtvec(G,W,Gvec(G,W,Proj*(Patv*x))) + Patv*MOF*Patv*x);    
+r= Patv*RHS - (Patv*Proj'*Gtvec(G,W,Gvec(G,W,Proj*(Patv*x))) + Patv*MOF*Patv*x + Patv*x*1e-3 );    
 p= PreC * r;
 
 %Save sens weight to plot
 % save(['C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Nut_Cracker\Tiled_CMI\Tile1\SensW.dat'],'-ascii','p');
 
 
-s0 = p;
 
-sold = r' * s0;
 
+sold = r' * (PreC * r);
+s0 = sold;
 count=0;
 
 % normr = norm(r);
-while count < 10
+while count < 20
     
     count=count+1;
        
-    q= Patv*Proj'*Gtvec(G,W,Gvec(G,W,Proj*(Patv*p))) + Patv*MOF*Patv*p;
+    q= Patv*Proj'*Gtvec(G,W,Gvec(G,W,Proj*(Patv*p))) + Patv*MOF*Patv*p + Patv*p*1e-3;
     
     alpha=sold./(p'*q);
    
@@ -32,8 +32,9 @@ while count < 10
     
     sold=snew;
 
-    if (snew) / (norm(s0)) < 1e-4
+    if sqrt(snew / s0) < 1e-3
         
+        fprintf('Number of CG %i:', count);
         return
         
     end
@@ -49,4 +50,5 @@ while count < 10
        
 end
 
+fprintf('Number of CG %i:', count);
 % hold off

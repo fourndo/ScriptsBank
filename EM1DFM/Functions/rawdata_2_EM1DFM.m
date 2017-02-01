@@ -1,11 +1,12 @@
-function [data_out,stnxyz] = rawdata_2_EM1DFM(rawdata,freqin,radius,limits)
+function [data_out,stnxyz] = rawdata_2_EM1DFM(data,freqin,radius,limits, indx)
 % DEV ONLY
 % Temporary function to format data to GIFTool format
 % INPUT:
 % rawdata:  Matlab array for data
 % frequin:  Unique frequencies
 % radius:   Minimum distance between points. Used to filter out data.
-%
+% limits:   xmin,xmax,ymin,ymax limit extent
+% indx:     index for the following colums [x,y,dx,dz,freq1_I,freq1_Q,...]
 % OUTPUT:
 % data:     Cell array of data with format
 %
@@ -33,9 +34,9 @@ function [data_out,stnxyz] = rawdata_2_EM1DFM(rawdata,freqin,radius,limits)
 % radius = 100;
 
 %% SCRIPT STARTS HERE
-struct_in = load(rawdata);
-
-data = struct_in.data;
+% struct_in = load(rawdata);
+% 
+% data = struct_in.data;
 
 % Number of observation stations
 nstn = size(data,1);
@@ -67,36 +68,36 @@ for ii = 1 : nstn
     for jj = 1 : nfreq
         
         if jj > 1
-            tx(count,1:4)   = [8 0 -data(ii,32) 1];
+            tx(count,1:4)   = [data(ii,indx(3)) 0 -data(ii,indx(4)) 1];
         else
-            tx(count,1:4)   = [6.3 0 -data(ii,32) 1];    
+            tx(count,1:4)   = [data(ii,indx(3)) 0 -data(ii,indx(4)) 1];    
         end
         
-        rx(count,1:4)   = [0 0 -data(ii,32) 1];
+        rx(count,1:4)   = [data(ii,indx(1)) data(ii,indx(2)) -data(ii,indx(4)) 1];
         
         % Last two frequencies are co-axial (x=1), and only have inphase
-        if jj == 4 || jj == 5
-            
-            rx(count,5)     = 1;
-            tx(count,5)     = 1;
-            octype{count}   = 'i';
-            obs(count,1)    = data(ii,jj+12);
-            freq(count,1)   = freqin(jj);
-        % First three frequencies are co-planar (z=3)
-        else
+%         if jj == 4 || jj == 5
+%             
+%             rx(count,5)     = 1;
+%             tx(count,5)     = 1;
+%             octype{count}   = 'i';
+%             obs(count,1)    = data(ii,jj+12);
+%             freq(count,1)   = freqin(jj);
+%         % First three frequencies are co-planar (z=3)
+%         else
            
-            rx(count,5)= 3;
-            tx(count,5)= 3;
-            octype{count,1}  = 'b';
-            obs(count,1:2)   = [data(ii,jj*2+1) data(ii,jj*2+7)];
-            freq(count,1)         = freqin(jj);
+        rx(count,5)= 3;
+        tx(count,5)= 3;
+        octype{count,1}  = 'b';
+        obs(count,1:2)   = [data(ii,indx(5+(jj-1)*2)) data(ii,indx(5+(jj-1)*2+1))];
+        freq(count,1)         = freqin(jj);
             
-        end
+%         end
             
         
         ontype(count,1)      = 1;
         utype{count,1}       = 'v';
-        stn_num(count,1:3)      = [data(ii,25) data(ii,27) ii];
+        stn_num(count,1:3)      = [data(ii,indx(1)) data(ii,indx(2)) ii];
         
         count = count + 1;
         
@@ -105,7 +106,7 @@ for ii = 1 : nstn
     end   
     
 end
-pct = 0.05;
+pct = 0.01;
 flr_in   = 1;%0.05*std(obs(:,1));
 flr_quad = 1;%0.05*std(obs(:,2));
 
@@ -118,13 +119,11 @@ uncert(:,2) = pct*abs(obs(:,2)) + flr_quad;
 %% Filter data if radius~=0
 figure; scatter(stn_num(:,1),stn_num(:,2));title('Before sorting');hold on
 
-if radius~=0
+[~,index] = unique(stn_num(:,3),'stable');
+stnxyz = stn_num(index,:);
+mask = ones(nstn,1);
     
-    [~,index] = unique(stn_num(:,3),'stable');
-    stnxyz = stn_num(index,:);
-    mask = ones(nstn,1);
-    
-    
+if radius~=0    
     for ii = 1 : size(stnxyz,1)
         
         if mask(ii)==1
@@ -147,6 +146,10 @@ if radius~=0
 
         temp = stnxyz(:,1) >= limits(1,1) & stnxyz(:,1) <= limits(2,1) &...
             stnxyz(:,2) >= limits(1,2) & stnxyz(:,2) <= limits(2,2);
+        
+    else
+        
+        temp = ones(nstn,1);
 
     end
     

@@ -7,7 +7,7 @@ clear all
 
 addpath ..\FUNC_LIB\;
 % Project folders
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\SingleBlock\CMI';
+work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Shared\KrisDom\Osborne';
 
 inpfile = 'MAG3Cfwr.inp';
 
@@ -35,7 +35,7 @@ if isempty(topofile)==1
 %     nxn = length(xn);
 %     nyn = length(yn);
 %     topo = [reshape(Xn(1,:,:),nxn*nyn,1) reshape(Yn(1,:,:),nxn*nyn,1) reshape(Zn(1,:,:),nxn*nyn,1)+1e-8];
-    nullcell = ones(mcell,1);
+    nullcell = m_sus~=-100;
 else
     % Load topo
     topo = read_UBC_topo([work_dir '\' topofile]);
@@ -116,8 +116,8 @@ if size(mag_model,2)==2
 
 else
     
-%     % Normalize vector to make sure unity
-%     mag_model = mag_model./kron([1 1 1],sqrt(sum(mag_model.^2,2)));
+    % Normalize vector to make sure unity
+    mag_model = mag_model./kron([1 1 1],sqrt(sum(mag_model.^2,2))+1e-8);
     
     M = [spdiags(H * mag_model(:,1),0,mcell,mcell);spdiags(H * mag_model(:,2),0,mcell,mcell);spdiags(H * mag_model(:,3),0,mcell,mcell)];
 

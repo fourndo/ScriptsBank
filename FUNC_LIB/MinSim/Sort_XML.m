@@ -1,4 +1,4 @@
-function str = Sort_XML(inputfile)
+function [str,id] = Sort_XML(inputfile)
 % Function reads in an XML file from GOcad and output a cell array of
 % content.
 
@@ -18,7 +18,6 @@ while line ~=-1
     
     if isempty(regexp(line,'(<name>)','match')) == 0
         count = count + 1;
-        
         temp = regexp(line,'>\w*<','match');
         str{count} = temp{1}(2:end-1);
         
@@ -26,7 +25,8 @@ while line ~=-1
         
     if isempty(regexp(line,'(<code>)','match')) == 0 
         
-        id(count) = regexp(line,'\d*','match');
+        temp = regexp(line,'\d*','match');
+        id(count) = str2num(temp{:});
         
     end
     

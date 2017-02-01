@@ -17,7 +17,7 @@ home_dir = 'C:\\Users\\dominiquef.MIRAGEOSCIENCE\\ownCloud\\Research\\MtIsa\\Dat
 #msh_file = 'Mesh_2D.msh'
 #mod_file = 'Model_2D.con'
 DCobs_file = 'data_Z.txt'
-IPobs_file = 'ip3d_all_3D.ip'
+IPobs_file = 'ip3d_all_QC.ip'
 topo_file  = 'MIM_SRTM_Local.topo'
 dsep = '\\'
 
@@ -41,7 +41,7 @@ x = np.asarray([11000,11750,12500])
 dobs = DC.readUBC_DC3Dobs(home_dir + dsep + DCobs_file)
 DCsurvey = dobs['DCsurvey']
 
-dobs = DC.readUBC_DC3Dobs(home_dir + dsep + IPobs_file, dtype = 'IP')
+dobs = DC.readUBC_DC3Dobs(home_dir + dsep + IPobs_file, rtype = 'IP')
 IPsurvey = dobs['DCsurvey']
 
 # Assign Z-value from topo
@@ -332,15 +332,17 @@ def animate(ii):
     ax2.set_yticklabels([])
     
     ax1 = plt.subplot(3,2,1)
-    DC.plot_pseudoSection(IP2D_l,ax1,stype ='pdp', dtype = 'volt', clim = (ph.get_clim()[0],ph.get_clim()[1]), colorbar=False)
+    DC.plot_pseudoSection(IP2D_l,ax1,stype ='pdp', dtype = 'volt', clim = (ph[0].get_clim()[0],ph[0].get_clim()[1]), colorbar=False)
     ax1.set_title('Observed DP-P', fontsize=10)
     plt.xlim([xmin,xmax])
     plt.ylim([zmin,zmax])
     plt.gca().set_aspect('equal', adjustable='box')    
     ax1.set_xticklabels([])
+    z = np.linspace(np.min(ph[2]),np.max(ph[2]), 5)
+    z_label = np.linspace(20,1, 5)
     ax1.set_yticks(map(int, z))
-    ax1.set_yticklabels(map(str, map(int, z)),rotation='vertical')
-    ax1.set_ylabel('Depth (m)', fontsize=8)
+    ax1.set_yticklabels(map(str, map(int, z_label)),size=8)
+    ax1.set_ylabel('n-spacing',fontsize=8)
             
     #%% Add labels
     bbox_props = dict(boxstyle="circle,pad=0.3",fc="r", ec="k", lw=1)
@@ -413,21 +415,23 @@ def animate(ii):
     DCtemp.dobs = DCpre.dobs[obs_l==1]
     
     ax5 = plt.subplot(3,2,3)
-    DC.plot_pseudoSection(DCtemp,ax5,stype ='pdp',dtype='volt', clim = (ph.get_clim()[0],ph.get_clim()[1]), colorbar=False)
+    DC.plot_pseudoSection(DCtemp,ax5,stype ='pdp',dtype='volt', clim = (ph[0].get_clim()[0],ph[0].get_clim()[1]), colorbar=False)
     ax5.set_title('Predicted', fontsize=10)
     plt.xlim([xmin,xmax])
     plt.ylim([zmin,zmax])
     plt.gca().set_aspect('equal', adjustable='box')
     ax5.set_xticklabels([])
+    z = np.linspace(np.min(ph[2]),np.max(ph[2]), 5)
+    z_label = np.linspace(20,1, 5)
     ax5.set_yticks(map(int, z))
-    ax5.set_yticklabels(map(str, map(int, z)),rotation='vertical')
-    ax5.set_ylabel('Depth (m)', fontsize=8)
+    ax5.set_yticklabels(map(str, map(int, z_label)),size=8)
+    ax5.set_ylabel('n-spacing',fontsize=8)
     
     DCtemp = IP2D_r
     DCtemp.dobs = DCpre.dobs[obs_r==1]
     
     ax6 = plt.subplot(3,2,4)
-    DC.plot_pseudoSection(DCtemp,ax6,stype ='pdp',dtype='volt', clim = (ph.get_clim()[0],ph.get_clim()[1]), colorbar=False)
+    DC.plot_pseudoSection(DCtemp,ax6,stype ='pdp',dtype='volt', clim = (ph[0].get_clim()[0],ph[0].get_clim()[1]), colorbar=False)
     ax6.set_title('Predicted', fontsize=10)
     plt.xlim([xmin,xmax])
     plt.ylim([zmin,zmax])
@@ -437,7 +441,7 @@ def animate(ii):
     
     pos =  ax6.get_position()
     cbarax = fig.add_axes([pos.x0 + 0.325 , pos.y0 + 0.2,  pos.width*0.1, pos.height*0.5])  ## the parameters are the specified position you set
-    cb = fig.colorbar(ph,cax=cbarax, orientation="vertical", ax = ax6, ticks=np.linspace(ph.get_clim()[0],ph.get_clim()[1], 4), format="%4.1f")
+    cb = fig.colorbar(ph[0],cax=cbarax, orientation="vertical", ax = ax6, ticks=np.linspace(ph[0].get_clim()[0],ph[0].get_clim()[1], 4), format="$10^{%.1f}$")
     cb.set_label("App. Charg.",size=8)
     
     ax3 = plt.subplot(3,1,3)
@@ -465,15 +469,21 @@ def animate(ii):
     pos =  ax3.get_position()
     ax3.set_position([pos.x0 +0.025 , pos.y0,  pos.width, pos.height])    
     pos =  ax3.get_position()
-    cbarax = fig.add_axes([pos.x0 + 0.5 , pos.y0 + 0.01,  pos.width*0.075, pos.height*0.75])  ## the parameters are the specified position you set
+    cbarax = fig.add_axes([pos.x0 + 0.65 , pos.y0 + 0.01,  pos.width*0.05, pos.height*0.75])  ## the parameters are the specified position you set
     cb = fig.colorbar(ph2,cax=cbarax, orientation="vertical", ax = ax3, ticks=np.linspace(vmin,vmax, 4), format="%4.1f")
     cb.set_label("Chargeability",size=8)
     
     pos =  ax1.get_position()
-    ax1.set_position([pos.x0 +0.0275 , pos.y0,  pos.width, pos.height])
+    ax1.set_position([pos.x0 +0.03 , pos.y0,  pos.width, pos.height])
     
     pos =  ax5.get_position()
-    ax5.set_position([pos.x0 +0.0275 , pos.y0,  pos.width, pos.height])
+    ax5.set_position([pos.x0 +0.03 , pos.y0,  pos.width, pos.height])
+    
+    pos =  ax2.get_position()
+    ax2.set_position([pos.x0 -0.03 , pos.y0,  pos.width, pos.height])
+    
+    pos =  ax6.get_position()
+    ax6.set_position([pos.x0 -0.03 , pos.y0,  pos.width, pos.height])
     
     #%% Add the extra
     

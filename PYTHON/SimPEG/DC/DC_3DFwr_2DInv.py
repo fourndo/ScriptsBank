@@ -21,7 +21,7 @@
 
 #%%
 from SimPEG import *
-import SimPEG.DCIP as DC
+import SimPEG.EM.Static.DC as DC
 import pylab as plt
 from pylab import get_current_fig_manager
 from scipy.interpolate import griddata
@@ -425,10 +425,19 @@ for pp in range(2):
     
     ax = fig1.add_subplot(2,1,pp+1, aspect='equal')  
     
-    
+    if pp == 1:
+        pos =  ax.get_position() 
+        ax.set_position([pos.x0, pos.y0-.1,  pos.width, pos.height])
+        
     minv = np.reshape(minv,(mesh2d.nCy,mesh2d.nCx))
     ax.pcolor(mesh2d.vectorNx,mesh2d.vectorNy,np.log10(m2D),edgecolor="none",alpha=0.5,cmap = 'gray')
     pc = ax.pcolor(mesh2d.vectorNx,mesh2d.vectorNy,np.log10(minv),edgecolor="none",alpha=0.5)
+
+    if pp == 0:
+        
+        circle=plt.Circle((12000,135),100,color='k',fill=False, lw=3)
+        ax.add_artist(circle)
+
 #    cbar = plt.colorbar(format="$10^{%.1f}$",fraction=0.04,orientation="horizontal")
 #    cmin,cmax = cbar.get_clim()
 #    ticks = np.linspace(cmin,cmax,3)
@@ -457,12 +466,16 @@ for pp in range(2):
         
     # Second plot for the predicted apparent resistivity data
     ax2 = fig2.add_subplot(2,1,pp+1, aspect='equal')
-    
+        
     ax2.pcolor(mesh2d.vectorNx,mesh2d.vectorNy,np.log10(m2D),edgecolor="none",alpha=0.5,cmap = 'gray')
     # Add the speudo section
-    dat = DC.plot_pseudoSection(survey2D,ax2,stype=stype, clim=[-2.5,-0.5], dtype = dtype, colorbar=False)
+    dat = DC.plot_pseudoSection(survey2D,ax2,stype=stype, clim=[-2.5,-0.5], dtype = dtype)
     
+    if pp == 0:
     
+        circle=plt.Circle((12000,135),100,color='k',fill=False, lw=3)
+        ax2.add_artist(circle)
+        
     ax2.set_xlim([xmin,xmax])
     ax2.set_ylim([zmin,zmax])
     plt.show()

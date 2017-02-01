@@ -30,15 +30,16 @@ addpath .\functions
 
 %% INPUTS PARAMETERS
 % Load files
-work_dir ='C:\Users\dominiquef.MIRAGEOSCIENCE\Desktop\VoxMerge_v4';
+work_dir ='C:\Users\dominiquef.MIRAGEOSCIENCE\Documents\GIT\UBC_GIF\em_examples\geophysical_survey\FDEM';
 
+outFile = 'EM1D_iter2.dat';
 % cd(work_dir);
 
 % Maximum search radius (m), recommended x2 smallest cell size
-rangemax = 100;
+rangemax = 200;
 
 % Small constant for smoothing factor (0:max)
-delta = 2;
+delta = 5;
 
 % Number of neighbours to interpolate from
 n_interp = 9;
@@ -52,8 +53,8 @@ dsep = '\';
 % mod_file{1} = [work_dir dsep 'Inv_MOD_iter4.con'];
 % meshfile{1} = [work_dir dsep 'UBC_mesh_small_v3.msh'];
 
-mod_file{1} = [work_dir dsep 'tile1_cond_10it.con'];
-mod_file{2} = [work_dir dsep 'tile2_cond_11it_new.con'];
+mod_file{1} = [work_dir dsep 'Inv_MOD_iter2.con'];
+% mod_file{2} = [work_dir dsep 'tile2_chg_new.chg'];
 % mod_file{3} = [work_dir dsep 'Model13200.chg'];
 % mod_file{4} = [work_dir dsep 'Model13700.chg'];
 % mod_file{5} = [work_dir dsep 'Model14200.chg'];
@@ -63,8 +64,8 @@ mod_file{2} = [work_dir dsep 'tile2_cond_11it_new.con'];
 % mod_file{9} = [work_dir dsep 'Model15950.chg'];
 % mod_file{10} = [work_dir dsep 'Model16200.chg'];
 
-meshfile{1} = [work_dir dsep 'mesh_tile1.msh'];
-meshfile{2} = [work_dir dsep 'mesh_tile2_new.msh'];
+meshfile{1} = [work_dir dsep 'Mesh_4m.msh'];
+% meshfile{2} = [work_dir dsep 'mesh_tile2_new.msh'];
 % meshfile{3} = [work_dir dsep 'Mesh13200.msh'];
 % meshfile{4} = [work_dir dsep 'Mesh13700.msh'];
 % meshfile{5} = [work_dir dsep 'Mesh14200.msh'];
@@ -79,11 +80,11 @@ meshfile{2} = [work_dir dsep 'mesh_tile2_new.msh'];
 % meshfile{3}=[work_dir dsep 'rot14_Y3_20m_grid.msh'];
 
 % Specify final mesh file 
-VM_meshfile = [work_dir dsep 'mesh_core_extended.msh'];
+VM_meshfile = [work_dir dsep 'Mesh.msh'];
 
 % Define mesh transformation parameters [x0 y0 dx dy theta]
-T{1} = [459510 8167362 0 0 0];
-T{2} = [459510 8167362 0 0 0];
+T{1} = [0 0 0 0 0];
+% T{2} = [0 0 0 0 0];
 % T{3} = [313700 6074300 0 0 0];
 % T{4} = [313700 6074300 0 0 0];
 % T{5} = [313700 6074300 0 0 0];
@@ -100,8 +101,8 @@ dz = 5;
 
 % Flag for topography: 'no_topo' | 'topofile' | 'nullfile'
 % flag1 = 'no_topo';
-flag1 = 'topofile'; topofile = 'topo_NRCAN.dat';
-% flag1 = 'nullfile'; topofile = 'active.txt';
+% flag1 = 'topofile'; topofile = 'CDED.topo';
+flag1 = 'nullfile'; topofile = 'nullcell.dat';
 
 % Flag to remove padding cells from tiles
 flag2 = 'rem_pad'; % Either 'rem_pad'  | 'default'
@@ -189,11 +190,11 @@ for jj = 1 : VM_mesh(1,2)
     
         for kk = 1 : ntiles
             
-            if  VMx(ii,jj) < Xmax(kk) && VMx(ii,jj) > X0(kk) && VMy(ii,jj) < Ymax(kk) && VMy(ii,jj) > Y0(kk)
+%             if  VMx(ii,jj) < Xmax(kk) && VMx(ii,jj) > X0(kk) && VMy(ii,jj) < Ymax(kk) && VMy(ii,jj) > Y0(kk)
                
                 tile_ID(kk,ii,jj) = 1;
                 
-            end
+%             end
         end
         
     end
@@ -514,10 +515,10 @@ end
 %% Write back to file in UBC format   
 VM_model=reshape(VM_model,VM_mesh(1,3)*VM_mesh(1,2)*VM_mesh(1,1),1);
 VM_model(isnan(VM_model)) = ndv;
-filename='VOXMERGE_model.dat';
-save([work_dir '\' filename],'-ascii','VM_model');
+
+save([work_dir '\' outFile],'-ascii','VM_model');
 fprintf('Program VOXMERGE v5.1 succesfully ended\n')
-fprintf('Merged model saved: %s\\%s\n',work_dir,filename);
+fprintf('Merged model saved: %s\\%s\n',work_dir,outFile);
 
 
 

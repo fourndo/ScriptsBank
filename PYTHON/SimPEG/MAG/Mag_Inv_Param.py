@@ -5,7 +5,7 @@ Created on Wed Feb 03 21:34:50 2016
 @author: dominiquef
 """
 from SimPEG import *
-import simpegPF as PF
+import SimPEG.PF as PF
 from simpegPF import BaseMag as MAG
 from numpy.polynomial import polynomial
 
@@ -17,7 +17,7 @@ import os
 #home_dir = 'C:\\Users\\dominiquef.MIRAGEOSCIENCE\\ownCloud\\Research\\Modelling\\Synthetic\\Parametric_plane'
 #home_dir = 'C:\\LC\\Private\\dominiquef\\Projects\\4414_Minsim\\Modeling\\MAG\\Lalor'
 #home_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Nate\Modeling'
-home_dir = 'C:\\Users\\dominiquef.MIRAGEOSCIENCE\\Google Drive\\DevDomNateDBE\\DomNate\\Fault_synthetic\\NE'
+home_dir = 'C:\\Users\\dominiquef.MIRAGEOSCIENCE\\Documents\\GIT\\SimPEG\\simpegpf\\simpegPF\\Dev\\MAG'
 #home_dir = '.\\'
 plt.close('all')
 
@@ -32,7 +32,7 @@ beta_in = 1e+0
 ndv = -100
 #%%
 # Read input file
-[mshfile, obsfile, topofile, m0_val, mref, magfile, wgtfile, chi, alphas, bounds, lpnorms] = PF.Magnetics.read_MAGinv_inp(home_dir + dsep + inpfile)
+driver = PF.MagneticsDriver.MagneticsDriver_Inv(home_dir + inpfile)
 
 #obsfile = 'Synthetic.obs'
 #obsfile ='Lalor_rtp_2pc_10nT_RegRem.obs'
@@ -42,13 +42,13 @@ ndv = -100
 dx = 50.
 
 # Load mesh file
-mesh = Mesh.TensorMesh.readUBC(mshfile)
+mesh = driver.mesh
 z0 = mesh.x0[2] + np.sum(mesh.hz)
 #mesh = Utils.meshutils.readUBCTensorMesh(mshfile)
 
 #V2D = polynomial.polyvander2d(mesh.vectorCCx,mesh.vectorCCy,[1,1])
 # Load in observation file
-survey = PF.Magnetics.readUBCmagObs(obsfile)
+survey = driver.survey
 rxLoc_full = survey.srcField.rxList[0].locs
 data = survey.dobs
 wd = survey.std

@@ -4,7 +4,7 @@ function [m_con1D, m_misfit, phid, phim, beta,pred,bHSpace] = run_EM1DTM_inv(wor
 % ORIGINAL CODE FROM: SEOGI KANG
 % ADAPTED BY: Dom Fournier (2014-03-21)
 % 
-root_dir = pwd; % get the absolute path of this file
+home_dir = pwd; % get the absolute path of this file
 % oldFolder = cd(thisfile_path); % get into modeling directory
 
 % internal parameters
@@ -50,12 +50,14 @@ phi     = zeros(nstn,1);
 
 %% Run all the stations in a loop
 % pooljob = parpool(3);
+inv_dir = [work_dir '\Workspace'];
+mkdir(inv_dir);
+% system(['copy ' work_dir '\em1dtm.wf ' inv_dir]);
+    
 for ii = 1 : nstn
     
     % Change work_dir to workspace
-    inv_dir = [work_dir '\Workspace' num2str(ii)];
-    mkdir(inv_dir);
-    system(['copy ' work_dir '\em1dtm.wf ' inv_dir]);
+    
     
     data_sub= [];
     for jj = 1 : size(data,2)
@@ -166,10 +168,11 @@ for ii = 1 : nstn
     fclose(fid2);
 
     %% run code
+    cd(inv_dir);
     fprintf('Sounding %i / %i\n',ii,nstn);
-    %cd(inv_dir);
-    [status,cmdout] = system(['em1dtm ' inv_dir '\em1dtm.in']);
-    %cd(root_dir);
+    [status,cmdout] = system('em1dtm');
+
+    cd(home_dir);
     
     
     fid = fopen([inv_dir,'\em1dtm.con'],'r');
@@ -239,7 +242,7 @@ for ii = 1 : nstn
 
     m_misfit(:,Q(ii,1),Q(ii,2)) =  phid(ii);
 %     cd(oldFolder); % get beck to previous directory
-    system(['rmdir /S /Q ' inv_dir]);
+%     system(['rmdir /S /Q ' inv_dir]);
 end
 % delete(pooljob);
 m_con1D = reshape(m_con1D,nz*nx*ny,1);

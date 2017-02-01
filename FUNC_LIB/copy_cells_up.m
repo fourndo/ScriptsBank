@@ -8,14 +8,14 @@ clear all
 close all
 
 %% USER INPUT
-modelfile   = 'MAG3D_TMI_lplq.sus';
-work_dir    = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Block_Gaussian_topo';
-meshfile    = 'Mesh_10m.msh';
+modelfile   = 'VPmg_Homo_Round1.den';
+work_dir    = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\GRAV\Constrained_VPmg';
+meshfile    = 'Mesh_20m.msh';
 
 % Specify the no-data value in the original model (-100:Mag , 1e-8:Cond)
-ndv = -100;
+ndv = -99999;
 
-out_file    = 'Model_FullSpace.dat';
+out_file    = 'VPmg_Homo_R1_FullSpace.dat';
 %% SCRIPT STARTS HERE
 mesh=get_UBC_mesh([work_dir '\' meshfile]);
 
@@ -37,9 +37,9 @@ for ii = 1:nx;
        airc = m(:,ii,jj)~=ndv;
        
        % If there is no ground cells, then leave it empty
-       if isempty(airc)
+       if sum(airc)==0
            
-           m(:,ii,jj) = ndv;
+           m(:,ii,jj) = 0;
            
        % Otherwise copy the last cell up      
        else 

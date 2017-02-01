@@ -7,7 +7,7 @@ close all
 
 addpath '.\Functions';
 
-work_dir    = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\VTEM';
+work_dir    = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Documents\GIT\UBC_GIF\em_examples\geophysical_survey\TDEM';
 
 dsep = '\';
 
@@ -73,7 +73,15 @@ end
 
 
 %% Load data in UBC format
-data = read_EM1DTM_obs([work_dir dsep obsfile]);
+
+[trx,d] = read_E3D_obs([work_dir dsep obsfile]);
+data = convert_E3D_2_EM1D(trx,d,topo);
+write_EM1DTM_obs([work_dir dsep 'EM1DTM.obs'],data,[])
+
+% data = read_EM1DTM_obs([work_dir dsep obsfile]);
+
+tc = data{5}{1}{1}{5}(:,1);
+
 %load([work_dir '\dtbs'])
 %data = dtbs; clear dtbs
 
@@ -95,7 +103,7 @@ beta = ones(nstn,1)*beta;
 % indx = dfile(:,3) > 0;
 % data = dfile(indx,4:end);
 % xyz = dfile(indx,1:3);
-tc = [120 141 167 198 234 281 339 406 484 573 682 818 974 1151 1370 1641 1953 2307 2745 3286 3911 4620 5495 6578]*1e-6;
+% tc = [120 141 167 198 234 281 339 406 484 573 682 818 974 1151 1370 1641 1953 2307 2745 3286 3911 4620 5495 6578]*1e-6;
 % % 
 % % % % Number of time channels to skip
 % % % early_tc = 0;
@@ -337,9 +345,9 @@ ii = ii - 1;
 
 % Load EM1D obs file
 %tc = d{1}{1}(:,4);
-convert_EM1D_2_E3D_pred([work_dir dsep obsfile],tc,[work_dir dsep 'Obs1D_2_E3Dpre.pre']);
+convert_EM1D_2_E3D_pred([work_dir dsep 'EM1DTM.obs'],tc,[work_dir dsep 'Obs1D_2_E3Dpre.pre']);
 
-convert_EM1D_2_E3D_pred([work_dir dsep 'Inv_PRED_iter' num2str(ii-1) '.pre'],tc,[work_dir dsep 'Pre1D_2_E3Dpre.pre']); 
+convert_EM1D_2_E3D_pred([work_dir dsep 'Inv_PRED_iter' num2str(10) '.pre'],tc,[work_dir dsep 'Pre1D_2_E3Dpre.pre']); 
 
 %% Plot time channels
 dobs = load([work_dir dsep 'Obs1D_2_E3Dpre.pre']);
@@ -416,48 +424,48 @@ for ii = 1 : ntimes
 end
 %% Plot obs vs pred interpolated in 2D
 
-% for ii = 1 : 5 : ntc-2
-%     set(figure, 'Position', [0 0 2000 1000])
-%     if ii == 1
-%         % Set coordinates for plot
-%         xmin = min(xyz(:,1));
-%         xmax = max(xyz(:,1));
-% 
-%         ymin = min(xyz(:,2));
-%         ymax = max(xyz(:,2));
-% 
-%         dx = 10;
-%         dy = 10;
-% 
-%         x = xmin:dx:xmax;
-%         y = ymin:dy:ymax;
-%         [Y,X] = ndgrid(y,x);
-% 
-%         Y = flipud(Y);
-%     end
-%     
-%     F_d = TriScatteredInterp(xyz(:,2),xyz(:,1),log10(data(:,ii)),'linear');
-%     F_p = TriScatteredInterp(xyz(:,2),xyz(:,1),log10(-pred(:,ii)),'linear');
-%     
-%     data_2D = F_d(Y,X);
-%     pred_2D = F_p(Y,X);
-%     
-%     subplot(1,3,1)
-%     imagesc(y,x,data_2D);
-%     title(['\bf LOG Observed Time: ' num2str(tc(ii))]);
-% %     caxis([min(data(:,ii)) max(data(:,ii))]);
-%     colorbar
-%     
-%     subplot(1,3,2)
-%     imagesc(y,x,pred_2D);
-%     title(['\bf LOG Predicted : ' num2str(tc(ii))]);
-% %     caxis([min(data(:,ii)) max(data(:,ii))]);
-%     colorbar
-%     
-%     subplot(1,3,3)
-%     imagesc(y,x,data_2D-pred_2D);
-%     title(['\bf LOG Residual Time: ' num2str(tc(ii))]);
-% %     caxis([min(data(:,ii)) max(data(:,ii))]);
-%     colorbar
-%     
-% end   
+for ii = 1 : 5 : ntc-2
+    set(figure, 'Position', [0 0 2000 1000])
+    if ii == 1
+        % Set coordinates for plot
+        xmin = min(xyz(:,1));
+        xmax = max(xyz(:,1));
+
+        ymin = min(xyz(:,2));
+        ymax = max(xyz(:,2));
+
+        dx = 10;
+        dy = 10;
+
+        x = xmin:dx:xmax;
+        y = ymin:dy:ymax;
+        [Y,X] = ndgrid(y,x);
+
+        Y = flipud(Y);
+    end
+    
+    F_d = TriScatteredInterp(xyz(:,2),xyz(:,1),log10(data(:,ii)),'linear');
+    F_p = TriScatteredInterp(xyz(:,2),xyz(:,1),log10(-pred(:,ii)),'linear');
+    
+    data_2D = F_d(Y,X);
+    pred_2D = F_p(Y,X);
+    
+    subplot(1,3,1)
+    imagesc(y,x,data_2D);
+    title(['\bf LOG Observed Time: ' num2str(tc(ii))]);
+%     caxis([min(data(:,ii)) max(data(:,ii))]);
+    colorbar
+    
+    subplot(1,3,2)
+    imagesc(y,x,pred_2D);
+    title(['\bf LOG Predicted : ' num2str(tc(ii))]);
+%     caxis([min(data(:,ii)) max(data(:,ii))]);
+    colorbar
+    
+    subplot(1,3,3)
+    imagesc(y,x,data_2D-pred_2D);
+    title(['\bf LOG Residual Time: ' num2str(tc(ii))]);
+%     caxis([min(data(:,ii)) max(data(:,ii))]);
+    colorbar
+    
+end   

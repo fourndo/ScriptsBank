@@ -23,7 +23,10 @@ addpath 'func_lib';
 dsep = '\';
 % Project folders
 % work_dir = '/tera_raid/dfournier/TKC/Mag/DIGHEM_lp';
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Nut_Cracker\Tiled_MAG3D';
+% work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Dipping_Prism_Li';
+% work_dir = 'C:\LC\Private\dominiquef\Projects\Gervais_Solado\Processing\Inversion';
+% work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Nut_Cracker\Tiled_MAG3D';
+work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Triple_Block_lined';
 out_dir = [work_dir dsep 'ALL_Tiles'];
 mkdir(out_dir);
 
