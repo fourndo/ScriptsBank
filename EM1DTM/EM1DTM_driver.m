@@ -7,7 +7,7 @@ close all
 
 addpath '.\Functions';
 
-work_dir    = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Documents\GIT\UBC_GIF\em_examples\geophysical_survey\TDEM';
+work_dir    = 'C:\LC\Private\dominiquef\Projects\LivingstonCreek_VTEM\Modeling\VTEM';
 
 dsep = '\';
 
@@ -74,11 +74,11 @@ end
 
 %% Load data in UBC format
 
-[trx,d] = read_E3D_obs([work_dir dsep obsfile]);
-data = convert_E3D_2_EM1D(trx,d,topo);
-write_EM1DTM_obs([work_dir dsep 'EM1DTM.obs'],data,[])
+% [trx,d] = read_E3D_obs([work_dir dsep obsfile]);
+% data = convert_E3D_2_EM1D(trx,d,[]);
+% write_EM1DTM_obs([work_dir dsep 'EM1DTM.obs'],data,[])
 
-% data = read_EM1DTM_obs([work_dir dsep obsfile]);
+data = read_EM1DTM_obs([work_dir dsep obsfile]);
 
 tc = data{5}{1}{1}{5}(:,1);
 
@@ -89,8 +89,19 @@ nstn = size(data{1},1);
 % Create beta vector
 beta = ones(nstn,1)*beta;
 
-
-
+% for ii = 1:size(data{1},1)
+% if isempty(data{5}{ii})
+% indx(ii)=0;
+% end
+% end
+% for ii = 1 : 5
+% data{ii} = data{ii}(indx==1);
+% end
+%% Change Uncertainties
+% uncert = 1./((1:length(tc)).^2) * 1e-6;
+for ii = 1:size(data{1},1)
+    data{5}{ii}{1}{7}(:,2) = abs(data{5}{ii}{1}{7}(:,1))*0.1 + 1e-10;
+end
 %% VTEM SURVEY
 % NEED TO WRITE THE I/O FOR TIME-DOMAINE DATA
 % load([work_dir '\VTEM_data_DF'])
@@ -101,23 +112,33 @@ beta = ones(nstn,1)*beta;
 % Load XYZ data
 % dfile = load([work_dir dsep obsfile]);
 % indx = dfile(:,3) > 0;
-% data = dfile(indx,4:end);
+% data = dfile(indx,5:end);
 % xyz = dfile(indx,1:3);
-% tc = [120 141 167 198 234 281 339 406 484 573 682 818 974 1151 1370 1641 1953 2307 2745 3286 3911 4620 5495 6578]*1e-6;
-% % 
-% % % % Number of time channels to skip
-% % % early_tc = 0;
-% % % late_tc = 1;
+% % tc = [120 141 167 198 234 281 339 406 484 573 682 818 974 1151 1370 1641 1953 2307 2745 3286 3911 4620 5495 6578]*1e-6;
+% tc = [45 48 55 63 73 83 96 110 126 145 167 192 220 253 290 333 383 440 505 580 667 766 880 1010 1161 1333 1531 1760 2021 2323 2667 3063 3521 4042 4641 5333 6125 7036 8083]*1e-6;
+%  
+% % % % % Number of time channels to skip
+% % % % early_tc = 0;
+% % % % late_tc = 1;
 % radius = 13;
 % 
 % pT = 1e-12;
 % A = pi*radius^2;
 % data = (data)*pT*A;
 % 
-% floor = repmat(std(data),size(data,1),1);
+% floor = zeros(size(data,2),1);
+% 
+% 
+% data(data<-1) = NaN;
+% 
+% for ii = 1 : size(data,2)
+%     
+%     floor(ii) = std(data(isnan(data(:,ii))==0,ii));
+%     
+% end
 % pc_err= 0.05;
-% write_h3d_obs([work_dir dsep 'VTEM_FLIN_h3d.dat'],data,xyz,tc,radius,floor,pc_err)
-
+% write_h3d_obs([work_dir dsep 'VTEM_LC_h3d.dat'],data,xyz,tc,radius,floor,pc_err)
+% 
 
 %% Load E3D-TD data
 % [trx,d] = read_E3D_obs([work_dir dsep 'VTEM_FLIN_h3d.dat']);
@@ -166,9 +187,9 @@ beta = ones(nstn,1)*beta;
 nstn = size(data{1},1);
 xyz = [data{1}{:}];
 xyz = reshape(xyz,3,nstn)';
-% 
-% [data,xyz] = sort_EM1DTM(data,xyz,[],20,[],[]);
-% 
+
+[data,xyz] = sort_EM1DTM(data,xyz,[],250,[],[]);
+
 % %% Get line numbers
 % lineID = xy_2_lineID(xyz(:,1),xyz(:,2));
 % line = unique(lineID);
@@ -293,7 +314,7 @@ max_iter = 15;
 
 % set(figure, 'Position', [25 50 1800 900])
 
-while  phid_all(end) < phid_all(end-1) || ii < 10%ii <= max_iter 
+while  phid_all(end) < phid_all(end-1) || ii < 3%ii <= max_iter 
 
     % Leave cell weights to unity (can be manually changed)
     w=ones(mcell,1);
@@ -304,7 +325,7 @@ while  phid_all(end) < phid_all(end-1) || ii < 10%ii <= max_iter
     m_con = interp1D_to_3D(m_con1D,P,W,indx);
     m_misfit = interp1D_to_3D(m_misfit,P,W,indx);
     
-    con_ref = m_con;
+    %con_ref = m_con;
     
     if HSflag == 0 && ii==1
         
@@ -314,8 +335,9 @@ while  phid_all(end) < phid_all(end-1) || ii < 10%ii <= max_iter
     end
 
     % Apply bounds
-%     m_con(m_con<=1e-5) = 1e-5;
-
+    m_con(m_con<=bounds(1)) = bounds(1);
+    m_con(m_con>=bounds(2)) = bounds(2);
+    
     m_con(nullcell==0) = 1e-8;
     m_con(m_con==0) = 1e-8;
 
@@ -345,9 +367,9 @@ ii = ii - 1;
 
 % Load EM1D obs file
 %tc = d{1}{1}(:,4);
-convert_EM1D_2_E3D_pred([work_dir dsep 'EM1DTM.obs'],tc,[work_dir dsep 'Obs1D_2_E3Dpre.pre']);
+convert_EM1D_2_E3D_pred([work_dir dsep obsfile],tc,[work_dir dsep 'Obs1D_2_E3Dpre.pre']);
 
-convert_EM1D_2_E3D_pred([work_dir dsep 'Inv_PRED_iter' num2str(10) '.pre'],tc,[work_dir dsep 'Pre1D_2_E3Dpre.pre']); 
+convert_EM1D_2_E3D_pred([work_dir dsep 'Inv_PRED_iter' num2str(5) '.pre'],tc,[work_dir dsep 'Pre1D_2_E3Dpre.pre']); 
 
 %% Plot time channels
 dobs = load([work_dir dsep 'Obs1D_2_E3Dpre.pre']);
@@ -388,7 +410,7 @@ Y = flipud(Y);
 
 
 
-for ii = 1 : ntimes
+for ii = 1 : length(tc)
     
     subdata = dobs( dobs(:,4) == tc(index(ii)),: );
     subpred = dpre( dpre(:,4) == tc(index(ii)),: );
@@ -401,26 +423,42 @@ for ii = 1 : ntimes
 %     data_2D = F_o(Y,X);
 %     pred_2D = F_p(Y,X);
     
-    data_2D = griddata(subdata(:,2),subdata(:,1),((subdata(:,end))),Y,X);
-    pred_2D = griddata(subpred(:,2),subpred(:,1),((subpred(:,end))),Y,X);
+    data_2D = griddata(subdata(:,2),subdata(:,1),log10(abs(subdata(:,end))),Y,X);
+    pred_2D = griddata(subpred(:,2),subpred(:,1),log10(abs(subpred(:,end))),Y,X);
     
-    subplot(2,ntimes,ii)
+    subplot(1,2,1)
     h = imagesc(x,y,data_2D);
     set(h,'alphadata',~isnan(data_2D));
     colormap(jet)
     title(['\bf T:' num2str(tc(index(ii)))])
-    caxis([min(data_2D(:)) max(data_2D(:))])
+    caxis([-11,-5])
+    colorbar;
     axis equal tight
     set(gca,'YTickLabel',[])
     
-    subplot(2,ntimes,ii+ntimes)
+    subplot(1,2,2)
     h = imagesc(x,y,pred_2D);
     set(h,'alphadata',~isnan(pred_2D));
     colormap(jet)
     title(['\bf Pred:' num2str(tc(index(ii)))])
-    caxis([min(data_2D(:)) max(data_2D(:))])
+    caxis([-11,-5])
+    colorbar;
     axis equal tight
     set(gca,'YTickLabel',[])
+    
+        
+
+
+    frame = getframe(figure(1));
+    im = frame2im(frame);
+    [imind,cm] = rgb2ind(im,256);
+    if ii == 1;
+      imwrite(imind,cm,[work_dir '\ObsvsPred.gif'],'gif', 'Loopcount',inf,'DelayTime',1);
+    else
+      imwrite(imind,cm,[work_dir '\ObsvsPred.gif'],'gif','WriteMode','append','DelayTime',1);
+    end
+
+    
 end
 %% Plot obs vs pred interpolated in 2D
 

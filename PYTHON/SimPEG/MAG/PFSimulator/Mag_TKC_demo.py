@@ -1,6 +1,6 @@
-import Mag as MAG
-import simpegPF as PF
-import simpegCoordUtils as Utils
+import Simulator as Sim
+import Mag
+import Utils
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -19,7 +19,7 @@ header = ["X","Y","Z","Analytical Signal","1th Vertical Derivative","Total Horiz
 # X,Y,Z,Analytic_Signal,HD_filtered,Upward_100m,VD_filtered,magnetic,magnetic_1st_order_trend,magnetic_trended
 
 clims = np.asarray([[0,0],[-2,6],[-75,300],[-5,10],[-5,75],[-10,75],[-75,300]])
-         
+
 inc, dec = 83.8, 25.4
 obsloc = np.loadtxt(work_dir +'\DIGHEM_Loc.dat');
 
@@ -63,23 +63,23 @@ susc = 0.05
 ax1.axis('equal')
 ax1.set_title(irt+' '+comp)
 # Define the problem interactively
-p = MAG.definePrism()
+p = Sim.definePrism()
 p.dx, p.dy, p.dz = dx, dy, dz
 p.z0 = -depth
 p.pinc, p.pdec = pinc, pdec
 
-srvy = PF.survey()
+srvy = Mag.survey()
 srvy.rx_h, srvy.npts2D, srvy.xylim = rx_h, npts2D, xylim
 #srvy._xr, srvy._yr = xloc, yloc
 
 # Create problem
-prob = PF.problem()
+prob = Mag.problem()
 prob.prism = p
 prob.survey = srvy
 
 X, Y = np.meshgrid(prob.survey.xr, prob.survey.yr)
 
-x, y = MAG.linefun(x1, x2, y1, y2, prob.survey.npts2D)
+x, y = Sim.linefun(x1, x2, y1, y2, prob.survey.npts2D)
 xyz_line = np.c_[x, y, np.ones_like(x)*prob.survey.rx_h]
 
 
@@ -99,13 +99,13 @@ clim = np.asarray([-75,300])
 #if ii<19:
 #    dec = 0
 #    inc = -90. + ii*10.
-#    
+#
 #else:
 #
 #    dec = 90.
 #    inc = 90. - (ii-19)*10.
-    
-MAG.plotObj3D(p, rx_h, View_elev, View_azim, npts2D, xylim, profile="X", fig= fig, axs = ax1, plotSurvey=False)
+
+Sim.plotObj3D(p, rx_h, View_elev, View_azim, npts2D, xylim, profile="X", fig= fig, axs = ax1, plotSurvey=False)
 plt.show()
 block_xyz = np.asarray([[-.2, -.2, .2, .2, 0],
                        [-.25, -.25, -.25, -.25, 0.5],
@@ -146,7 +146,7 @@ ax1.add_collection3d(Poly3DCollection([zip(xyz[[0, 3, 4], 0]-1,
 
 
 # Create problem
-prob = PF.problem()
+prob = Mag.problem()
 prob.prism = p
 prob.survey = srvy
 
@@ -179,8 +179,8 @@ im1 = ax1.contourf(X,Y,np.reshape(out, (X.shape)).T,zdir='z',offset=rx_h-0.1, cl
 ax1.set_zlim(-xylim,0)
 
 pos = ax1.get_position()
-ax3 = fig.add_axes([pos.x0 + 0.5, pos.y0+0.45,  pos.width*0.6, pos.height*0.5]) 
-    
+ax3 = fig.add_axes([pos.x0 + 0.5, pos.y0+0.45,  pos.width*0.6, pos.height*0.5])
+
 im7 = ax3.contourf(xloc,yloc,np.reshape(data, (xloc.shape[0],yloc.shape[0])).T,zdir='z',offset=rx_h-0.1, alpha=0.75, clim=clim, vmin=clim[0],vmax=clim[1])
 ax3.scatter(xin,yin,color='k')
 ax3.plot(xin,yin,'k--')
@@ -195,8 +195,8 @@ ax3.set_xticklabels(map(str, map(int, xpos)),size=12)
 im5 = ax1.text(-.5,0,-4,'I: ' + str(inc) + ' D: ' + str(dec), horizontalalignment='left')
 
 # Create problem
-prob1D = PF.problem()
-srvy1D = PF.survey()
+prob1D = Mag.problem()
+srvy1D = Mag.survey()
 srvy1D._rxLoc = xyz_line
 
 prob1D.prism = prob.prism

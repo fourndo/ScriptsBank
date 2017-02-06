@@ -1,4 +1,4 @@
-function write_h3d_obs(outfile,data,xyz,tc,radius,uncert,pc_err)
+function write_h3d_obs(outfile,data,xyz,tc,radius,floor,pc_err)
 % Function writes observed data from VTEM 1D obs
 
 ndv = 99999;
@@ -36,7 +36,7 @@ for ii = 1 : ndata
 %                 Atlas.dBy(index(ii),time_out(jj))^2 +...
 %                 Atlas.dBz(index(ii),time_out(jj))^2 )^ 0.5;
             
-            err_dBz = abs(data(ii,sub_tc(jj)))*pc_err + pc_err*uncert(ii,sub_tc(jj));
+            err_dBz = abs(data(ii,sub_tc(jj)))*pc_err + pc_err*floor(sub_tc(jj));
 
             fprintf(fid,'%12.3f %12.3f %12.3f %12.8e %i %i %i %i %i %i %i %i %i %i %i %i %12.8e %12.8e %12.8e %12.8e %12.8e %12.8e ',...
                 xyz(ii,1),xyz(ii,2),xyz(ii,3),tc(sub_tc(jj)),...

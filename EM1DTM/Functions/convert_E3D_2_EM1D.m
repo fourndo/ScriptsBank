@@ -49,7 +49,7 @@ for tx = 1:nsnds
         
     else
         
-         data{1}{tx,1}  = [trx{tx}(1:2) 0.0];    % X,Y,Z coordinate of transmiters
+         data{1}{tx,1}  = [trx{tx}(1:2) -trx{tx}(3)];    % X,Y,Z coordinate of transmiters
          
     end
     % Generate loop segments
@@ -77,7 +77,7 @@ for tx = 1:nsnds
             data{5}{tx,1}{rx}{2}    = [trx{tx}(1:2)-d{tx}{rx}(1,1:2) ztopo-d{tx}{rx}(1,3)]; % receivers [mom_r, x, y, -dz]
         else
             
-            data{5}{tx,1}{rx}{2}    = [trx{tx}(1:2)-d{tx}{rx}(1,1:2) 0]; % receivers [mom_r, x, y, -dz]
+            data{5}{tx,1}{rx}{2}    = [trx{tx}(1:2)-d{tx}{rx}(1,1:2) -d{tx}{rx}(1,3)]; % receivers [mom_r, x, y, -dz]
             
         end
             

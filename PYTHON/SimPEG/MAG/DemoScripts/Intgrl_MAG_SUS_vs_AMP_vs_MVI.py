@@ -191,8 +191,8 @@ invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
 betaest = Directives.BetaEstimate_ByEig()
 
 # Specify the sparse norms
-IRLS = Directives.Update_IRLS(norms=([2, 2, 2, 2]),
-                              eps=(1e-3, 1e-3), f_min_change=1e-3,
+IRLS = Directives.Update_IRLS(norms=([0, 1, 1, 1]),
+                              eps=None, f_min_change=1e-3,
                               minGNiter=3,
                               chifact = .25)
 
@@ -259,8 +259,46 @@ inv = Inversion.BaseInversion(invProb,
                                                   
 mrec_MVI = inv.run(np.ones(3*len(actv))*1e-4)
 
-#%% # RUN MVI-S 
 beta = invProb.beta*2.
+
+#%% # RUN CMI WITH LP # #
+# Create rescaled weigths
+mamp = (mrec_MAI[actv]/mrec_MAI[actv].max() + 1e-1)**-1.
+
+# Sitch the MVI problem back to cartesian
+# Create the forward model operator
+prob = PF.Magnetics.MagneticVector(mesh, chiMap=idenMap,
+                                     actInd=actv)
+survey.pair(prob)
+
+reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap, nSpace=3)
+wr = np.sum(prob.G**2., axis=0)**0.5
+wr = (wr/np.max(wr))*np.r_[mamp, mamp, mamp]
+reg.cell_weights = wr
+reg.mref = np.zeros(3*nC)
+
+# Data misfit function
+dmis = DataMisfit.l2_DataMisfit(survey)
+dmis.Wd = 1./survey.std
+
+# Add directives to the inversion
+opt = Optimization.ProjectedGNCG(maxIter=30, lower=-10., upper=10.,
+                                 maxIterCG=20, tolCG=1e-3)
+
+invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
+betaest = Directives.BetaEstimate_ByEig()
+
+betaCool = Directives.BetaSchedule(coolingFactor=2., coolingRate=1)
+
+update_Jacobi = Directives.Update_lin_PreCond()
+targetMisfit = Directives.TargetMisfit()
+
+inv = Inversion.BaseInversion(invProb,
+                              directiveList=[betaest, update_Jacobi, betaCool, targetMisfit])
+
+mrec_CMI = inv.run(np.ones(3*len(actv))*1e-4)
+
+#%% # RUN MVI-S 
 
 # # STEP 3: Finish inversion with spherical formulation
 mstart = PF.Magnetics.xyz2atp(mrec_MVI)
@@ -290,7 +328,7 @@ invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
 #betaest = Directives.BetaEstimate_ByEig()
 
 # Here is where the norms are applied
-IRLS = Directives.Update_IRLS(norms=([1.5, 2, 2, 2]),
+IRLS = Directives.Update_IRLS(norms=([0, 1, 1, 1]),
                               eps=None, f_min_change=1e-4,
                               minGNiter=3, beta_tol=1e-2,
                               coolingRate=3)
@@ -305,39 +343,7 @@ inv = Inversion.BaseInversion(invProb,
 
 mrec_MVI_S = inv.run(mstart)
 mrec_MVI_S = PF.Magnetics.atp2xyz(mrec_MVI_S)
-#%% # RUN CMI WITH LP # #
-# Create rescaled weigths
-mamp = (mrec_MAI[actv]/mrec_MAI[actv].max() + 1e-2)**-1.
 
-# Sitch the MVI problem back to cartesian
-prob.ptype = 'Cartesian'
-
-reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap, nSpace=3)
-wr = np.sum(prob.G**2., axis=0)**0.5
-wr = (wr/np.max(wr))*np.r_[mamp, mamp, mamp]
-reg.cell_weights = wr
-reg.mref = np.zeros(3*nC)
-
-# Data misfit function
-dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.Wd = 1./survey.std
-
-# Add directives to the inversion
-opt = Optimization.ProjectedGNCG(maxIter=30, lower=-10., upper=10.,
-                                 maxIterCG=20, tolCG=1e-3)
-
-invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
-betaest = Directives.BetaEstimate_ByEig()
-
-betaCool = Directives.BetaSchedule(coolingFactor=2., coolingRate=1)
-
-update_Jacobi = Directives.Update_lin_PreCond()
-targetMisfit = Directives.TargetMisfit()
-
-inv = Inversion.BaseInversion(invProb,
-                              directiveList=[betaest, update_Jacobi, betaCool, targetMisfit])
-
-mrec_CMI = inv.run(np.ones(3*len(actv))*1e-4)
 
 #m_l2 = actvMap * reg.l2model[0:nC]
 #m_l2[m_l2==-100] = np.nan

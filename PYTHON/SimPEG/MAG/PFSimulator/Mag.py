@@ -1,7 +1,7 @@
 from scipy.constants import mu_0
 import re
 import numpy as np
-import simpegCoordUtils as Utils
+import Utils
 
 
 class survey(object):

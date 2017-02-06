@@ -1,2 +1,2 @@
-cd C:\Users\dominiquef.MIRAGEOSCIENCE\Downloads
-cs2cs -f %%.6f +init=epsg:4326 +to +init=epsg:32754 Rec2011_020_110706_LatLon_QSL.txt> Rec2011_020_110706_UTM_QSL.txt
+cd C:\LC\Private\dominiquef\Projects\LivingstonCreek_VTEM\Data
+cs2cs -f %%.2f +init=epsg:4617 +to +init=epsg:32608 LatLon.txt> LatLon_2_UTM.txt
