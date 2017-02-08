@@ -100,7 +100,7 @@ if dType == 'DC':
              lines = sfile.readlines()
              # do the replacement in the second line.
              # (remember that arrays are zero indexed)
-             lines[2]=re.sub("E\+0210000",'E+02 10000',lines[2])
+             lines[2]=re.sub("E\+0212100",'E+02 12100',lines[2])
              tfile.writelines(lines)
 
     print "DONE"

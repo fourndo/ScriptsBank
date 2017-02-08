@@ -23,11 +23,11 @@ import re
 
 work_dir = 'C:\\LC\\Private\\dominiquef\\Projects\\4414_Minsim\\Modeling\\Forward\\'
 
-out_dir = 'C:\\LC\\Private\\dominiquef\\Projects\\4414_Minsim\\Modeling\\Forward\\Compilation\\TEM'
+out_dir = 'C:\\LC\\Private\\dominiquef\\Projects\\4414_Minsim\\Modeling\\Forward\\Compilation\\DC\\'
 
 local_dir = {'MAG':'FWR_MAG\\Complex\\',
              'Gz':'FWR_Gz\\Ground\\Complex\\',
-             'TDEM':'FWR_TDEM\\OUT_DIR\\',
+             'TDEM':'FWR_TDEM\\OUT_DIR\\Grid65p5\\',
              'DC': '\\FWR_DC\\clean',
              'GDEM':'FWR_GTEM\\OUT_DIR\\',
              'Gxx':'FWR_GG\Simple\FWR_Gxx\\',
@@ -43,7 +43,7 @@ meshfile = 'C:\\LC\\Private\\dominiquef\\Projects\\4414_Minsim\\Modeling\\Forwar
 mesh = Mesh.TensorMesh.readUBC(meshfile)
 
 ore = np.loadtxt(work_dir + 'Ore_Lenses.xyz')
-dtype = 'TDEM'
+dtype = 'DC'
 
 outfile = 'Airborne_TDEM.dat'
 #outfile = 'Ground_'+ dtype + '_Complex.dat'

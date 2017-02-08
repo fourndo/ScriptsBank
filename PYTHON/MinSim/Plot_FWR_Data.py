@@ -298,7 +298,7 @@ if dType == 'TDEM':
     
     
     # Plot
-    fig = plt.figure(figsize=(6,8))
+    fig = plt.figure(figsize=(8,12))
     ax1 = plt.subplot()
 
     def animate(ii):
@@ -311,7 +311,7 @@ if dType == 'TDEM':
 
         ax1 = plt.subplot()
         plt.contourf(gCx,gCy,np.log10(dgrid),100)
-        plt.scatter(xy[:,0], xy[:,1], c='k')
+        #plt.scatter(xy[:,0], xy[:,1], c='k')
         ax1.set_xticks(np.linspace(xy[:,0].min(),xy[:,0].max(),3))
         ax1.set_yticks(np.linspace(xy[:,1].min(),xy[:,1].max(),3))
 #        plt.colorbar(orientation='horizontal')
