@@ -277,11 +277,11 @@ plt.plot(xx,d_i2d_lin)
 plt.plot(xx,d_i2d_cub)
 plt.plot(xx,d_i2d_qui)
 plt.plot(xx,d_i2d_nnb)
-plt.plot(xx,d_i2d_CTI)
+#plt.plot(xx,d_i2d_CTI)
 plt.plot(xx,d_i2d_MinCurv)
 plt.xlim(xx.min(),xx.max())
 
-plt.legend(['True','linear','Cubic','Quintic','NearestN','CloughTorcher','MinCurvature'],bbox_to_anchor=(0.75, 0.25))
+plt.legend(['True','linear','Cubic','Quintic','NearestN','MinCurvature'],bbox_to_anchor=(0.75, 0.25))
 # Plot interpolation from true value on line
 F = interpolation.interp1d(xx,d_line)
 dtrue = F(xr[::indx])
@@ -290,7 +290,7 @@ ax.set_title('Interpolated data profile')
 
 #%% Write result to file
 with file('Interp_residual.dat','w') as fid:
-    fid.write('NearestN\tLinear\tCubic\tQuintic\tCloughTocher\tMinCurv\n')
+    fid.write('NearestN\tLinear\tCubic\tQuintic\tMinCurv\n')
     fid.write('\nL2-norm\n')
     np.savetxt(fid, l2_r, fmt='%5.3e',delimiter='\t',newline='\n')
     fid.write('\nL1-norm\n')

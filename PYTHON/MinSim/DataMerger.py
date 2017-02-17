@@ -220,11 +220,12 @@ if np.all([dtype != 'TDEM',dtype != 'GDEM', dtype != 'DC']):
 #%% Deal with TDEM data
 elif dtype == 'TDEM':
     AllData = []
+    tID = []
     for file in glob.glob("*Tile*"):
         
         with open(file,'r') as sfile:
             lines = sfile.readlines()
-            
+            tID.append(int(re.search('\d+',file).group()))
             stn = []
             for line in lines:
                 

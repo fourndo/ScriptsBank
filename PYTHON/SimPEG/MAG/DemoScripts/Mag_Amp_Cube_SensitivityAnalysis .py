@@ -45,7 +45,7 @@ susc = 0.1
 nX = 1
 
 # Get index of the center of block
-locx = [int(mesh.nCx/2)-3, int(mesh.nCx/2)+3]
+locx = [int(mesh.nCx/2)]#[int(mesh.nCx/2)-3, int(mesh.nCx/2)+3]
 midy = int(mesh.nCy/2)
 midz = -4
 
@@ -329,12 +329,13 @@ mrec_MAIS = inv.run(mstart)
 
 #%% Plot models
 from matplotlib.patches import Rectangle
-vmax = 0.05
+
 contours = [0.02]
 
 plt.figure(figsize=(15, 5))
 
 ax3 = plt.subplot(231)
+vmax = mrec_sus.max()
 PF.Magnetics.plotModelSections(mesh, mrec_sus, normal='z', ind=-3, subFact=2, scale=0.25, xlim=[-75, 75], ylim=[-30, 30],
                       title="Esus Model", axs=ax3, vmin=0, vmax=vmax, contours = contours)
 ax3.xaxis.set_visible(False)
@@ -348,6 +349,7 @@ for midx in locx:
 # Draw a box
 
 ax3 = plt.subplot(232)
+vmax = mrec_MAI.max()
 PF.Magnetics.plotModelSections(mesh, mrec_MAI, normal='z', ind=-3, subFact=2, scale=0.25, xlim=[-75, 75], ylim=[-30, 30],
                       title="Esus Model", axs=ax3, vmin=0, vmax=vmax, contours = contours)
 ax3.xaxis.set_visible(False)
@@ -359,6 +361,7 @@ for midx in locx:
     ax2.add_patch(Rectangle((mesh.vectorCCx[midx-nX]-dx/2.,mesh.vectorCCz[midz-nX]-dx/2.),3*dx,3*dx, facecolor = 'none', edgecolor='w'))                
 
 ax3 = plt.subplot(233)
+vmax = mrec_MAIS.max()
 PF.Magnetics.plotModelSections(mesh, mrec_MAIS, normal='z', ind=-3, subFact=2, scale=0.25, xlim=[-75, 75], ylim=[-30, 30],
                       title="Esus Model", axs=ax3, vmin=0, vmax=vmax, contours = contours)
 ax3.xaxis.set_visible(False)
