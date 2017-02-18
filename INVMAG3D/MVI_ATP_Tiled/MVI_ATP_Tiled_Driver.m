@@ -22,7 +22,7 @@ addpath 'func_lib';
 
 dsep = '\';
 % Project folders
-% work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Nut_Cracker\Tiled_CMI';
+work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Nut_Cracker\Tiled_CMI';
 % work_dir ='C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\CraigModel\MAG';
 % work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\SingleBlock\CMI';
 % work_dir ='C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Triple_Block_lined';
@@ -35,7 +35,7 @@ dsep = '\';
 % work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Shared\KrisDom\Nutcracker';
 % work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Osborne\Inversion\ROT40\ATP';
 % work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Desktop\Paul_Lake\Modeling\Inversion\Misery';
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\SingleBlock\Simpeg';
+% work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\SingleBlock\Simpeg';
 
 
 out_dir = [work_dir dsep 'ALL_Tiles'];
@@ -128,8 +128,8 @@ else
     
 end
 
-M_xyz = m_vec;
-beta_in = 1e+7;
+% M_xyz = m_vec;
+% beta_in = 1e+7;
 %% Load topography
 if isempty(topofile)==1
     [Zn,Xn,Yn] = ndgrid(zn,xn,yn);
@@ -280,12 +280,12 @@ for ii = 1:ntiles
     bounds_PST = ones(3,2)*10;
     bounds_PST(:,1) = -10;
     
-%     [M_xyz,beta_in] = MVI3D_PST_Tiled(tile_dir,out_dir,dsep,xn_t,yn_t,zn_t,H, HI,...
-%         HD, obsx, obsy, obsz, G, d, wd, mstart_t, mref_t, esus,...
-%         2,alphas,[],bounds_PST,kron([1 1 1],[2 2 2 2 1]),t,lp_tresh{1},...
-%         lp_tresh{2} ,FLAG1,FLAG2,5 );
-%     
-%     
+    [M_xyz,beta_in] = MVI3D_PST_Tiled(tile_dir,out_dir,dsep,xn_t,yn_t,zn_t,H, HI,...
+        HD, obsx, obsy, obsz, G, d, wd, mstart_t, mref_t, esus,...
+        1,alphas,[],bounds_PST,kron([1 1 1],[2 2 2 2 1]),t,lp_tresh{1},...
+        lp_tresh{2} ,FLAG1,FLAG2,5 );
+    
+    
     
     % Convert from xyz to atp
     aa = sum(M_xyz.^2,2).^0.5;
@@ -318,7 +318,7 @@ for ii = 1:ntiles
     esus = ones(mcell_t,1);
 % 	beta_in = [];
     max_iterMVI = 45;
-    [M] = MVI3D_ATP_Tiled_v5(tile_dir,...
+    [M] = MVI3D_ATP_Tiled_v6(tile_dir,...
         out_dir,dsep,ii,xn_t,yn_t,zn_t,H, HI, HD, obsx, obsy, obsz, G,...
         d,wd,mstart_t,mref_t,chi_target,alphas,beta_in,bounds,LP,t,...
         lp_tresh{1},lp_tresh{2} ,FLAG1,FLAG2,max_iterMVI,ROT);

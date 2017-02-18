@@ -221,9 +221,27 @@ while switcher ~= 3 && count ~= max_iter
     count=count+1;
 
     if switcher == 0 %count == 1   
+        if eps_FLAG==0  && count ==1
 
-        delta_p(1:3) = 1e-1;%delta_tresh(1)*3;
-        delta_q(1:3) = 1e-1;%delta_tresh(2)*3;
+            [pp,qq] = get_eps(aa,10,Gx,Gy,Gz);
+
+            delta_p(1) = pp;
+            delta_q(1) = qq;
+            
+            delta_p(2:3) = 1e-1;%delta_tresh(1)*3;
+            delta_q(2) = 5e-1;%delta_tresh(2)*3;
+            delta_q(3) = 5e-1;
+        elseif count==1
+
+            delta_p(1) = eps_p(1);
+            delta_q(1) = eps_q(1);
+            
+            delta_p(2:3) = 5e-2;%delta_tresh(1)*3;
+            delta_q(2:3) = 5e-2;%delta_tresh(2)*3;
+
+        end
+        
+        
 
 
         aa = invmod(1:mactv);
@@ -245,8 +263,8 @@ while switcher ~= 3 && count ~= max_iter
         
         wr = wr / max(wr);
 
-        scl_t = (max(aa)/(pi/2));%(phi_a/(phi_t+phi_p));
-        scl_p = (max(aa)/pi);%(phi_a/phi_p);
+        scl_t = (delta_p(1)/(pi/2));%(phi_a/(phi_t+phi_p));
+        scl_p = (delta_p(2)/pi);%(phi_a/phi_p);
 
         wr(1:mactv)= wr(1:mactv);
         wr(1+mactv:2*mactv)= wr(1+mactv:2*mactv)*scl_t;%/(max(wr(1:mcell))/max(wr(1+mcell:2*mcell))) ;
@@ -259,23 +277,7 @@ while switcher ~= 3 && count ~= max_iter
         % Estimate beta if not provided
         if count==1
             
-            gx = aVRWx *  invmod;
-
-            temp = gx(1+2*mactv:end);
-            temp(abs(temp)>pi) = -sign(temp(abs(temp)>pi)).*(2*pi-abs(temp(abs(temp)>pi)));
-            gx(1+2*mactv:end) = temp;
-
-
-            gy = aVRWy *  invmod;
-            temp = gy(1+2*mactv:end);
-            temp(abs(temp)>pi) = -sign(temp(abs(temp)>pi)).*(2*pi-abs(temp(abs(temp)>pi)));
-            gy(1+2*mactv:end) = temp;
-
-            gz = aVRWz *  invmod;
-            temp = gz(1+2*mactv:end);
-            temp(abs(temp)>pi) = -sign(temp(abs(temp)>pi)).*(2*pi-abs(temp(abs(temp)>pi)));
-            gz(1+2*mactv:end) = temp;
-
+            [gx, gy, gz] = projectAngle(invmod,GGGx,GGGy,GGGz,aVRWx,aVRWy,aVRWz);
             temp = (invmod-mref);
 
             g_MOF = ( aVRWs'*Wr*aVRWs * temp ) +...
@@ -295,11 +297,12 @@ while switcher ~= 3 && count ~= max_iter
 
         end
 
-
-        phi_MOF = (invmod-mref)'* ( aVRWs'*Wr*aVRWs * (invmod-mref) ) +...
-              (invmod)'*( aVRWx'*Wr*aVRWx * (invmod) ) +...
-              (invmod)'*( aVRWy'*Wr*aVRWy * (invmod) ) +...
-              (invmod)'*( aVRWz'*Wr*aVRWz * (invmod) ) ;
+        [gx, gy, gz] = projectAngle(invmod,GGGx,GGGy,GGGz,aVRWx,aVRWy,aVRWz);
+        temp = (invmod-mref);
+        phi_MOF = (temp)'* ( aVRWs'*Wr*aVRWs * (temp) ) +...
+                        (( gx )' * Wr * ( gx ))+...
+                        (( gy )' * Wr *( gy ))+...
+                        (( gz )' * Wr *( gz ));
 
         if count == 1
             
@@ -317,30 +320,30 @@ while switcher ~= 3 && count ~= max_iter
 
         if lp_count == 1 
 
-            if eps_FLAG==0 
+%             if eps_FLAG==0 
+% 
+%                 Z = zeros(1,3);
+%                 Z(1) = 1;
+% 
+%                 % Create sub-space matrix and grab the right model
+%                 Z = kron(Z,speye(mactv));
+%                 m = Z*(invmod-mref);
+% 
+%                 [pp,qq] = get_eps(m,10,Gx,Gy,Gz);
+% 
+%                 delta_p(1) = pp;
+%                 delta_q(1) = qq;
+% 
+%             else
+% 
+%                 delta_p(1) = eps_p(1);
+%                 delta_q(1) = eps_q(1);
+% 
+%             end
 
-                Z = zeros(1,3);
-                Z(1) = 1;
-
-                % Create sub-space matrix and grab the right model
-                Z = kron(Z,speye(mactv));
-                m = Z*(invmod-mref);
-
-                [pp,qq] = get_eps(m,10,Gx,Gy,Gz);
-
-                delta_p(1) = pp;
-                delta_q(1) = qq;
-
-            else
-
-                delta_p(1) = eps_p(pst);
-                delta_q(1) = eps_q(pst);
-
-            end
-
-            delta_p(2:3) = delta_p(1); % Doesn't matter since not active
-            delta_q(2) = 1e-4; % Fix value since always angles
-            delta_q(3) = 1e-4;
+%             delta_p(2:3) = delta_p(1); % Doesn't matter since not active
+%             delta_q(2) = 1e-2; % Fix value since always angles
+%             delta_q(3) = 1e-2;
             
             aa = invmod(1:mactv);
             tt = invmod(1+mactv:2*mactv);
@@ -417,27 +420,28 @@ while switcher ~= 3 && count ~= max_iter
 
     phi_d(count) = sum(( Gvec(G,Wd,m_uvw(aa,tt,pp)) - d ).^2);
 
+    
+
+
+                        % Try scaling the transformation matrix
+    solves_max= 5;
     if switcher ~=0
         temp = (invmod-mref);
 %                 temp(1+mactv:2*mactv) = sin(2*temp(1+mactv:2*mactv));
 %                 temp(1+2*mactv:3*mactv) = sin(temp(1+2*mactv:3*mactv)); 
-        
+        [gx, gy, gz] = projectAngle(invmod,GGGx,GGGy,GGGz,aVRWx,aVRWy,aVRWz);
         gamma = phi_m(end) /(...
                     (temp)'* ( aVRWs'*Wr*aVRWs * (temp) ) +...
-                    (( (aVRWx * GGGx * invmod) )' * Wr * ( aVRWx * GGGx * invmod ))+...
-                    (( (aVRWy * GGGy * invmod) )' * Wr *( aVRWy * GGGy * invmod ))+...
-                    (( (aVRWz * GGGz * invmod) )' * Wr *( aVRWz * GGGz * invmod )));
+                    (( gx )' * Wr * ( gx ))+...
+                    (( gy )' * Wr *( gy ))+...
+                    (( gz )' * Wr *( gz )));
                 % gamma=1;
         aVRWs = sqrt(gamma) * aVRWs; 
         aVRWx = sqrt(gamma) * aVRWx;
         aVRWy = sqrt(gamma) * aVRWy;
         aVRWz = sqrt(gamma) * aVRWz;
     end
-
-
-                        % Try scaling the transformation matrix
-    solves_max= 3;
-   
+        
     while solves <= solves_max %&& ggdm > 1e-2
         
 %         avrws = aVRWs;
@@ -462,13 +466,16 @@ while switcher ~= 3 && count ~= max_iter
 %         wr(1+2*mactv:3*mactv)= wr(1+2*mactv:3*mactv)/max(wr(1+2*mactv:3*mactv));
 
         
+        [gx, gy, gz] = projectAngle(invmod,GGGx,GGGy,GGGz,speye(3*mactv),speye(3*mactv),speye(3*mactv));
         
-        
-%         phi_a = (invmod(1:mactv))'*(Ws'*spdiags(wr(1:mactv),0,mactv,mactv)*Ws)*(invmod(1:mactv)) + invmod(1:mactv)'*(Gx'*Wx'*spdiags(wr(1:mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1:mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1:mactv),0,mactv,mactv)*Wz*Gz)*invmod(1:mactv);
+        phi_a = (invmod(1:mactv))'*(Ws'*spdiags(wr(1:mactv),0,mactv,mactv)*Ws)*(invmod(1:mactv)) + invmod(1:mactv)'*(Gx'*Wx'*spdiags(wr(1:mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1:mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1:mactv),0,mactv,mactv)*Wz*Gz)*invmod(1:mactv);
 %         phi_t = (invmod(1+mactv:2*mactv))'*(Ws'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Ws)*(invmod(1+mactv:2*mactv)) + invmod(1+mactv:2*mactv)'*(Gx'*Wx'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wz*Gz)*invmod(1+mactv:2*mactv);
 %         phi_p = (invmod(1+2*mactv:3*mactv))'*(Ws'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Ws)*invmod(1+2*mactv:3*mactv) + invmod(1+2*mactv:3*mactv)'*(Gx'*Wx'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wz*Gz)*invmod(1+2*mactv:3*mactv);
-
-%         avrwx = scx*aVRWx;
+        phi_t = gx(1+mactv:2*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gx(1+mactv:2*mactv) + gy(1+mactv:2*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gy(1+mactv:2*mactv) + gz(1+mactv:2*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gz(1+mactv:2*mactv);
+        phi_p = gx(1+2*mactv:3*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gx(1+2*mactv:3*mactv) +...
+            gy(1+2*mactv:3*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gy(1+2*mactv:3*mactv) +...
+            gz(1+2*mactv:3*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gz(1+2*mactv:3*mactv);
+        %         avrwx = scx*aVRWx;
 %         avrwy = scy*aVRWy;
 %         avrwz = scz*aVRWz;
         
@@ -484,11 +491,11 @@ while switcher ~= 3 && count ~= max_iter
 %         phi_t = (invmod(1+mactv:3*mactv))'*g(1+mactv:3*mactv);
 %         phi_p = (invmod(1+2*mactv:3*mactv))'*g(1+2*mactv:3*mactv);
         
-        scl_t = (max(aa)/(pi));%(phi_a/(phi_t+phi_p));
-        scl_p = (max(aa)/pi);%(phi_a/phi_p);
+%         scl_t = (phi_a/(phi_t));
+%         scl_p = (phi_a/phi_p);
 %         sprintf('%e, %e',scl_t,scl_p)
-%         scl_t = max(invmod(1:mactv));
-%         scl_p = max(invmod(1:mactv));
+        scl_t = (delta_p(1)/(delta_q(2)))/2;%(phi_a/(phi_t+phi_p));
+        scl_p = (delta_p(1)/delta_q(3));%(phi_a/phi_p);
         wr(1:mactv)= wr(1:mactv);
         wr(1+mactv:2*mactv)= wr(1+mactv:2*mactv)*scl_t;%/(max(wr(1:mcell))/max(wr(1+mcell:2*mcell))) ;
         wr(1+2*mactv:3*mactv)= wr(1+2*mactv:3*mactv)*scl_p;%/(max(wr(1:mcell))/max(wr(1+2*mcell:3*mcell)));
@@ -513,11 +520,14 @@ while switcher ~= 3 && count ~= max_iter
 %         aVRWx = sqrt(gamma) * avrwx;
 %         aVRWy = sqrt(gamma) * avrwy;
 %         aVRWz = sqrt(gamma) * avrwz;
-        
+
+
+        temp = (invmod-mref);
+        [gx, gy, gz] = projectAngle(invmod,GGGx,GGGy,GGGz,aVRWx,aVRWy,aVRWz);
         phi_MOF = (temp)'* ( aVRWs'*Wr*aVRWs * (temp) ) +...
-                  (invmod)'*( (aVRWx * GGGx)'*Wr*(aVRWx * GGGx) * (invmod) ) +...
-                  (invmod)'*( (aVRWy * GGGy)'*Wr*(aVRWy * GGGy) * (invmod) ) +...
-                  (invmod)'*( (aVRWz * GGGz)'*Wr*(aVRWz * GGGz) * (invmod) ) ;
+                        (( gx )' * Wr * ( gx ))+...
+                        (( gy )' * Wr *( gy ))+...
+                        (( gz )' * Wr *( gz ));
 
     
         diagJ = zeros(1,3*mactv);
@@ -542,25 +552,7 @@ while switcher ~= 3 && count ~= max_iter
 %                 temp(1+2*mactv:end) = abs(invmod(1+2*mactv:end));
 % -sign(aa(abs(aa)>pi)).*(2*pi-abs(aa(abs(aa)>pi)));
 
-                gx = GGGx *  invmod;
-                
-                temp = gx(1+2*mactv:end);
-                temp(abs(temp)>=pi) = -sign(temp(abs(temp)>=pi)).*(2*pi-abs(temp(abs(temp)>=pi)));
-                gx(1+2*mactv:end) = temp;
-                gx = aVRWx * gx;
-
-
-                gy = GGGy *  invmod;
-                temp = gy(1+2*mactv:end);
-                temp(abs(temp)>=pi) = -sign(temp(abs(temp)>=pi)).*(2*pi-abs(temp(abs(temp)>=pi)));
-                gy(1+2*mactv:end) = temp;
-                gy = aVRWy * gy;
-                
-                gz = GGGz *  invmod;
-                temp = gz(1+2*mactv:end);
-                temp(abs(temp)>=pi) = -sign(temp(abs(temp)>=pi)).*(2*pi-abs(temp(abs(temp)>=pi)));
-                gz(1+2*mactv:end) = temp;
-                gz = aVRWz * gz;
+                [gx, gy, gz] = projectAngle(invmod,GGGx,GGGy,GGGz,aVRWx,aVRWy,aVRWz);
                 
                 temp = (invmod-mref);
                 g_MOF = ( aVRWs'*Wr*aVRWs * temp ) +...
@@ -604,10 +596,6 @@ while switcher ~= 3 && count ~= max_iter
         if max(abs(dm(1+mactv:2*mactv))) > max(abs(bounds(2,:)))
             dm = dm/max(abs(dm(1+mactv:2*mactv)))*pi/2;
         end
-        
-%         if max(abs(dm(1+2*mactv:3*mactv))) > max(abs(bounds(3,:)))
-%             dm(1+2*mactv:3*mactv) = dm(1+2*mactv:3*mactv)/10;
-%         end
 
         %% Step length, line search                
         tncg = tncg+ncg; % Record the number of CG iterations
@@ -662,47 +650,66 @@ while switcher ~= 3 && count ~= max_iter
             ddm(2) = norm(gdm);
             
             m_temp = invmod + gdm;
-            
+%             
+%             aa = m_temp(1:mactv);
+%             tt = m_temp(1+mactv:2*mactv);
+%             pp = m_temp(1+2*mactv:3*mactv);
+%             m_xyz = reshape(m_uvw(aa,tt,pp),mcell,3);
+%             
+%             aa = sum(m_xyz.^2,2).^0.5;
+%     
+%             tt = zeros(mactv,1);
+%             pp = zeros(mactv,1);
+% 
+%             tt(aa>0) = asin(m_xyz(aa>0,3)./(aa(aa>0)));
+% 
+% 
+%             dydx = m_xyz(aa>0,2)./m_xyz(aa>0,1);
+%             pp(aa>0) = atan(dydx);
+%             pp(m_xyz(:,2)>0 & m_xyz(:,1)<0) = pp(m_xyz(:,2)>0 & m_xyz(:,1)<0) + pi;
+%             pp(m_xyz(:,2)<0 & m_xyz(:,1)<0) = pp(m_xyz(:,2)<0 & m_xyz(:,1)<0) - pi;
+%     
+%             m_temp = [aa;tt;pp];
 %             t_ind = kron([0;1;0],ones(mactv,1));
-            p_ind = kron([0;0;1],ones(mactv,1));
-            
+%             p_ind = kron([0;0;1],ones(mactv,1));
+%             
             lowb = m_temp <= lowBvec;
             uppb = m_temp >= uppBvec;
-
-            pp_low = m_temp(lowb==1 & p_ind);           
-            pp_low = mod(pp_low,-2*pi);
-            pp_low(pp_low<-pi) = 2*pi+pp_low(pp_low<-pi);
-            
-%             tt_low_ind = lowb==1 & t_ind==1;
-%             tt_low = m_temp(tt_low_ind);
-%             tt_low = -pi/2-rem(tt_low,pi/2);
+% 
+%             pp_low = m_temp(lowb==1 & p_ind);           
+%             pp_low = mod(pp_low,-2*pi);
+%             pp_low(pp_low<-pi) = 2*pi+pp_low(pp_low<-pi);
 %             
-%             tt_low_ind = reshape(tt_low_ind,mactv,3);
-%             tt_low_ind = tt_low_ind(:,[1 3 2]);
-%             tt_low_ind = tt_low_ind(:);
-            
-            
-            pp_high = m_temp(uppb==1 & p_ind);
-            pp_high = mod(pp_high,2*pi);
-            pp_high(pp_high>pi) = -2*pi+pp_high(pp_high>pi);
-            
-%             tt_high_ind = uppb==1 & t_ind==1;
-%             tt_high = m_temp(tt_high_ind);
-%             tt_high = pi/2-rem(tt_high,pi/2);
+% %             tt_low_ind = lowb==1 & t_ind==1;
+% %             tt_low = m_temp(tt_low_ind);
+% %             tt_low = -pi/2-rem(tt_low,pi/2);
+% %             
+% %             tt_low_ind = reshape(tt_low_ind,mactv,3);
+% %             tt_low_ind = tt_low_ind(:,[1 3 2]);
+% %             tt_low_ind = tt_low_ind(:);
 %             
-%             tt_high_ind = reshape(tt_high_ind,mactv,3);
-%             tt_high_ind = tt_high_ind(:,[1 3 2]);
-%             tt_high_ind = tt_high_ind(:);
 %             
-
-            
-            % Apply bound on model
-            m_temp(lowb==1) = lowBvec(lowb==1);
-            m_temp(lowb==1 & p_ind) = pp_low;
-%             m_temp(lowb==1 & t_ind) = tt_low;
-            
-            m_temp(uppb==1) = uppBvec(uppb==1);
-            m_temp(uppb==1 & p_ind) = pp_high;
+%             pp_high = m_temp(uppb==1 & p_ind);
+%             pp_high = mod(pp_high,2*pi);
+%             pp_high(pp_high>pi) = -2*pi+pp_high(pp_high>pi);
+%             
+% %             tt_high_ind = uppb==1 & t_ind==1;
+% %             tt_high = m_temp(tt_high_ind);
+% %             tt_high = pi/2-rem(tt_high,pi/2);
+% %             
+% %             tt_high_ind = reshape(tt_high_ind,mactv,3);
+% %             tt_high_ind = tt_high_ind(:,[1 3 2]);
+% %             tt_high_ind = tt_high_ind(:);
+% %             
+% 
+%             
+%             % Apply bound on model
+%             m_temp(lowb==1) = lowBvec(lowb==1);
+%             m_temp(lowb==1 & p_ind) = pp_low;
+% %             m_temp(lowb==1 & t_ind) = tt_low;
+%             
+%             m_temp(uppb==1) = uppBvec(uppb==1);
+%             m_temp(uppb==1 & p_ind) = pp_high;
 %             m_temp(uppb==1 & t_ind) = tt_high;
             
 %             pp_flip = m_temp(tt_high_ind | tt_low_ind)+pi;
@@ -712,6 +719,7 @@ while switcher ~= 3 && count ~= max_iter
             lowb(1+mactv:end) = 0;
             uppb(1+mactv:end) = 0;
             
+            m_temp(lowb==1) = lowBvec(lowb==1);
             % Update projection matrix
             Pac = spdiags((lowb==0).*(uppb==0),0,3*mactv,3*mactv);
 
@@ -721,11 +729,12 @@ while switcher ~= 3 && count ~= max_iter
 
             temp = (m_temp-mref);
             
+            [gx, gy, gz] = projectAngle(m_temp,GGGx,GGGy,GGGz,aVRWx,aVRWy,aVRWz);
+                    
             phi_MOF = (temp)'* ( aVRWs'*Wr*aVRWs * (temp) ) +...
-                      (m_temp)'*( (aVRWx * GGGx)'*Wr*(aVRWx * GGGx) * (m_temp) ) +...
-                      (m_temp)'*( (aVRWy * GGGy)'*Wr*(aVRWy * GGGy) * (m_temp) ) +...
-                      (m_temp)'*( (aVRWz * GGGz)'*Wr*(aVRWz * GGGz) * (m_temp) ) ;
-
+                        (( gx )' * Wr * ( gx ))+...
+                        (( gy )' * Wr *( gy ))+...
+                        (( gz )' * Wr *( gz ));
             phi_temp = phi_out;
             phi_out = sum((Gvec(G,Wd,m_uvw(aa,tt,pp)) - d).^2) + beta(count) * phi_MOF;
 
@@ -745,12 +754,25 @@ while switcher ~= 3 && count ~= max_iter
         end
 
 
-        % Update model
-%         phi_m(end) = phi_MOF;
-        invmod = m_temp;
+        % Project model back to spherical
+        aa = m_temp(1:mactv);
+        tt = m_temp(1+mactv:2*mactv);
+        pp = m_temp(1+2*mactv:3*mactv);
+        m_xyz = reshape(m_uvw(aa,tt,pp),mcell,3);
+
+        aa = sum(m_xyz.^2,2).^0.5;
+
+        tt = zeros(mactv,1);
+        pp = zeros(mactv,1);
+
+        tt(aa>0) = asin(m_xyz(aa>0,3)./(aa(aa>0)));
+        pp(aa>0) = atan2(m_xyz(aa>0,2),m_xyz(aa>0,1));
+        
+        invmod = [aa;tt;pp];
 %         phi_m(count) = phi_MOF;
 %         fprintf('GN iter %i |g| rel:\t\t %8.5e\n',solves,ggdm);
         fprintf('GN iter %i: , Step Length: %f, phi_m :\t\t %8.5e\n',solves,ddm(2),phi_MOF);
+        fprintf('Number of line search %i\n',count_LS);
         solves = solves + 1;
 
 
@@ -779,10 +801,12 @@ while switcher ~= 3 && count ~= max_iter
 
     temp = (invmod-mref);
                 
+    [gx, gy, gz] = projectAngle(invmod,GGGx,GGGy,GGGz,aVRWx,aVRWy,aVRWz);
+                    
     phi_MOF = (temp)'* ( aVRWs'*Wr*aVRWs * (temp) ) +...
-          (invmod)'*( (aVRWx * GGGx)'*Wr*(aVRWx * GGGx) * (invmod) ) +...
-          (invmod)'*( (aVRWy * GGGy)'*Wr*(aVRWy * GGGy) * (invmod) ) +...
-          (invmod)'*( (aVRWz * GGGz)'*Wr*(aVRWz * GGGz) * (invmod) ) ;
+                (( gx )' * Wr * ( gx ))+...
+                (( gy )' * Wr *( gy ))+...
+                (( gz )' * Wr *( gz ));
               
     phi_m(count) = phi_MOF;
 
@@ -833,14 +857,14 @@ while switcher ~= 3 && count ~= max_iter
     M = reshape(model_out,mcell,3);
     Mamp = sum(M.^2,2).^0.5;
     Mamp(nullcell==0) = -100;
-
-
-    pred_TMI = Gvec(G,speye(ndata),m_uvw(aa,tt,pp));
-    write_MAG3D_TMI([work_dir dsep 'Tile' '_MVIatp.pre'],H,HI,HD,HI,HD,obsx,obsy,obsz,pred_TMI,wd);
     save([work_dir dsep 'Tile'  '_MVIatp.fld'],'-ascii','M')
     save([work_dir dsep 'Tile'  '_MVIphi.mod'],'-ascii','pp')
     save([work_dir dsep 'Tile'  '_MVItheta.mod'],'-ascii','tt')
     save([work_dir dsep 'Tile'  '_MVIatp.amp'],'-ascii','Mamp')
+
+    pred_TMI = Gvec(G,speye(ndata),m_uvw(aa,tt,pp));
+    write_MAG3D_TMI([work_dir dsep 'Tile' '_MVIatp.pre'],H,HI,HD,HI,HD,obsx,obsy,obsz,pred_TMI,wd);
+
 %     write_MAG3D_TMI([work_dir dsep 'Tile' num2str(idx) '_iter_' num2str(count) '.pre'],H,I,Dazm,obsx,obsy,obsz,(G*invmod).*wd,wd);
 end
 
@@ -865,3 +889,24 @@ set(gca,'yscale','log')
 title('Final \Delta \phi values')
 write_MAG3D_TMI([out_dir dsep 'Tile' num2str(tile_id) '_MVI.pre'],H,HI,HD,HI,HD,obsx,obsy,obsz,pred_TMI,wd);
 
+function [gx, gy, gz] = projectAngle(m,gradx,grady,gradz,wx,wy,wz)
+    mactv = length(m)/3;
+    gx = gradx *  m;
+                
+    temp = gx(1+2*mactv:end);
+    temp(abs(temp)>=pi) = -sign(temp(abs(temp)>=pi)).*(2*pi-abs(temp(abs(temp)>=pi)));
+    gx(1+2*mactv:end) = temp;
+    gx = wx * gx;
+
+
+    gy = grady *  m;
+    temp = gy(1+2*mactv:end);
+    temp(abs(temp)>=pi) = -sign(temp(abs(temp)>=pi)).*(2*pi-abs(temp(abs(temp)>=pi)));
+    gy(1+2*mactv:end) = temp;
+    gy = wy * gy;
+
+    gz = gradz *  m;
+    temp = gz(1+2*mactv:end);
+    temp(abs(temp)>=pi) = -sign(temp(abs(temp)>=pi)).*(2*pi-abs(temp(abs(temp)>=pi)));
+    gz(1+2*mactv:end) = temp;
+    gz = wz * gz;

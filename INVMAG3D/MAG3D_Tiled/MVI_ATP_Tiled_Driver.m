@@ -22,19 +22,21 @@ addpath 'func_lib';
 dsep = '\';
 % Project folders
 % work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Nut_Cracker\Tiled_CMI';
-work_dir ='C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\CraigModel\MAG';
-% work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\SingleBlock\CMI';
+% work_dir ='C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\CraigModel\MAG';
+work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\SingleBlock\CMI';
 % work_dir ='C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Triple_Block_lined';
 % work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Tli_Kwi_Cho\Modelling\Inversion\MAG';
 % work_dir = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\MAG\Composite\North_Main';
 % work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Dipping_Prism_Li';
+% work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\SingleBlock\Simpeg';
+
 out_dir = [work_dir dsep 'ALL_Tiles'];
 mkdir(out_dir);
 
 inpfile   = 'MAG3D_ATP_Tile.inp'; 
 
 % Read input file
-[meshfile,obsfile,topofile,mstart,mref,m_vec,chi_target,alphas,beta,bounds,lp_MAIvec,lp_MVIvec,lp_tresh,weightfile,FLAG1,FLAG2,tilefile,ROT] = CMI_Tile_read_inp([work_dir dsep inpfile]);
+[meshfile,obsfile,topofile,mstart,mref,m_vec,chi_target,alphas,beta,bounds,lp_MVIvec,lp_tresh,weightfile,FLAG1,FLAG2,tilefile,ROT] = MVI_ATP_Tile_read_inp([work_dir dsep inpfile]);
 
 % Load mesh file and convert to vectors (UBC format)
 [xn,yn,zn] = read_UBC_mesh([work_dir dsep meshfile]);
@@ -295,7 +297,7 @@ for ii = 1:ntiles
     esus_MAI = ones(mcell_t,1)*1e-4;
 	beta_in = [];
     max_iterMVI = 20;
-    [M,pred_TMI,beta_out,phid_out,switcher] = MVI3D_ATP_Tiled_v2(tile_dir,...
+    [M,pred_TMI,beta_out,phid_out,switcher] = MVI3D_ATP_Tiled_v3(tile_dir,...
         out_dir,dsep,ii,xn_t,yn_t,zn_t,H, HI, HD, obsx, obsy, obsz, G, d,...
         wd,mstart_t,mref_t,esus_MAI,chi_target,alphas,beta_in,bounds,LP,t,...
         lp_tresh{1},lp_tresh{2} ,FLAG1,FLAG2,max_iterMVI,ROT);

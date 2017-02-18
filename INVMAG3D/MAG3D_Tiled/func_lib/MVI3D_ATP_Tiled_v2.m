@@ -576,7 +576,7 @@ while switcher ~= 3 && count ~= max_iter
                 phi_tp = invmod(1+mactv:2*mactv)'*(Gx'*Wx'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wz*Gz)*invmod(1+mactv:2*mactv)+...
                  invmod(1+2*mactv:3*mactv)'*(Gx'*Wx'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wz*Gz)*invmod(1+2*mactv:3*mactv);
 
-                scl = (phi_a/phi_tp)/2;
+                scl = max(aa)/pi;
 %                 scl_p = (phi_a/phi_p);
                 
 %                 scl = max([scl_t,scl_p]);
@@ -641,15 +641,15 @@ while switcher ~= 3 && count ~= max_iter
         [dm,~,ncg] = CG_Lin( dm, G, Wd, beta(count) * mof , g, S, PreC, Pac );
 %         fprintf('CG iter %i \n',ncg);
 
-        if max(abs(dm(1+mactv:2*mactv))) > max(abs(bounds(2,:)))
-            dm(1+mactv:2*mactv) = dm(1+mactv:2*mactv)/10;
-%             dm(1+2*mactv:3*mactv) = dm(1+2*mactv:3*mactv)/10;
-        end
-        
-        if max(abs(dm(1+2*mactv:3*mactv))) > max(abs(bounds(3,:)))
+%         if max(abs(dm(1+mactv:2*mactv))) > max(abs(bounds(2,:)))
 %             dm(1+mactv:2*mactv) = dm(1+mactv:2*mactv)/10;
-            dm(1+2*mactv:3*mactv) = dm(1+2*mactv:3*mactv)/10;
-        end
+% %             dm(1+2*mactv:3*mactv) = dm(1+2*mactv:3*mactv)/10;
+%         end
+%         
+%         if max(abs(dm(1+2*mactv:3*mactv))) > max(abs(bounds(3,:)))
+% %             dm(1+mactv:2*mactv) = dm(1+mactv:2*mactv)/10;
+%             dm(1+2*mactv:3*mactv) = dm(1+2*mactv:3*mactv)/10;
+%         end
 
         %% Step length, line search                
         tncg = tncg+ncg; % Record the number of CG iterations
