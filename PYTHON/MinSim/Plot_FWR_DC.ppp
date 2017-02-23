@@ -80,11 +80,11 @@ core = {'DC': np.r_[np.ones(80)*dx[0]],
 
 if dType == 'DC':
 
-    # Fix bug in UBC export
-    os.chdir(work_dir + inp_dir[dType])
-    source_dir = os.getcwd()
-    target_dir = "clean"
-    source_files = [fname for fname in glob.glob(os.path.join(source_dir, "*.obs"))]
+    # # Fix bug in UBC export
+    # os.chdir(work_dir + inp_dir[dType])
+    # source_dir = os.getcwd()
+    # target_dir = "clean"
+    # source_files = [fname for fname in glob.glob(os.path.join(source_dir, "*.obs"))]
 
     # # check if target directory exists... if not, create it.
     # if not os.path.exists(target_dir):
@@ -182,6 +182,7 @@ if dType == 'DC':
     plt.scatter(Pmid[:, 0], Pmid[:, 1], c=rho)
     plt.colorbar(ax=ax_prim)
     plt.title('Tiled')
+    plt.show()
 
     # Plot grid
     fig, axs = plt.figure(figsize=(6, 10)), plt.subplot(1, 1, 1)
@@ -195,5 +196,5 @@ if dType == 'DC':
 
     axs.set_xlim(X.min(), X.max())
     axs.set_ylim(Y.min(), Y.max())
-    plt.show()
+
     d_out = np.c_[locRx1, locRx2, rho]

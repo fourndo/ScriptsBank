@@ -225,12 +225,12 @@ while switcher ~= 3 && count ~= max_iter
 
             [pp,qq] = get_eps(aa,10,Gx,Gy,Gz);
 
-            delta_p(1) = pp;
-            delta_q(1) = qq;
+            delta_p(1) = 1e-3;
+            delta_q(1) = 1e-3;
             
             delta_p(2:3) = 1e-1;%delta_tresh(1)*3;
-            delta_q(2) = 5e-1;%delta_tresh(2)*3;
-            delta_q(3) = 5e-1;
+            delta_q(2) = 5e-2;%delta_tresh(2)*3;
+            delta_q(3) = 5e-2;
         elseif count==1
 
             delta_p(1) = eps_p(1);
@@ -263,7 +263,7 @@ while switcher ~= 3 && count ~= max_iter
         
         wr = wr / max(wr);
 
-        scl_t = (delta_p(1)/(pi/2));%(phi_a/(phi_t+phi_p));
+        scl_t = (delta_p(1)/(pi));%(phi_a/(phi_t+phi_p));
         scl_p = (delta_p(2)/pi);%(phi_a/phi_p);
 
         wr(1:mactv)= wr(1:mactv);
@@ -275,27 +275,27 @@ while switcher ~= 3 && count ~= max_iter
         mof = aVRWs'*Wr*aVRWs + aVRWx'*Wr*aVRWx + aVRWy'*Wr*aVRWy + aVRWz'*Wr*aVRWz;
 
         % Estimate beta if not provided
-        if count==1
-            
-            [gx, gy, gz] = projectAngle(invmod,GGGx,GGGy,GGGz,aVRWx,aVRWy,aVRWz);
-            temp = (invmod-mref);
-
-            g_MOF = ( aVRWs'*Wr*aVRWs * temp ) +...
-                    (aVRWx'*Wr*  gx ) +...
-                    (aVRWy'*Wr*  gy ) +...
-                    (aVRWz'*Wr*  gz );
-
-%                 temp = g_MOF(1+2*mactv:end);
-%                 temp(abs(temp)>pi) = -sign(temp(abs(temp)>pi)).*(2*pi-abs(temp(abs(temp)>pi)));
-%                 g_MOF(1+2*mactv:end) = temp;
-
-            g_d = S'*(Gtvec(G,Wd,(Gvec(G,Wd,S*invmod))));
-
-            ratio = abs((invmod'*g_d)/(invmod'*g_MOF));
-
-            beta = ratio *0.1 ;
-
-        end
+%         if count==1
+%             
+%             [gx, gy, gz] = projectAngle(invmod,GGGx,GGGy,GGGz,aVRWx,aVRWy,aVRWz);
+%             temp = (invmod-mref);
+% 
+%             g_MOF = ( aVRWs'*Wr*aVRWs * temp ) +...
+%                     (aVRWx'*Wr*  gx ) +...
+%                     (aVRWy'*Wr*  gy ) +...
+%                     (aVRWz'*Wr*  gz );
+% 
+% %                 temp = g_MOF(1+2*mactv:end);
+% %                 temp(abs(temp)>pi) = -sign(temp(abs(temp)>pi)).*(2*pi-abs(temp(abs(temp)>pi)));
+% %                 g_MOF(1+2*mactv:end) = temp;
+% 
+%             g_d = S'*(Gtvec(G,Wd,(Gvec(G,Wd,S*invmod))));
+% 
+%             ratio = abs((invmod'*g_d)/(invmod'*g_MOF));
+% 
+%             beta = ratio *0.1 ;
+% 
+%         end
 
         [gx, gy, gz] = projectAngle(invmod,GGGx,GGGy,GGGz,aVRWx,aVRWy,aVRWz);
         temp = (invmod-mref);
@@ -461,20 +461,21 @@ while switcher ~= 3 && count ~= max_iter
         
         wr = abs(sqrt(wr+1e-10))';
         wr = wr/max(wr);
+        
 %         wr(1:mactv) = wr(1:mactv)/max(wr(1:mactv));
 %         wr(1+mactv:2*mactv)= wr(1+mactv:2*mactv)/max(wr(1+mactv:2*mactv));
 %         wr(1+2*mactv:3*mactv)= wr(1+2*mactv:3*mactv)/max(wr(1+2*mactv:3*mactv));
 
         
-        [gx, gy, gz] = projectAngle(invmod,GGGx,GGGy,GGGz,speye(3*mactv),speye(3*mactv),speye(3*mactv));
+%         [gx, gy, gz] = projectAngle(invmod,GGGx,GGGy,GGGz,speye(3*mactv),speye(3*mactv),speye(3*mactv));
         
-        phi_a = (invmod(1:mactv))'*(Ws'*spdiags(wr(1:mactv),0,mactv,mactv)*Ws)*(invmod(1:mactv)) + invmod(1:mactv)'*(Gx'*Wx'*spdiags(wr(1:mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1:mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1:mactv),0,mactv,mactv)*Wz*Gz)*invmod(1:mactv);
-%         phi_t = (invmod(1+mactv:2*mactv))'*(Ws'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Ws)*(invmod(1+mactv:2*mactv)) + invmod(1+mactv:2*mactv)'*(Gx'*Wx'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wz*Gz)*invmod(1+mactv:2*mactv);
-%         phi_p = (invmod(1+2*mactv:3*mactv))'*(Ws'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Ws)*invmod(1+2*mactv:3*mactv) + invmod(1+2*mactv:3*mactv)'*(Gx'*Wx'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wz*Gz)*invmod(1+2*mactv:3*mactv);
-        phi_t = gx(1+mactv:2*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gx(1+mactv:2*mactv) + gy(1+mactv:2*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gy(1+mactv:2*mactv) + gz(1+mactv:2*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gz(1+mactv:2*mactv);
-        phi_p = gx(1+2*mactv:3*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gx(1+2*mactv:3*mactv) +...
-            gy(1+2*mactv:3*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gy(1+2*mactv:3*mactv) +...
-            gz(1+2*mactv:3*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gz(1+2*mactv:3*mactv);
+%         phi_a = (invmod(1:mactv))'*(Ws'*spdiags(wr(1:mactv),0,mactv,mactv)*Ws)*(invmod(1:mactv)) + invmod(1:mactv)'*(Gx'*Wx'*spdiags(wr(1:mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1:mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1:mactv),0,mactv,mactv)*Wz*Gz)*invmod(1:mactv);
+% %         phi_t = (invmod(1+mactv:2*mactv))'*(Ws'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Ws)*(invmod(1+mactv:2*mactv)) + invmod(1+mactv:2*mactv)'*(Gx'*Wx'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*Wz*Gz)*invmod(1+mactv:2*mactv);
+% %         phi_p = (invmod(1+2*mactv:3*mactv))'*(Ws'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Ws)*invmod(1+2*mactv:3*mactv) + invmod(1+2*mactv:3*mactv)'*(Gx'*Wx'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wx*Gx + Gy'*Wy'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wy*Gy + Gz'*Wz'*spdiags(wr(1+2*mactv:3*mactv),0,mactv,mactv)*Wz*Gz)*invmod(1+2*mactv:3*mactv);
+%         phi_t = gx(1+mactv:2*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gx(1+mactv:2*mactv) + gy(1+mactv:2*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gy(1+mactv:2*mactv) + gz(1+mactv:2*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gz(1+mactv:2*mactv);
+%         phi_p = gx(1+2*mactv:3*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gx(1+2*mactv:3*mactv) +...
+%             gy(1+2*mactv:3*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gy(1+2*mactv:3*mactv) +...
+%             gz(1+2*mactv:3*mactv)'*spdiags(wr(1+mactv:2*mactv),0,mactv,mactv)*gz(1+2*mactv:3*mactv);
         %         avrwx = scx*aVRWx;
 %         avrwy = scy*aVRWy;
 %         avrwz = scz*aVRWz;
@@ -494,8 +495,9 @@ while switcher ~= 3 && count ~= max_iter
 %         scl_t = (phi_a/(phi_t));
 %         scl_p = (phi_a/phi_p);
 %         sprintf('%e, %e',scl_t,scl_p)
-        scl_t = (delta_p(1)/(delta_q(2)))/2;%(phi_a/(phi_t+phi_p));
+        scl_t = (delta_p(1)/(delta_q(2)));%(phi_a/(phi_t+phi_p));
         scl_p = (delta_p(1)/delta_q(3));%(phi_a/phi_p);
+
         wr(1:mactv)= wr(1:mactv);
         wr(1+mactv:2*mactv)= wr(1+mactv:2*mactv)*scl_t;%/(max(wr(1:mcell))/max(wr(1+mcell:2*mcell))) ;
         wr(1+2*mactv:3*mactv)= wr(1+2*mactv:3*mactv)*scl_p;%/(max(wr(1:mcell))/max(wr(1+2*mcell:3*mcell)));

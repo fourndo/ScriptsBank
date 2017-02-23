@@ -178,7 +178,7 @@ update_Jacobi = Directives.Update_lin_PreCond()
 
 inv = Inversion.BaseInversion(invProb,
                               directiveList=[IRLS, update_Jacobi])
-                                                  
+   
 mrec_MVI = inv.run(np.ones(3*len(actv))*1e-4)
 
 beta = invProb.beta
@@ -212,7 +212,7 @@ invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
 #betaest = Directives.BetaEstimate_ByEig()
 
 # Here is where the norms are applied
-IRLS = Directives.Update_IRLS(norms=([2, 2, 2, 2]),
+IRLS = Directives.Update_IRLS(norms=([0, 2, 2, 2]),
                               f_min_change=1e-4,
                               minGNiter=3, beta_tol=1e-2,
                               coolingRate=3)
