@@ -25,7 +25,7 @@ import os
 import glob
 import fileinput
 import re
-
+import time
 
 work_dir = 'C:\\LC\\Private\\dominiquef\\Projects\\4414_Minsim\\Modeling\\Forward'
 topofile = 'ROT_DEM_30m.topo'
@@ -119,6 +119,7 @@ if dType == 'DC':
     print('Load complete!')
     txLoc = np.asarray(txLoc)
 
+   
     # Grab the pole location for supplied grid ID
     endl = np.c_[np.r_[X[tID]], np.r_[Y[tID]]]
 
@@ -132,6 +133,7 @@ if dType == 'DC':
     # Find the closest grids from source locations
     tid = np.argmin(np.abs(endl[0, 0] - txLoc[:, 0])+np.abs(endl[0, 1] - txLoc[:, 1]))
 
+    tstart = time.time()
     # Interpolate the potentials ar suvey points from pre-computed grids
     P1_phi1 = scipy.interpolate.griddata(DcData[tid].srcList[0].rxList[0].locs[0][:, 0:2],
                                          DcData[tid].dobs,
@@ -170,7 +172,8 @@ if dType == 'DC':
 
     # Compute apparent resistivity
     rho = np.abs(mkvc(volt)) * np.pi * 2. / (1/rC1P1 - 1/rC2P1 - 1/rC1P2 + 1/rC2P2)
-
+    
+    print('DC Calculation: ' + str(time.time()-tstart))
     # PLOT
     plt.figure()
     ax_prim = plt.subplot(1, 1, 1)

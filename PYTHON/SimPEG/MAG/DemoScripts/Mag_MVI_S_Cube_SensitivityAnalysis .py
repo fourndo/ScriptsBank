@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 import os
 
 # # STEP 1: Setup and data simulation # #
-out_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Two_Blocks_test'
+out_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Dropbox\Two_Blocks_test'
 
 # Magnetic inducing field parameter (A,I,D)
 B = [50000, 90, 0]
@@ -45,12 +45,12 @@ mesh = Mesh.TensorMesh([hxind, hyind, hzind], 'CC0')
 mesh.x0[2] -= mesh.vectorNz[-1]
 
 susc = 0.05
-inc = [0, 0]
+inc = [45, 0]
 dec = [90, 90]
 nX = 1
 
 # Get index of the center of block
-locx = [int(mesh.nCx/2)-3, int(mesh.nCx/2)+3]
+locx = [int(mesh.nCx/2)]#[int(mesh.nCx/2)-3, int(mesh.nCx/2)+3]
 midy = int(mesh.nCy/2)
 midz = -4
 
@@ -97,7 +97,10 @@ I = np.zeros((mesh.nCx, mesh.nCy, mesh.nCz))
 count = -1
 for midx in locx:
     count += 1
-    I[(midx-nX):(midx+nX+1), (midy-nX):(midy+nX+1), (midz-nX):(midz+nX+1)] = inc[count]
+    I[(midx-nX):(midx+nX+1),
+      (midy-nX):(midy+nX+1),
+      (midz-nX):(midz+nX+1)] = inc[count]
+
 I = Utils.mkvc(I)
 I = I[actv]
 
@@ -105,12 +108,14 @@ D = np.zeros((mesh.nCx, mesh.nCy, mesh.nCz))
 count = -1
 for midx in locx:
     count += 1
-    D[(midx-nX):(midx+nX+1), (midy-nX):(midy+nX+1), (midz-nX):(midz+nX+1)] = dec[count]
+    D[(midx-nX):(midx+nX+1),
+      (midy-nX):(midy+nX+1),
+      (midz-nX):(midz+nX+1)] = dec[count]
+
 D = Utils.mkvc(D)
 D = D[actv]
 
 M = PF.Magnetics.dipazm_2_xyz(I, D)
-#M = PF.Magnetics.dipazm_2_xyz(np.ones(nC) * B[1], np.ones(nC) * B[2])
 m = mkvc(sp.diags(model, 0) * M)
 
 # Create active map to go from reduce set to full
@@ -136,15 +141,14 @@ wd = np.ones(len(d_TMI))  # Assign flat uncertainties
 survey.dobs = d_TMI
 survey.std = wd
 
-#%% # RUN MVI INVERSION
+# %% # RUN MVI INVERSION
 # Create active map to go from reduce set to full
 # Creat reduced identity map
 idenMap = Maps.IdentityMap(nP=3*nC)
 
 # Create the forward model operator
 prob = PF.Magnetics.MagneticVector(mesh, chiMap=idenMap,
-                                     actInd=actv)
-
+                                   actInd=actv)
 
 survey.pair(prob)
 
@@ -162,28 +166,28 @@ dmis = DataMisfit.l2_DataMisfit(survey)
 dmis.Wd = 1/wd
 
 # Add directives to the inversion
-opt = Optimization.ProjectedGNCG(maxIter=30,lower=-10.,upper=10., maxIterCG= 20, tolCG = 1e-3)
+opt = Optimization.ProjectedGNCG(maxIter=30, lower=-10., upper=10.,
+                                 maxIterCG=20, tolCG=1e-3)
 
-
-invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=3.5e+7)
+invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=1e+8)
 betaest = Directives.BetaEstimate_ByEig()
 
 # Here is where the norms are applied
 IRLS = Directives.Update_IRLS(norms=([2, 2, 2, 2]),
                               eps=None, f_min_change=1e-2,
                               minGNiter=1, beta_tol=1e-2,
-                              chifact = 10.)
+                              chifact=3.)
 
 update_Jacobi = Directives.Update_lin_PreCond()
 
 inv = Inversion.BaseInversion(invProb,
                               directiveList=[IRLS, update_Jacobi])
-   
+
 mrec_MVI = inv.run(np.ones(3*len(actv))*1e-4)
 
-beta = invProb.beta
+beta = invProb.beta/5.
 
-#%% # RUN MVI-S 
+# %% RUN MVI-S
 
 # # STEP 3: Finish inversion with spherical formulation
 mstart = PF.Magnetics.xyz2atp(mrec_MVI)
@@ -196,27 +200,30 @@ reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap,
 reg.mref = np.zeros(3*nC)
 reg.cell_weights = np.ones(3*nC)
 reg.alpha_s = [1., 0., 0.]
-reg.mspace = ['lin', 'sph', 'sph']
+reg.mspace = ['lin', 'lin', 'sph']
+reg.eps_p = [1e-3,1e-3,1e-3]
+reg.eps_q = [1e-3,5e-2,5e-2]
 
 # Data misfit function
 dmis = DataMisfit.l2_DataMisfit(survey)
 dmis.Wd = 1./survey.std
 
 # Add directives to the inversion
-opt = Optimization.ProjectedGNCG_nSpace(maxIter=30, lower=[0., -np.pi/2.,-np.pi],
-                                        upper=[10., np.pi/2., np.pi], maxIterLS=2,
-                                        maxIterCG=40, tolCG=1e-3, LSreduction=1e-1,
+opt = Optimization.ProjectedGNCG_nSpace(maxIter=30,
+                                        lower=[0., -np.inf, -np.inf],
+                                        upper=[10., np.inf, np.inf],
+                                        maxIterLS=10, maxIterCG=20, tolCG=1e-3,
                                         ptype=['lin', 'sph', 'sph'], nSpace=3)
 
 invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
 #betaest = Directives.BetaEstimate_ByEig()
 
 # Here is where the norms are applied
-IRLS = Directives.Update_IRLS(norms=([0, 2, 2, 2]),
+IRLS = Directives.Update_IRLS(norms=([0,0,0,0]),
                               f_min_change=1e-4,
-                              minGNiter=3, beta_tol=1e-2,
-                              coolingRate=3)
-IRLS.eps = [[2e-3,5e-3],[2e-3,1e-2],[1e-4, 1e-2]]
+                              minGNiter=5, beta_tol=1e-2,
+                              coolingRate=5)
+IRLS.eps = [[1e-3,5e-2],[1e-3,5e-2],[5e-4, 5e-2]]
 
 # Special directive specific to the mag amplitude problem. The sensitivity
 # weights are update between each iteration.
@@ -224,15 +231,23 @@ update_Jacobi = Directives.Amplitude_Inv_Iter()
 #update_Jacobi.test = True
 update_Jacobi.ptype = 'MVI-S'
 
+ProjSpherical = Directives.ProjSpherical()
 inv = Inversion.BaseInversion(invProb,
-                              directiveList=[IRLS, update_Jacobi, ])
+                              directiveList=[ProjSpherical, IRLS, update_Jacobi, ])
 
 mrec_MVI_S = inv.run(mstart)
+
+
+Mesh.TensorMesh.writeUBC(mesh,out_dir + '\Mesh.msh')
+Mesh.TensorMesh.writeModelUBC(mesh,out_dir + '\MVI_amp.sus',mrec_MVI_S[:nC])
+Mesh.TensorMesh.writeModelUBC(mesh,out_dir + '\MVI_phi.sus',mrec_MVI_S[2*nC:])
+Mesh.TensorMesh.writeModelUBC(mesh,out_dir + '\MVI_theta.sus',mrec_MVI_S[nC:2*nC])
+
 mrec_MVI_S = PF.Magnetics.atp2xyz(mrec_MVI_S)
+Mesh.TensorMesh.writeVectorUBC(mesh,out_dir + '\Vector_CAR.fld',mrec_MVI.reshape(mesh.nC,3,order='F'))
+Mesh.TensorMesh.writeVectorUBC(mesh,out_dir + '\Vector_SPH.fld',mrec_MVI_S.reshape(mesh.nC,3,order='F'))
 
-Mesh.TensorMesh.writeVectorUBC(mesh,out_dir + '\Vector_CAR.sus',mrec_MVI.reshape(mesh.nC,3,order='F'))
-
-Mesh.TensorMesh.writeVectorUBC(mesh,out_dir + '\Vector_SPH.sus',mrec_MVI_S.reshape(mesh.nC,3,order='F'))
+PF.Magnetics.writeUBCobs(out_dir + '\Obs.dat',survey,d_TMI)
 #%% Plot models
 from matplotlib.patches import Rectangle
 
