@@ -276,7 +276,7 @@ betaest = Directives.BetaEstimate_ByEig()
 
 # Specify the sparse norms
 IRLS = Directives.Update_IRLS(norms=([2, 2, 2, 2]),
-                              eps=(1e-3, 1e-3), f_min_change=1e-3,
+                              eps=None, f_min_change=1e-3,
                               minGNiter=3, chifact=0.25)
 
 # Special directive specific to the mag amplitude problem. The sensitivity
@@ -312,7 +312,7 @@ betaest = Directives.BetaEstimate_ByEig()
 
 # Specify the sparse norms
 IRLS = Directives.Update_IRLS(norms=([2, 2, 2, 2]),
-                              eps=(1e-3, 1e-3), f_min_change=1e-3,
+                              eps=None, f_min_change=1e-3,
                               minGNiter=3, chifact=0.25)
 
 # Special directive specific to the mag amplitude problem. The sensitivity

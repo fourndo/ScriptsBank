@@ -34,6 +34,7 @@ out_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Dropbox\Two_Blocks_test'
 # Magnetic inducing field parameter (A,I,D)
 B = [50000, 90, 0]
 
+from SimPEG import Mesh
 # Create a mesh
 dx = 5.
 
@@ -42,6 +43,7 @@ hyind = [(dx, 5, -1.3), (dx, 15), (dx, 5, 1.3)]
 hzind = [(dx, 5, -1.3), (dx, 10)]
 
 mesh = Mesh.TensorMesh([hxind, hyind, hzind], 'CC0')
+nC = mesh.nC
 mesh.x0[2] -= mesh.vectorNz[-1]
 
 susc = 0.05
@@ -219,7 +221,7 @@ invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
 #betaest = Directives.BetaEstimate_ByEig()
 
 # Here is where the norms are applied
-IRLS = Directives.Update_IRLS(norms=([0,0,0,0]),
+IRLS = Directives.Update_IRLS(norms=([2,2,2,2]),
                               f_min_change=1e-4,
                               minGNiter=5, beta_tol=1e-2,
                               coolingRate=5)

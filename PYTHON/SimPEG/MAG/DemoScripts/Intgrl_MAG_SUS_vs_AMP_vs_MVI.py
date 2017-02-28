@@ -30,7 +30,7 @@ nX = 1
 # Get index of the center of block
 locx = [int(mesh.nCx/2)]
 midy = int(mesh.nCy/2)
-midz = -3
+midz = -4
 
 # Lets create a simple Gaussian topo and set the active cells
 [xx, yy] = np.meshgrid(mesh.vectorNx, mesh.vectorNy)
@@ -298,8 +298,6 @@ inv = Inversion.BaseInversion(invProb,
 
 mrec_CMI = inv.run(np.ones(3*len(actv))*1e-4)
 
-#%% # RUN MVI-S 
-
 # # STEP 3: Finish inversion with spherical formulation
 mstart = PF.Magnetics.xyz2atp(mrec_MVI)
 prob.ptype = 'Spherical'
@@ -311,35 +309,40 @@ reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap,
 reg.mref = np.zeros(3*nC)
 reg.cell_weights = np.ones(3*nC)
 reg.alpha_s = [1., 0., 0.]
-reg.mspace = ['lin', 'sph', 'sph']
+reg.mspace = ['lin', 'lin', 'sph']
+reg.eps_p = [1e-3,1e-3,1e-3]
+reg.eps_q = [1e-3,5e-2,5e-2]
 
 # Data misfit function
 dmis = DataMisfit.l2_DataMisfit(survey)
 dmis.Wd = 1./survey.std
 
 # Add directives to the inversion
-opt = Optimization.ProjectedGNCG_nSpace(maxIter=20, lower=[0., -np.pi/2.,-np.pi],
-                                        upper=[10., np.pi/2., np.pi], maxIterLS=10,
-                                        LSreduction=1e-1,
-                                        maxIterCG=40, tolCG=1e-3,
+opt = Optimization.ProjectedGNCG_nSpace(maxIter=30,
+                                        lower=[0., -np.inf, -np.inf],
+                                        upper=[10., np.inf, np.inf],
+                                        maxIterLS=10, maxIterCG=20, tolCG=1e-3,
                                         ptype=['lin', 'sph', 'sph'], nSpace=3)
 
 invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
 #betaest = Directives.BetaEstimate_ByEig()
 
 # Here is where the norms are applied
-IRLS = Directives.Update_IRLS(norms=([0, 1, 1, 1]),
-                              eps=None, f_min_change=1e-4,
-                              minGNiter=3, beta_tol=1e-2,
-                              coolingRate=3)
+IRLS = Directives.Update_IRLS(norms=([0,1,1,1]),
+                              f_min_change=1e-4,
+                              minGNiter=5, beta_tol=1e-2,
+                              coolingRate=5)
+IRLS.eps = [[1e-3,5e-2],[1e-3,5e-2],[5e-4, 5e-2]]
 
 # Special directive specific to the mag amplitude problem. The sensitivity
 # weights are update between each iteration.
 update_Jacobi = Directives.Amplitude_Inv_Iter()
+#update_Jacobi.test = True
 update_Jacobi.ptype = 'MVI-S'
 
+ProjSpherical = Directives.ProjSpherical()
 inv = Inversion.BaseInversion(invProb,
-                              directiveList=[IRLS, update_Jacobi, ])
+                              directiveList=[ProjSpherical, IRLS, update_Jacobi, ])
 
 mrec_MVI_S = inv.run(mstart)
 mrec_MVI_S = PF.Magnetics.atp2xyz(mrec_MVI_S)
@@ -353,97 +356,135 @@ sub = 2
 #%% Plot the result
 from matplotlib.patches import Rectangle
 
-fig = plt.figure(figsize=(16,16))
-ax1 = plt.subplot(321)
-ax2 = plt.subplot(322)
-ax3 = plt.subplot(323)
-ax4 = plt.subplot(324)
-ax5 = plt.subplot(325)
-ax6 = plt.subplot(326)
+
+
 
 ypanel = int(mesh.nCy/2)-2
 zpanel = -4
 
 vmin = 0.
-xlim = [-60, 60]
-cmap = 'magma_r'
+cmap = 'gray_r'
 
+
+
+
+def plotFigure(mesh, model, ypanel, zpanel, lims, cmap, vmin, vmax, ax1, ax2, scale = 0.75):
+    ax2, im2, cbar = PF.Magnetics.plotModelSections(mesh, model, normal='y',
+                                   ind=ypanel, axs=ax2,
+                                   xlim=lims[0], scale = scale, vec ='w',
+                                   ylim=lims[2],
+                                   vmin=vmin, vmax=vmax, cmap = cmap)
+    
+    
+    
+    ax1, im2, cbar = PF.Magnetics.plotModelSections(mesh, model, normal='z',
+                                   ind=zpanel, axs=ax1,
+                                   xlim=lims[0], scale = scale, vec ='w',
+                                   ylim=lims[1],
+                                   vmin=vmin, vmax=vmax, cmap = cmap)
+                                   
+    return ax1, ax2
+
+
+# # # TRUE MODEL
+fig = plt.figure(figsize=(6,9))
+ax1 = plt.subplot(211)
+ax2 = plt.subplot(212)
 vmax = model.max()
-ax1, im2, cbar = PF.Magnetics.plotModelSections(mesh, m, normal='y',
-                               ind=ypanel, axs=ax1,
-                               xlim=xlim, scale = 0.75, vec ='w',
-                               ylim=(mesh.vectorNz[3], mesh.vectorNz[-1]+dx),
-                               vmin=vmin, vmax=vmax, cmap = cmap)
+
+lims = [[-30, 30],[-30, 30],[0, 60]]
+plotFigure(mesh, m, ypanel, zpanel, lims, cmap, vmin, vmax, ax1, ax2)
+    
+for midx in locx:
+    ax2.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]+dx/2.,mesh.vectorCCz[midz-nX-1]+dx/2.),(nX+2)*dx,(nX+2)*dx, lw=2, facecolor = 'none', edgecolor='r'))
+ax2.set_title('(a) True')
 
 for midx in locx:
-    ax1.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]-dx/2.,mesh.vectorCCz[midz-nX-1]-dx/2.),3*dx,3*dx, lw=2, facecolor = 'none', edgecolor='r'))
+    ax1.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]+dx/2.,mesh.vectorCCy[midy-nX-1]+dx/2.),(nX+2)*dx,(nX+2)*dx, lw=2, facecolor = 'none', edgecolor='r'))
 ax1.set_title('(a) True')
 ax1.xaxis.set_visible(False)
 
-
+# # SUSCEPTIBILITY MODEL
+fig = plt.figure(figsize=(6,9))
+ax1 = plt.subplot(211)
+ax2 = plt.subplot(212)
 vmax = mrec_SUS.max()
-ax2, im2, cbar = PF.Magnetics.plotModelSections(mesh, mrec_SUS, normal='y',
-                               ind=ypanel, axs=ax2,
-                               xlim=xlim,
-                               ylim=(mesh.vectorNz[3], mesh.vectorNz[-1]+dx),
-                               vmin=vmin, vmax=vmax, cmap = cmap)
+
+plotFigure(mesh, mrec_SUS, ypanel, zpanel, lims, cmap, vmin, vmax, ax1, ax2)
+for midx in locx:
+    ax2.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]+dx/2.,mesh.vectorCCz[midz-nX-1]+dx/2.),(nX+2)*dx,(nX+2)*dx, lw=2, facecolor = 'none', edgecolor='r'))
+ax2.set_title('(a) True')
 
 for midx in locx:
-    ax2.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]-dx/2.,mesh.vectorCCz[midz-nX-1]-dx/2.),3*dx,3*dx, lw=2, facecolor = 'none', edgecolor='r'))
+    ax1.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]+dx/2.,mesh.vectorCCy[midy-nX-1]+dx/2.),(nX+2)*dx,(nX+2)*dx, lw=2, facecolor = 'none', edgecolor='r'))
+ax1.set_title('(a) True')
+ax1.xaxis.set_visible(False)
 
-ax2.set_title('(b) Susceptibility')
-ax2.xaxis.set_visible(False)
-ax2.yaxis.set_visible(False)
-
+# # # MVI CARTESIAN
+fig = plt.figure(figsize=(6,9))
+ax1 = plt.subplot(211)
+ax2 = plt.subplot(212)
 vmax = mrec_MVI.max()
 scale = mrec_MVI.max()/m.max()*0.75
-ax3, im2, cbar = PF.Magnetics.plotModelSections(mesh, mrec_MVI, normal='y',
-                               ind=ypanel, axs=ax3,
-                               xlim=xlim, scale=scale, vec = 'w',
-                               ylim=(mesh.vectorNz[3], mesh.vectorNz[-1]+dx),
-                               vmin=vmin, vmax=vmax, cmap = cmap)
+
+plotFigure(mesh, mrec_MVI, ypanel, zpanel, lims, cmap, vmin, vmax, ax1, ax2, scale=scale)
+
 for midx in locx:
-    ax3.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]-dx/2.,mesh.vectorCCz[midz-nX-1]-dx/2.),3*dx,3*dx, lw=2, facecolor = 'none', edgecolor='r'))
+    ax2.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]+dx/2.,mesh.vectorCCz[midz-nX-1]+dx/2.),(nX+2)*dx,(nX+2)*dx, lw=2, facecolor = 'none', edgecolor='r'))
+ax2.set_title('(a) True')
 
-ax3.xaxis.set_visible(False)
-ax3.set_title('(d) MVI-Cartesian')
+for midx in locx:
+    ax1.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]+dx/2.,mesh.vectorCCy[midy-nX-1]+dx/2.),(nX+2)*dx,(nX+2)*dx, lw=2, facecolor = 'none', edgecolor='r'))
+ax1.set_title('MVI-Cartesian')
+ax1.yaxis.set_visible(False)
+ax1.xaxis.set_visible(False)
 
+# # MAI MODEL
+fig = plt.figure(figsize=(6,9))
+ax1 = plt.subplot(211)
+ax2 = plt.subplot(212)
 vmax = mrec_MAI.max()
-ax4, im2, cbar = PF.Magnetics.plotModelSections(mesh, mrec_MAI, normal='y',
-                               ind=ypanel, axs=ax4,
-                               xlim=xlim,
-                               ylim=(mesh.vectorNz[3], mesh.vectorNz[-1]+dx),
-                               vmin=vmin, vmax=vmax, cmap = cmap)
+
+plotFigure(mesh, mrec_MAI, ypanel, zpanel, lims, cmap, vmin, vmax, ax1, ax2)
+for midx in locx:
+    ax2.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]+dx/2.,mesh.vectorCCz[midz-nX-1]+dx/2.),(nX+2)*dx,(nX+2)*dx, lw=2, facecolor = 'none', edgecolor='r'))
+ax2.set_title('(a) True')
 
 for midx in locx:
-    ax4.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]-dx/2.,mesh.vectorCCz[midz-nX-1]-dx/2.),3*dx,3*dx, lw=2, facecolor = 'none', edgecolor='r'))
-ax4.set_title('(c) Amplitude')
-ax4.yaxis.set_visible(False)
-ax4.xaxis.set_visible(False)
+    ax1.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]+dx/2.,mesh.vectorCCy[midy-nX-1]+dx/2.),(nX+2)*dx,(nX+2)*dx, lw=2, facecolor = 'none', edgecolor='r'))
+ax1.set_title('(a) True')
+ax1.xaxis.set_visible(False)
 
-
-
+# # # MVI-SPHERICAL
+fig = plt.figure(figsize=(6,9))
+ax1 = plt.subplot(211)
+ax2 = plt.subplot(212)
 vmax = mrec_MVI_S.max()
 scale = mrec_MVI_S.max()/m.max()*0.75
-ax5, im2, cbar = PF.Magnetics.plotModelSections(mesh, mrec_MVI_S, normal='y',
-                               ind=ypanel, axs=ax5,
-                               xlim=xlim, scale=scale, vec = 'w',
-                               ylim=(mesh.vectorNz[3], mesh.vectorNz[-1]+dx),
-                               vmin=vmin, vmax=vmax, cmap = cmap)
-for midx in locx:
-    ax5.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]-dx/2.,mesh.vectorCCz[midz-nX-1]-dx/2.),3*dx,3*dx, lw=2, facecolor = 'none', edgecolor='r'))
-ax5.set_title('(e) MVI-Spherical')
-#ax5.xaxis.set_visible(False)
 
+plotFigure(mesh, mrec_MVI_S, ypanel, zpanel, lims, cmap, vmin, vmax, ax1, ax2, scale=scale)
+for midx in locx:
+    ax2.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]+dx/2.,mesh.vectorCCz[midz-nX-1]+dx/2.),(nX+2)*dx,(nX+2)*dx, lw=2, facecolor = 'none', edgecolor='r'))
+ax2.set_title('(a) True')
+
+for midx in locx:
+    ax1.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]+dx/2.,mesh.vectorCCy[midy-nX-1]+dx/2.),(nX+2)*dx,(nX+2)*dx, lw=2, facecolor = 'none', edgecolor='r'))
+ax1.set_title('(a) True')
+ax1.xaxis.set_visible(False)
+
+# # # CMI MODEL
+fig = plt.figure(figsize=(6,9))
+ax1 = plt.subplot(211)
+ax2 = plt.subplot(212)
 vmax = mrec_CMI.max()
 scale = mrec_CMI.max()/m.max()*0.75
-ax6, im2, cbar = PF.Magnetics.plotModelSections(mesh, mrec_CMI, normal='y',
-                               ind=ypanel, axs=ax6,
-                               xlim=xlim, scale=scale, vec = 'w',
-                               ylim=(mesh.vectorNz[3], mesh.vectorNz[-1]+dx),
-                               vmin=vmin, vmax=vmax, cmap = cmap)
-for midx in locx:
-    ax6.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]-dx/2.,mesh.vectorCCz[midz-nX-1]-dx/2.),3*dx,3*dx, lw=2, facecolor = 'none', edgecolor='r'))
 
-ax6.yaxis.set_visible(False)
-ax6.set_title('(f) Cooperative')
+plotFigure(mesh, mrec_CMI, ypanel, zpanel, lims, cmap, vmin, vmax, ax1, ax2, scale=scale)
+for midx in locx:
+    ax2.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]+dx/2.,mesh.vectorCCz[midz-nX-1]+dx/2.),(nX+2)*dx,(nX+2)*dx, lw=2, facecolor = 'none', edgecolor='r'))
+ax2.set_title('(a) True')
+
+for midx in locx:
+    ax1.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]+dx/2.,mesh.vectorCCy[midy-nX-1]+dx/2.),(nX+2)*dx,(nX+2)*dx, lw=2, facecolor = 'none', edgecolor='r'))
+ax1.set_title('(a) True')
+ax1.xaxis.set_visible(False)

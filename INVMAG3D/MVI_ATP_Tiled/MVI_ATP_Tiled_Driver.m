@@ -129,7 +129,7 @@ else
 end
 
 M_xyz = m_vec;
-beta_in = 2.5e+7/5;
+beta_in = 5e+6;
 %% Load topography
 if isempty(topofile)==1
     [Zn,Xn,Yn] = ndgrid(zn,xn,yn);

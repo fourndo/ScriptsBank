@@ -26,7 +26,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-work_dir = "C:\\Users\\dominiquef.MIRAGEOSCIENCE\\Downloads\\Amplitude\\"
+work_dir = "C:\\Users\dominiquef.MIRAGEOSCIENCE\\ownCloud\\Research\\Modelling\\Synthetic\\Block_Gaussian_topo\\"
 out_dir = "SimPEG_PF_Inv\\"
 input_file = "SimPEG_MAG.inp"
 # %%
@@ -70,7 +70,7 @@ reg = Regularization.Simple(mesh, indActive=surf)
 reg.mref = np.zeros(nC)
 
 # Specify how the optimization will proceed, set susceptibility bounds to inf
-opt = Optimization.ProjectedGNCG(maxIter=50, lower=-np.inf,
+opt = Optimization.ProjectedGNCG(maxIter=25, lower=-np.inf,
                                  upper=np.inf, maxIterLS=20,
                                  maxIterCG=20, tolCG=1e-3)
 
@@ -130,21 +130,18 @@ PF.Magnetics.writeUBCobs(work_dir + out_dir + 'Amplitude_data.obs', survey, damp
 # which requires some special care for the sensitivity weights (see Directives)
 
 # Re-set the active cells to entire mesh
-driver._activeCells = None
-actv = driver.activeCells
-
 # Create active map to go from reduce space to full
-actvMap = Maps.InjectActiveCells(mesh, actv, -100)
-nC = len(actv)
+actvMap = Maps.InjectActiveCells(mesh, active, -100)
+nC = len(active)
 
 # Create identity map
 idenMap = Maps.IdentityMap(nP=nC)
 
-mstart = np.ones(len(actv))*1e-4
+mstart = np.ones(len(active))*1e-4
 
 # Create the forward model operator
 prob = PF.Magnetics.MagneticAmplitude(mesh, chiMap=idenMap,
-                                      actInd=actv)
+                                      actInd=active)
 prob.chi = mstart
 
 # Change the survey to xyz components
@@ -157,7 +154,7 @@ survey.pair(prob)
 survey.dobs = damp
 
 # Create a sparse regularization
-reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
+reg = Regularization.Sparse(mesh, indActive=active, mapping=idenMap)
 reg.mref = driver.mref
 
 # Data misfit function
