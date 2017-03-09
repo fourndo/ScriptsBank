@@ -75,36 +75,51 @@ survey.pair(prob)
 wr = np.sum(prob.G**2., axis=0)**0.5
 wr = (wr/np.max(wr))
 
+# Create a block diagonal regularization
+wires = Maps.Wires(('p', mesh.nC), ('s', mesh.nC), ('t', mesh.nC))
+
 # Create a regularization
-reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap, nSpace=3)
-reg.cell_weights = wr
+reg_p = Regularization.Sparse(mesh, indActive=actv, mapping=wires.p)
+reg_p.cell_weights = wr
+reg_p.norms = [2, 2, 2, 2]
+
+reg_s = Regularization.Sparse(mesh, indActive=actv, mapping=wires.s)
+reg_s.cell_weights = wr
+reg_s.norms = [2, 2, 2, 2]
+
+reg_t = Regularization.Sparse(mesh, indActive=actv, mapping=wires.t)
+reg_t.cell_weights = wr
+reg_t.norms = [2, 2, 2, 2]
+
+reg = reg_p + reg_s + reg_t
 reg.mref = np.zeros(3*nC)
 
 # Data misfit function
 dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.Wd = 1./survey.std
+dmis.W = 1./survey.std
 
 # Add directives to the inversion
-opt = Optimization.ProjectedGNCG(maxIter=30, lower=-10., upper=10.,
+opt = Optimization.ProjectedGNCG(maxIter=7, lower=-10., upper=10.,
                                  maxIterCG=20, tolCG=1e-3)
-
 
 invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
 betaest = Directives.BetaEstimate_ByEig()
 
-betaCool = Directives.BetaSchedule(coolingFactor=2., coolingRate=1)
+# Here is where the norms are applied
+IRLS = Directives.Update_IRLS(f_min_change=1e-4,
+                              minGNiter=3, beta_tol=1e-2)
 
 update_Jacobi = Directives.Update_lin_PreCond()
 targetMisfit = Directives.TargetMisfit()
 
 
 inv = Inversion.BaseInversion(invProb,
-                              directiveList=[betaest, update_Jacobi, betaCool,targetMisfit ])
+                              directiveList=[IRLS, update_Jacobi, betaest])
 
 mrec_MVI = inv.run(mstart)
 
-beta = invProb.beta/5.
-
+beta = 5e+6#invProb.beta
+PF.MagneticsDriver.writeVectorUBC(mesh,work_dir+out_dir + '\Vector_MVI_C.fld',mrec_MVI.reshape(mesh.nC,3,order='F'))
 # %% RUN MVI-S
 
 # # STEP 3: Finish inversion with spherical formulation
@@ -113,40 +128,59 @@ prob.ptype = 'Spherical'
 prob.chi = mstart
 
 # Create a block diagonal regularization
-reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap,
-                            nSpace=3)
+wires = Maps.Wires(('p', mesh.nC), ('s', mesh.nC), ('t', mesh.nC))
+
+# Create a regularization
+reg_a = Regularization.Sparse(mesh, indActive=actv, mapping=wires.p)
+reg_a.norms = [0, 1, 1, 1]
+reg_a.eps_p, reg_a.eps_q = 1e-3, 1e-3
+
+reg_t = Regularization.Sparse(mesh, indActive=actv, mapping=wires.s)
+reg_t.alpha_s = 0.
+
+reg_t.space = 'spherical'
+reg_t.norms = [2, 1, 1, 1]
+reg_t.eps_q = 2e-2
+# reg_t.alpha_x, reg_t.alpha_y, reg_t.alpha_z = 0.25, 0.25, 0.25
+
+reg_p = Regularization.Sparse(mesh, indActive=actv, mapping=wires.t)
+reg_p.alpha_s = 0.
+reg_p.space = 'spherical'
+reg_p.norms = [2, 1, 1, 1]
+reg_p.eps_q = 2e-2
+
+reg = reg_a + reg_t + reg_p
 reg.mref = np.zeros(3*nC)
-reg.cell_weights = np.ones(3*nC)
-reg.alpha_s = [1., 0., 0.]
-reg.mspace = ['lin', 'lin', 'sph']
-reg.eps_p = [1e-3,1e-3,1e-3]
-reg.eps_q = [1e-3,5e-2,5e-2]
 
 # Data misfit function
 dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.Wd = 1./survey.std
+dmis.W = 1./survey.std
 
 # Add directives to the inversion
-opt = Optimization.ProjectedGNCG_nSpace(maxIter=30,
-                                        lower=[0., -np.inf, -np.inf],
-                                        upper=[10., np.inf, np.inf],
-                                        maxIterLS=10, maxIterCG=20, tolCG=1e-3,
-                                        ptype=['lin', 'sph', 'sph'], nSpace=3)
+opt = Optimization.ProjectedGNCG(maxIter=40,
+                                 lower=[0., -np.inf, -np.inf],
+                                 upper=[10., np.inf, np.inf],
+                                 maxIterLS=10,
+                                 maxIterCG=20, tolCG=1e-3,
+                                 alwaysPass=True,
+                                 stepOffBoundsFact=1e-8)
 
 invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
-#betaest = Directives.BetaEstimate_ByEig()
+#  betaest = Directives.BetaEstimate_ByEig()
 
 # Here is where the norms are applied
-IRLS = Directives.Update_IRLS(norms=([0,0,0,0]),
-                              f_min_change=1e-4,
+IRLS = Directives.Update_IRLS(f_min_change=1e-4,
                               minGNiter=5, beta_tol=1e-2,
                               coolingRate=5)
-IRLS.eps = [[1e-3,5e-2],[1e-3,5e-2],[5e-4, 5e-2]]
+
+invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
+# betaest = Directives.BetaEstimate_ByEig()
+
 
 # Special directive specific to the mag amplitude problem. The sensitivity
 # weights are update between each iteration.
 update_Jacobi = Directives.Amplitude_Inv_Iter()
-#update_Jacobi.test = True
+# update_Jacobi.test = True
 update_Jacobi.ptype = 'MVI-S'
 
 ProjSpherical = Directives.ProjSpherical()
@@ -160,9 +194,9 @@ mrec_MVI_S = inv.run(mstart)
 # m_l2 = actvMap * reg.l2model[0:nC]
 # m_l2[m_l2==-100] = np.nan
 
-m_lpx = actvMap * mrec[0:nC]
-m_lpy = actvMap * mrec[nC:2*nC]
-m_lpz = actvMap * mrec[2*nC:]
+m_lpx = actvMap * mrec_MVI[0:nC]
+m_lpy = actvMap * mrec_MVI[nC:2*nC]
+m_lpz = actvMap * mrec_MVI[2*nC:]
 
 mvec = np.c_[m_lpx, m_lpy, m_lpz]
 
@@ -176,13 +210,13 @@ amp = np.sqrt(m_lpx**2. + m_lpy**2. + m_lpz**2.)
 Mesh.TensorMesh.writeModelUBC(mesh,work_dir + out_dir + "MVI_C_amp.amp",amp)
 PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MVI.pre',survey,invProb.dpred)
 
-Mesh.TensorMesh.writeModelUBC(mesh,out_dir + '\MVI_S_amp.sus',mrec_MVI_S[:nC])
-Mesh.TensorMesh.writeModelUBC(mesh,out_dir + '\MVI_S_phi.sus',mrec_MVI_S[2*nC:])
-Mesh.TensorMesh.writeModelUBC(mesh,out_dir + '\MVI_S_theta.sus',mrec_MVI_S[nC:2*nC])
+Mesh.TensorMesh.writeModelUBC(mesh,work_dir+out_dir + '\MVI_S_amp.sus',mrec_MVI_S[:nC])
+Mesh.TensorMesh.writeModelUBC(mesh,work_dir+out_dir + '\MVI_S_phi.sus',mrec_MVI_S[2*nC:])
+Mesh.TensorMesh.writeModelUBC(mesh,work_dir+out_dir + '\MVI_S_theta.sus',mrec_MVI_S[nC:2*nC])
 
 mrec_MVI_S = PF.Magnetics.atp2xyz(mrec_MVI_S)
-Mesh.TensorMesh.writeVectorUBC(mesh,out_dir + '\Vector_MVI_C.fld',mrec_MVI.reshape(mesh.nC,3,order='F'))
-Mesh.TensorMesh.writeVectorUBC(mesh,out_dir + '\Vector_MVI_S.fld',mrec_MVI_S.reshape(mesh.nC,3,order='F'))
+
+PF.MagneticsDriver.writeVectorUBC(mesh,work_dir+out_dir + '\Vector_MVI_S.fld',mrec_MVI_S.reshape(mesh.nC,3,order='F'))
 
 obs_loc = survey.srcField.rxList[0].locs
 

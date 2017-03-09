@@ -36,7 +36,7 @@ dsep = '\';
 % work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Osborne\Inversion\ROT40\ATP';
 % work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Desktop\Paul_Lake\Modeling\Inversion\Misery';
 % work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\SingleBlock\Simpeg';
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Dropbox\Two_Blocks_test';
+work_dir = 'C:\Users\DominiqueFournier\Dropbox\Two_Blocks_test\SingleBlock';
 
 out_dir = [work_dir dsep 'ALL_Tiles'];
 mkdir(out_dir);

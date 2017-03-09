@@ -30,7 +30,7 @@ import numpy as np
 import os
 
 # Define the inducing field parameter
-work_dir = "C:\\Users\dominiquef.MIRAGEOSCIENCE\\ownCloud\\Research\\Modelling\\Synthetic\\Triple_Block_lined\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Triple_Block_lined\\"
 out_dir = "SimPEG_PF_Inv\\"
 input_file = "SimPEG_MAG.inp"
 
@@ -75,14 +75,24 @@ survey.pair(prob)
 wr = np.sum(prob.G**2., axis=0)**0.5
 wr = (wr/np.max(wr))
 
+wires = Maps.Wires(('p', mesh.nC), ('s', mesh.nC), ('t', mesh.nC))
+
 # Create a regularization
-reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap, nSpace=3)
-reg.cell_weights = wr
-reg.mref = np.zeros(3*nC)
+reg_p = Regularization.Sparse(mesh, indActive=actv, mapping=wires.p)
+reg_p.cell_weights = wr
+
+reg_s = Regularization.Sparse(mesh, indActive=actv, mapping=wires.s)
+reg_s.cell_weights = wr
+
+reg_t = Regularization.Sparse(mesh, indActive=actv, mapping=wires.t)
+reg_t.cell_weights = wr
+
+reg = reg_p + reg_s + reg_t
+
 
 # Data misfit function
 dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.Wd = 1./survey.std
+dmis.W = 1./survey.std
 
 # Add directives to the inversion
 opt = Optimization.ProjectedGNCG(maxIter=30, lower=-10., upper=10.,
@@ -120,8 +130,8 @@ m_lpz[m_lpz == -100] = 0
 
 amp = np.sqrt(m_lpx**2. + m_lpy**2. + m_lpz**2.)
 
-Mesh.TensorMesh.writeVectorUBC(mesh,work_dir + out_dir + "MVI_lplq.vec",mvec)
-Mesh.TensorMesh.writeModelUBC(mesh,work_dir + out_dir + "MVI_lplq.amp",amp)
+PF.MagneticsDriver.writeVectorUBC(mesh,work_dir + out_dir + "MVI_lplq.vec",mvec)
+Mesh.MeshIO.writeModelUBC(mesh,work_dir + out_dir + "MVI_lplq.amp",amp)
 PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MVI.pre',survey,invProb.dpred)
 
 obs_loc = survey.srcField.rxList[0].locs
@@ -179,7 +189,7 @@ if CMI:
 
     amp = np.sqrt(m_lpx**2. + m_lpy**2. + m_lpz**2.)
 
-    Mesh.TensorMesh.writeVectorUBC(mesh,work_dir + out_dir + "CMI_lplq.vec",mvec)
+    PF.MagneticsDriver.writeVectorUBC(mesh,work_dir + out_dir + "CMI_lplq.vec",mvec)
     Mesh.TensorMesh.writeModelUBC(mesh,work_dir + out_dir + "CMI_lplq.amp",amp)
     PF.Magnetics.writeUBCobs(work_dir+out_dir + 'CMI.pre',survey,invProb.dpred)
 
