@@ -17,14 +17,14 @@ while line ~=-1
     end
     
     if isempty(regexp(line,'(<name>)','match')) == 0
-        count = count + 1;
+        
         temp = regexp(line,'>\w*<','match');
         str{count} = temp{1}(2:end-1);
         
     end    
         
     if isempty(regexp(line,'(<code>)','match')) == 0 
-        
+        count = count + 1;
         temp = regexp(line,'\d*','match');
         id(count) = str2num(temp{:});
         

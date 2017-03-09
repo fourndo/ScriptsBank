@@ -13,39 +13,39 @@ dsep = '\';
 
 
 meshfile = '..\Mesh_20m.msh';
-FMmodelfile = '..\Formation.dat';
+FMmodelfile = '..\Geology.dat';
 
-XMLfile = '..\Formation.xml';
+XMLfile = '..\Geology.xml';
 
-% List of model files
+% % List of model files
 % work_dir = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\Forward\Mesh_20m_Dens';
 % % modelfile = 'Density_Randn_Std.den'; 
 % modelfile = 'gzinv3d_001.den';
 % ylbl{1} = 'Density Anomaly (g/cc)';
-% modelOut = 'Density_Randn_Std.den';
+% modelOut = 'Density_Median_Std.den';
 % axlim = ([-0.3 0.3]);
 % ndv = -100000;
 
 
-% List of model files
+% % List of model files
 % work_dir = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\Forward\Mesh_20m_Susc';
-% modelfile = 'maginv3d_001.sus'; ylbl{1} = 'Susceptibility';
+% % modelfile = 'maginv3d_001.sus'; ylbl{1} = 'Susceptibility';
 % axlim = ([1e-5 1e-1]);
 % ndv = -1;
 % modelfile = 'maginv3d_002.sus'; ylbl{1} = 'Susceptibility';
+% 
+% work_dir = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\Forward\Mesh_20m_Cond';
+% modelfile = 'Cond_Randn_Std_model.con'; ylbl{1} = 'Conductivity';
+% modelOut = 'Median_Std_model.con';
+% axlim = ([-5e-2 5e-2]);
+% axlim = ([-5 -0.1]);
+% ndv = 1e-8;
+
 
 work_dir = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\Forward\Mesh_20m_Cond';
-modelfile = 'Cond_Randn_Std_model.con'; ylbl{1} = 'Conductivity';
-modelOut = 'Randn_Std_model.con';
-% axlim = ([-5e-2 5e-2]);
-axlim = ([-5 -0.1]);
+modelfile = 'Inv_VTEM_1D.con'; ylbl{1} = 'Conductivity';
+modelOut = 'Cond_Median_Std.con';
 ndv = 1e-8;
-
-
-% work_dir = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\VPmg\Mesh_20m_Cond';
-% modelfile = 'Inv_VTEM_1D.con'; ylbl{1} = 'Conductivity';
-% modelOut = 'MedianCond.sus';
-% ndv = 1e-8;
 
 dh_file = 'dhData';
 % Outfile model
@@ -96,24 +96,24 @@ for ii = 1 : length(geoID)
 %     else
         
         indx = FMmodel == geoID(ii) & phymodel ~= ndv & phymodel ~= -9999;
-%         
-%         if sum(indx)~=0
-%             
-%             stat{1}(ii,1) = median(phymodel(indx));
-%             stat{1}(ii,2) = std(phymodel(indx));
-%             stat{1}(ii,3) = min(phymodel(indx));
-%             stat{1}(ii,4) = max(phymodel(indx));
-% 
-%         end
-
+        
         if sum(indx)~=0
             
-            stat{1}(ii,1) = log10(median(phymodel(indx)));
-            stat{1}(ii,2) = log10(std(phymodel(indx)));
+            stat{1}(ii,1) = median(phymodel(indx));
+            stat{1}(ii,2) = std(phymodel(indx));
             stat{1}(ii,3) = min(phymodel(indx));
             stat{1}(ii,4) = max(phymodel(indx));
 
         end
+
+%         if sum(indx)~=0
+%             
+%             stat{1}(ii,1) = log10(median(phymodel(indx)));
+%             stat{1}(ii,2) = log10(std(phymodel(indx)));
+%             stat{1}(ii,3) = min(phymodel(indx));
+%             stat{1}(ii,4) = max(phymodel(indx));
+% 
+%         end
 %     end
     
 end
@@ -230,20 +230,20 @@ xlim(axlim)
 ylim([0 1750])
 
 %% Ouput a mean density model
-% m_out = ones(size(FMmodel))*ndv;
-% 
-% for ii = 1 : length(geoID)
-%     
-%     indx = FMmodel == geoID(ii);
-%     
-% %     rand_m = randn(sum(indx),1)*stat{1}(ii,2) + stat{1}(ii,1);
-% 
+m_out = ones(size(FMmodel))*ndv;
+
+for ii = 1 : length(geoID)
+    
+    indx = FMmodel == geoID(ii);
+    
+    rand_m = stat{1}(ii,1);
+
 %     rand_m = randn(sum(indx),1)*stat{1}(ii,1)*0.05 + stat{1}(ii,1);
-% %     rand_m = (randn(sum(indx),1))*10^(stat{1}(ii,1))*0.01 + 10^stat{1}(ii,1);
+%     rand_m = (randn(sum(indx),1))*10^(stat{1}(ii,1))*0.01 + 10^stat{1}(ii,1);
+
+%     rand_m(rand_m<0) = 0;
+    m_out(indx) = rand_m;
+%     m_out(indx) = stat{1}(ii,1);
+end
 % 
-% %     rand_m(rand_m<0) = 0;
-%     m_out(indx) = rand_m;
-% %     m_out(indx) = stat{1}(ii,1);
-% end
-% % 
-% save([work_dir dsep modelOut],'-ascii','m_out');
+save([work_dir dsep modelOut],'-ascii','m_out');

@@ -172,9 +172,10 @@ invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
 betaest = Directives.BetaEstimate_ByEig()
 
 # Specify the sparse norms
-IRLS = Directives.Update_IRLS(norms=([0, 1, 1, 1]),
-                              eps=[1e-4, 1e-4], f_min_change=1e-3,
-                              minGNiter=3, coolingRate=1, chifact=0.25)
+IRLS = Directives.Update_IRLS(norms=driver.lpnorms,
+                              eps=driver.eps, f_min_change=1e-3,
+                              minGNiter=3, coolingRate=1, chifact=0.25,
+                              maxIRLSiter=1)
 
 # Special directive specific to the mag amplitude problem. The sensitivity
 # weights are update between each iteration.

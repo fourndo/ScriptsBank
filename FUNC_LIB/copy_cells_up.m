@@ -8,14 +8,17 @@ clear all
 close all
 
 %% USER INPUT
-modelfile   = 'VPmg_Homo_Round1.den';
-work_dir    = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\GRAV\Constrained_VPmg';
-meshfile    = 'Mesh_20m.msh';
+modelfile   = 'Cond_Median_EDT.con';
+work_dir    = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\Forward\Mesh_20m_Cond';
+meshfile    = '..\Mesh_20m.msh';
 
 % Specify the no-data value in the original model (-100:Mag , 1e-8:Cond)
-ndv = -99999;
+ndv = 1e-8;
 
-out_file    = 'VPmg_Homo_R1_FullSpace.dat';
+out_file    = 'Cond_Median_EDT.con';
+
+nullcell = 'nullcell.dat';
+
 %% SCRIPT STARTS HERE
 mesh=get_UBC_mesh([work_dir '\' meshfile]);
 
@@ -55,4 +58,8 @@ end
 %Output model
 m = m(:);
 
+% if ~isempty(nullcell)
+%    aircell = load([work_dir '\' nullcell]);
+%    m(aircell==0) = ndv;
+% end
 save([work_dir '\' out_file],'-ascii','m');

@@ -30,7 +30,7 @@ import numpy as np
 import os
 
 # Define the inducing field parameter
-work_dir = "C:\\Users\\DominiqueFournier\\Dropbox\\Two_Blocks_test\\SingleBlock\\"
+work_dir = "C:\\Users\\dominiquef.MIRAGEOSCIENCE\\Dropbox\\Two_Blocks_test\\SingleBlock\\"
 out_dir = "SimPEG_PF_Inv\\"
 input_file = "SimPEG_MAG.inp"
 
@@ -85,7 +85,7 @@ dmis = DataMisfit.l2_DataMisfit(survey)
 dmis.Wd = 1./survey.std
 
 # Add directives to the inversion
-opt = Optimization.ProjectedGNCG(maxIter=30, lower=-10., upper=10.,
+opt = Optimization.ProjectedGNCG(maxIter=7, lower=-10., upper=10.,
                                  maxIterCG=20, tolCG=1e-3)
 
 
@@ -137,7 +137,7 @@ invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
 #betaest = Directives.BetaEstimate_ByEig()
 
 # Here is where the norms are applied
-IRLS = Directives.Update_IRLS(norms=([0,0,0,0]),
+IRLS = Directives.Update_IRLS(norms=([2, 2, 2, 2]),
                               f_min_change=1e-4,
                               minGNiter=5, beta_tol=1e-2,
                               coolingRate=5)
