@@ -1,6 +1,6 @@
 function [x,r,count]=CG_Lin(x,G, W,MOF,RHS, Proj, PreC, Patv)
 
-r= Patv*RHS - (Patv*Proj'*Gtvec(G,W,Gvec(G,W,Proj*(Patv*x))) + Patv*MOF*Patv*x + Patv*x*1e-3 );    
+r= Patv*RHS - (Patv*Proj'*Gtvec(G,W,Gvec(G,W,Proj*(Patv*x))) + Patv*MOF*Patv*x  );    
 p= PreC * r;
 
 %Save sens weight to plot
@@ -18,7 +18,7 @@ while count < 20
     
     count=count+1;
        
-    q= Patv*Proj'*Gtvec(G,W,Gvec(G,W,Proj*(Patv*p))) + Patv*MOF*Patv*p + Patv*p*1e-3;
+    q= Patv*Proj'*Gtvec(G,W,Gvec(G,W,Proj*(Patv*p))) + Patv*MOF*Patv*p ;
     
     alpha=sold./(p'*q);
    

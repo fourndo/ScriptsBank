@@ -591,12 +591,12 @@ while switcher ~= 3 && count ~= max_iter
         diagA   = diagJ + beta(count)*spdiags( mof ,0)';
         PreC    = Pac * spdiags(1./diagA(:),0,3*mactv,3*mactv);
         %% Projected steepest descent
-        dm =zeros(3*mactv,1);
+        dm =zeros(3*mactv,1);%
         [dm,~,ncg] = CG_Lin( dm, G, Wd, beta(count) * mof , g, S, PreC, Pac );
 
         %% TESTING 
         if max(abs(dm(1+mactv:2*mactv))) > max(abs(bounds(2,:)))
-            dm = dm/max(abs(dm(1+mactv:2*mactv)))*pi/2;
+            dm = dm/max(abs(dm(1+mactv:2*mactv)))*pi/2;%
         end
 
         %% Step length, line search                
@@ -674,7 +674,7 @@ while switcher ~= 3 && count ~= max_iter
 %             m_temp = [aa;tt;pp];
 %             t_ind = kron([0;1;0],ones(mactv,1));
 %             p_ind = kron([0;0;1],ones(mactv,1));
-%             
+
             lowb = m_temp <= lowBvec;
             uppb = m_temp >= uppBvec;
 % 

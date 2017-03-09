@@ -33,14 +33,14 @@ meshfile = 'Mesh_20m.msh'
 locfile = 'Mag_grid_50m.dat'
 modelfile = {'MAG': 'Mesh_20m_Susc\\maginv3d_001.sus',
              'DC': 'Mesh_20m_Cond\\Cond_Randn_Std_model.con',
-             'Gz': 'Mesh_20m_Dens\\Density_Randn_Std.den'}
+             'Gz': 'Mesh_20m_Dens\\gzinv3d_001.den'}
 
 nullcell = 'nullcell.dat'
 
 obsfile = 'Mesh_20m_Susc\\Mag_grid_50m.dat'
 topofile = 'ROT_DEM_30m.topo'
 
-dtype = ['DC']
+dtype = ['Gz']
 # dtype = ['DC']
 gc.collect()
 

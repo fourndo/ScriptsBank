@@ -418,8 +418,8 @@ while switcher ~= 3
 
     model_out =  X'*invmod;
     model_out(nullcell==0) = -100;
-    save([work_dir dsep 'Tile' num2str(tileid) '_MAG3D_lplq' num2str(count) '.sus'],'-ascii','model_out')
-    write_MAG3D_TMI([work_dir dsep 'Tile' num2str(tileid) '_MAG3D_lplq' num2str(count) '.pre'],H, BI, BD, MI, MD,obsx,obsy,obsz,Gvec(G,speye(ndata),invmod),wd);
+    save([work_dir dsep 'Tile' num2str(tileid) '_MAG3D_lplq' '.sus'],'-ascii','model_out')
+    write_MAG3D_TMI([work_dir dsep 'Tile' num2str(tileid) '_MAG3D_lplq' '.pre'],H, BI, BD, MI, MD,obsx,obsy,obsz,Gvec(G,speye(ndata),invmod),wd);
 
 %     Plot3D_model_frame(xn,yn,zn,model_out);
     
