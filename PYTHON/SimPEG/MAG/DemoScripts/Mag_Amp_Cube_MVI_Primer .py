@@ -24,6 +24,7 @@ Created on December 7th, 2016
 from SimPEG import Mesh, Directives, Maps, InvProblem, Optimization, DataMisfit, Inversion, Utils, Regularization
 import SimPEG.PF as PF
 import numpy as np
+import scipy.sparse as sp
 import matplotlib.pyplot as plt
 import os
 
@@ -127,121 +128,74 @@ survey.std = wd
 
 rxLoc = survey.srcField.rxList[0].locs
 
-# For comparison, let's run the inversion assuming an induced response
-M = PF.Magnetics.dipazm_2_xyz(np.ones(nC) * B[1], np.ones(nC) * B[2])
+# # RUN THE MVI-CARTESIAN FIRST
+# Create identity map
+idenMap = Maps.IdentityMap(nP=3*nC)
 
-# Reset the magnetization
-prob.M = M
-prob.forwardOnly = False
-prob._F = None
+mstart = np.ones(3*len(actv))*1e-4
 
-# Create a regularization function, in this case l2l2
-wr = np.sum(prob.F**2., axis=0)**0.5
+# Create the forward model operator
+prob_MVI = PF.Magnetics.MagneticVector(mesh, chiMap=idenMap,
+                                     actInd=actv)
+
+# Explicitely set starting model
+prob_MVI.chi = mstart
+
+# Pair the survey and problem
+survey.pair(prob_MVI)
+
+
+# Create sensitivity weights from our linear forward operator
+wr = np.sum(prob_MVI.F**2., axis=0)**0.5
 wr = (wr/np.max(wr))
 
+# Create a block diagonal regularization
+wires = Maps.Wires(('p', nC), ('s', nC), ('t', nC))
 
 # Create a regularization
-reg_Susc = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
-reg_Susc.cell_weights = wr
-reg_Susc.norms= [2, 2, 2, 2]
+reg_p = Regularization.Sparse(mesh, indActive=actv, mapping=wires.p)
+reg_p.cell_weights = wires.p * wr
+reg_p.norms = [2, 2, 2, 2]
+
+reg_s = Regularization.Sparse(mesh, indActive=actv, mapping=wires.s)
+reg_s.cell_weights = wires.s * wr
+reg_s.norms = [2, 2, 2, 2]
+
+reg_t = Regularization.Sparse(mesh, indActive=actv, mapping=wires.t)
+reg_t.cell_weights = wires.t * wr
+reg_t.norms = [2, 2, 2, 2]
+
+reg = reg_p + reg_s + reg_t
+reg.mref = np.zeros(3*nC)
 
 # Data misfit function
 dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.W = 1/wd
+dmis.W = 1./survey.std
 
 # Add directives to the inversion
-opt = Optimization.ProjectedGNCG(maxIter=100, lower=0., upper=1.,
-                                 maxIterLS=20, maxIterCG=10, tolCG=1e-3)
-invProb = InvProblem.BaseInvProblem(dmis, reg_Susc, opt)
+opt = Optimization.ProjectedGNCG(maxIter=7, lower=-10., upper=10.,
+                                 maxIterCG=20, tolCG=1e-3)
+
+invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
 betaest = Directives.BetaEstimate_ByEig()
 
 # Here is where the norms are applied
-# Use pick a treshold parameter empirically based on the distribution of
-#  model parameters
-IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=3)
-update_Jacobi = Directives.Update_lin_PreCond()
+IRLS = Directives.Update_IRLS(f_min_change=1e-4,
+                              minGNiter=3, beta_tol=1e-2)
+
+update_Jacobi = Directives.UpdatePreCond()
+targetMisfit = Directives.TargetMisfit()
+
 inv = Inversion.BaseInversion(invProb,
                               directiveList=[betaest, IRLS, update_Jacobi])
 
-# Run the inversion
-m0 = np.ones(nC)*1e-4  # Starting model
-mrec_sus = inv.run(m0)
-pred_sus = invProb.dpred
+mrec_MVI = inv.run(mstart)
+pred_MVI = invProb.getFields(mrec_MVI)
 
-## # STEP 2: Equivalent source inversion and amplitude data # #
-#
-## Get the layer of cells directly below topo
-#surf = Utils.surface2ind_topo(mesh, topo, 'N', layer=True)
-#nC = int(np.sum(surf))  # Number of active cells
-#
-## Create active map to go from reduce set to full
-#surfMap = Maps.InjectActiveCells(mesh, surf, -100)
-#
-## Create identity map
-#idenMap = Maps.IdentityMap(nP=nC)
-#
-## Create MAG equivalent layer problem
-#prob = PF.Magnetics.MagneticIntegral(mesh, chiMap=idenMap, actInd=surf,
-#                                     equiSourceLayer=True)
-#prob.solverOpts['accuracyTol'] = 1e-4
-#
-## Pair the survey and problem
-#survey.pair(prob)
-#
-## Create a regularization function, in this case l2l2
-#reg = Regularization.Simple(mesh, indActive=surf)
-#reg.mref = np.zeros(nC)
-#
-## Specify how the optimization will proceed
-#opt = Optimization.ProjectedGNCG(maxIter=150, lower=-np.inf,
-#                                 upper=np.inf, maxIterLS=20,
-#                                 maxIterCG=20, tolCG=1e-3)
-#
-## Define misfit function (obs-calc)
-#dmis = DataMisfit.l2_DataMisfit(survey)
-#dmis.W = 1./survey.std
-#
-## Create the default L2 inverse problem from the above objects
-#invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
-#
-## Specify how the initial beta is found
-#betaest = Directives.BetaEstimate_ByEig()
-#
-## Beta schedule for inversion
-#betaSchedule = Directives.BetaSchedule(coolingFactor=2., coolingRate=1)
-#
-## Target misfit to stop the inversion
-#targetMisfit = Directives.TargetMisfit()
-#
-#update_Jacobi = Directives.Update_lin_PreCond()
-#
-## Put all the parts together
-#inv = Inversion.BaseInversion(invProb,
-#                              directiveList=[betaest, betaSchedule,
-#                                             targetMisfit, update_Jacobi])
-#
-## Run the equivalent source inversion
-#mstart = np.zeros(nC)
-#mrec = inv.run(mstart)
+mcol = mrec_MVI.reshape((nC, 3), order='F')
+amp = np.sum(mcol**2.,axis=1)**0.5
+M = Utils.sdiag(1./amp)*mcol
 
-# COMPUTE AMPLITUDE DATA
-# Now that we have an equialent source layer, we can forward model all
-# three components of the field and add them up:
-# |B| = ( Bx**2 + Bx**2 + Bx**2 )**0.5
-
-# Won't store the sensitivity and output 'xyz' data.
-# prob.forwardOnly = True
-# pred_x = prob.Intrgl_Fwr_Op(m=model, recType='x')
-# pred_y = prob.Intrgl_Fwr_Op(m=model, recType='y')
-# pred_z = prob.Intrgl_Fwr_Op(m=model, recType='z')
-
-# ndata = survey.nD
-
-# d_amp = np.sqrt(pred_x**2. +
-#                 pred_y**2. +
-#                 pred_z**2.)
-
-# rxLoc = survey.srcField.rxList[0].locs
 
 # # STEP 3: RUN AMPLITUDE INVERSION ##
 
@@ -262,7 +216,7 @@ prob = PF.Magnetics.MagneticAmplitude(mesh, chiMap=idenMap,
                                       actInd=actv, M=M)
 
 # Define starting model
-mstart = np.ones(len(actv))*1e-4
+mstart = np.ones(nC)*1e-4
 prob.chi = mstart
 
 # Change the survey to xyz components
@@ -277,6 +231,9 @@ survey.dobs = d_amp
 # Create a sparse regularization
 reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
 reg.mref = mstart*0.
+reg.norms=[0, 1, 1, 1]
+reg.eps_p = 1e-3
+reg.eps_q = 1e-3
 
 # Data misfit function
 dmis = DataMisfit.l2_DataMisfit(survey)
@@ -294,74 +251,23 @@ betaest = Directives.BetaEstimate_ByEig()
 
 # Specify the sparse norms
 IRLS = Directives.Update_IRLS(f_min_change=1e-3,
-                              minGNiter=3, chifact=0.25,
-                              coolingRate = 3)
+                              minGNiter=2, chifact=0.25,
+                              coolingRate = 2)
 
 # Special directive specific to the mag amplitude problem. The sensitivity
 # weights are update between each iteration.
-update_Jacobi = Directives.Amplitude_Inv_Iter()
-update_Jacobi.test = True
+update_SensWeight = Directives.UpdateSensWeighting()
+update_Jacobi = Directives.UpdatePreCond()
 
 # Put all together
 inv = Inversion.BaseInversion(invProb,
-                              directiveList=[IRLS, update_Jacobi, ])
+                              directiveList=[betaest, IRLS, update_SensWeight, update_Jacobi])
+
 
 # Invert
 mrec_MAI = inv.run(mstart)
 pred_MAI = invProb.dpred
 
-# # REPEAT WITH SENSITIVITY REWEIGHTING
-# Create a sparse regularization
-# Create the forward model operator
-# prob = PF.Magnetics.MagneticAmplitude(mesh, chiMap=idenMap,
-#                                       actInd=actv, M=M)
-
-# # Define starting model
-# mstart = np.ones(len(actv))*1e-4
-# prob.chi = mstart
-
-# # Change the survey to xyz components
-# survey.srcField.rxList[0].rxType = 'xyz'
-
-# # Pair the survey and problem
-# survey.pair(prob)
-
-
-reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
-reg.mref = mstart*0.
-reg.norms=[0, 1, 1, 1]
-reg.eps_p = 1e-3
-reg.eps_q = 1e-3
-# Data misfit function
-dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.W = 1./survey.std
-
-# Add directives to the inversion
-opt = Optimization.ProjectedGNCG(maxIter=100, lower=0., upper=10.,
-                                 maxIterLS=20, maxIterCG=10,
-                                 tolCG=1e-3)
-
-invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta = 1e+9)
-
-# Here is the list of directives
-betaest = Directives.BetaEstimate_ByEig()
-
-# Specify the sparse norms
-IRLS = Directives.Update_IRLS(f_min_change=1e-3,
-                              minGNiter=3, chifact=0.25,
-                              coolingRate = 3)
-
-# Special directive specific to the mag amplitude problem. The sensitivity
-# weights are update between each iteration.
-update_Jacobi = Directives.Amplitude_Inv_Iter()
-
-# Put all together
-inv = Inversion.BaseInversion(invProb,
-                              directiveList=[IRLS, update_Jacobi])
-
-# Invert
-mrec_MAIS = inv.run(mstart)
-pred_MAIS = invProb.dpred
 
 
 #%% Plot models
@@ -371,18 +277,19 @@ contours = [0.01]
 xlim = 60.
 fig = plt.figure(figsize=(5, 5))
 ax3 = plt.subplot()
-vmax = mrec_sus.max()
+#vmax = mrec_sus.max()
 # PF.Magnetics.plotModelSections(mesh, mrec_sus, normal='z', ind=-3, subFact=2, scale=0.25, xlim=[-xlim, xlim], ylim=[-xlim, xlim],
 #                       title="Esus Model", axs=ax3, vmin=0, vmax=vmax, contours = contours)
 # ax3.xaxis.set_visible(False)
 
-out = PF.Magnetics.plot_obs_2D(rxLoc, d=pred_sus, fig=fig, ax=ax3,
+out = PF.Magnetics.plot_obs_2D(rxLoc, d=pred_MVI, fig=fig, ax=ax3,
                                )
 ax3.set_xlabel('X (m)')
 ax3.set_ylabel('Y (m)')
 
 fig = plt.figure(figsize=(5, 2.5))
 ax2 = plt.subplot()
+vmax = model.max()
 PF.Magnetics.plotModelSections(mesh, model, normal='y', ind=midy, subFact=2, scale=0.25, xlim=[-xlim, xlim], ylim=[-xlim, 5],
                       axs=ax2, vmin=0, vmax=vmax, contours = contours)
 for midx in locx:
@@ -396,8 +303,9 @@ ax2.set_ylabel('Depth (m)')
 
 fig = plt.figure(figsize=(5, 2.5))
 ax2 = plt.subplot()
-PF.Magnetics.plotModelSections(mesh, mrec_sus, normal='y', ind=midy, subFact=2, scale=0.25, xlim=[-xlim, xlim], ylim=[-xlim, 5],
-                      axs=ax2, vmin=0, vmax=vmax, contours = contours)
+scl_vec = np.max(amp)/np.max(model) * 0.25
+PF.Magnetics.plotModelSections(mesh, mrec_MVI, normal='y', ind=midy, subFact=2, scale=10, xlim=[-xlim, xlim], ylim=[-xlim, 5],
+                      axs=ax2, contours = contours)
 for midx in locx:
     ax2.add_patch(Rectangle((mesh.vectorCCx[midx-nX]-dx/2.,mesh.vectorCCz[midz-nX]-dx/2.),(2*nX+1)*dx,(2*nX+1)*dx, facecolor = 'none', edgecolor='k'))
 ax2.grid(color='w', linestyle='--', linewidth=0.5)
@@ -431,44 +339,3 @@ loc = ax2.get_position()
 ax2.set_position([loc.x0+0.025, loc.y0+0.025, loc.width, loc.height])
 ax2.set_xlabel('X (m)')
 ax2.set_ylabel('Depth (m)')
-
-
-
-fig = plt.figure(figsize=(5, 5))
-ax3 = plt.subplot()
-# vmax = mrec_MAIS.max()
-vmax= mrec_sus.max()
-# PF.Magnetics.plotModelSections(mesh, mrec_MAIS, normal='z', ind=-3, subFact=2, scale=0.25, xlim=[-xlim, xlim], ylim=[-xlim, xlim],
-#                       title="Esus Model", axs=ax3, vmin=0, vmax=vmax, contours = contours)
-# ax3.xaxis.set_visible(False)
-out = PF.Magnetics.plot_obs_2D(rxLoc, d=pred_MAIS, fig=fig, ax=ax3,
-                               title='Predicted Amplitudey')
-ax3.set_xlabel('X (m)')
-ax3.set_ylabel('Y (m)')
-
-fig = plt.figure(figsize=(5, 2.5))
-ax2 = plt.subplot()
-PF.Magnetics.plotModelSections(mesh, mrec_MAIS, normal='y', ind=midy, subFact=2, scale=0.25, xlim=[-xlim, xlim], ylim=[-xlim, 5],
-                      axs=ax2, vmin=0, vmax=vmax, contours = contours)
-for midx in locx:
-    ax2.add_patch(Rectangle((mesh.vectorCCx[midx-nX]-dx/2.,mesh.vectorCCz[midz-nX]-dx/2.),(2*nX+1)*dx,(2*nX+1)*dx, facecolor = 'none', edgecolor='k'))
-ax2.grid(color='w', linestyle='--', linewidth=0.5)
-loc = ax2.get_position()
-ax2.set_position([loc.x0+0.025, loc.y0+0.025, loc.width, loc.height])
-ax2.set_xlabel('X (m)')
-ax2.set_ylabel('Depth (m)')
-plt.show()
-
-# # Plot the data
-# fig = plt.figure(figsize=(6, 6))
-# ax1 = plt.subplot(311)
-# ax2 = plt.subplot(312)
-# ax3 = plt.subplot(313)
-# out = PF.Magnetics.plot_obs_2D(rxLoc, d=d_TMI, fig=fig, ax=ax1,
-#                                title='TMI Data')
-# out = PF.Magnetics.plot_obs_2D(rxLoc, d=d_amp, fig=fig, ax=ax2,
-#                                title='Amplitude Data')
-# out = PF.Magnetics.plot_obs_2D(rxLoc, d=invProb.dpred, fig=fig, ax=ax3,
-#                                title='Amplitude Data')
-
-# plt.show()

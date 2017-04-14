@@ -3,16 +3,16 @@
 
 addpath C:\Users\dominiquef.MIRAGEOSCIENCE\Dropbox\Master\FUNC_LIB
 
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Tli_Kwi_Cho\Modelling\Inversion\EM\DIGHEM\3D\Real_topo\Inv11_Round2';
-obsfile = 'Data_TotalField_0pct_varflr_Rad0p5.dat';
-predfile = 'dpred_003.txt';
-fsfile = 'FWR_dpred0_Rad0p5.txt';
+work_dir = 'C:\Users\DominiqueFournier\Downloads';
+obsfile = 'TotalField.dat';
+predfile = 'dpred_014.txt';
+fsfile = 'predict.txt';
 
-outline = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Tli_Kwi_Cho\Modelling\DO27_Outline.dat';
-hydro = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Tli_Kwi_Cho\Modelling\Lake_trace.dat';
-
-Out_grav = load([outline]);
-Out_lake = load([hydro]);
+% outline = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Tli_Kwi_Cho\Modelling\DO27_Outline.dat';
+% hydro = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Tli_Kwi_Cho\Modelling\Lake_trace.dat';
+% 
+% Out_grav = load([outline]);
+% Out_lake = load([hydro]);
 
 % Load data
 [trx,data] = load_E3D_obs([work_dir '\' obsfile]);
@@ -102,8 +102,8 @@ for ii = 1 : length(freq)
     set(ax1,'YTickLabel',[])
     set(ax1,'YDir','normal')
     set(ax1,'XTickLabel',[])
-    plot(Out_grav(:,1),Out_grav(:,2),'k--','LineWidth',2) 
-    plot(Out_lake(:,1),Out_lake(:,2),'r.','MarkerSize',2) 
+%     plot(Out_grav(:,1),Out_grav(:,2),'k--','LineWidth',2) 
+%     plot(Out_lake(:,1),Out_lake(:,2),'r.','MarkerSize',2) 
     axis equal tight
     axis([xmin xmax ymin ymax])
     grid on
@@ -119,8 +119,8 @@ for ii = 1 : length(freq)
     set(ax1,'YTickLabel',[])
     set(ax1,'YDir','normal')
     set(ax1,'XTickLabel',[])
-    plot(Out_grav(:,1),Out_grav(:,2),'k--','LineWidth',2) 
-    plot(Out_lake(:,1),Out_lake(:,2),'r.','MarkerSize',2) 
+%     plot(Out_grav(:,1),Out_grav(:,2),'k--','LineWidth',2) 
+%     plot(Out_lake(:,1),Out_lake(:,2),'r.','MarkerSize',2) 
     axis equal tight
     axis([xmin xmax ymin ymax])
     grid on
@@ -136,8 +136,8 @@ for ii = 1 : length(freq)
     set(ax1,'YTickLabel',[])
     set(ax1,'YDir','normal')
     set(ax1,'XTickLabel',[])
-    plot(Out_grav(:,1),Out_grav(:,2),'k--','LineWidth',2) 
-    plot(Out_lake(:,1),Out_lake(:,2),'r.','MarkerSize',2) 
+%     plot(Out_grav(:,1),Out_grav(:,2),'k--','LineWidth',2) 
+%     plot(Out_lake(:,1),Out_lake(:,2),'r.','MarkerSize',2) 
     axis equal tight
     axis([xmin xmax ymin ymax])
     grid on
@@ -153,8 +153,8 @@ for ii = 1 : length(freq)
     set(ax1,'YTickLabel',[])
     set(ax1,'YDir','normal')
     set(ax1,'XTickLabel',[])
-    plot(Out_grav(:,1),Out_grav(:,2),'k--','LineWidth',2) 
-    plot(Out_lake(:,1),Out_lake(:,2),'r.','MarkerSize',2) 
+%     plot(Out_grav(:,1),Out_grav(:,2),'k--','LineWidth',2) 
+%     plot(Out_lake(:,1),Out_lake(:,2),'r.','MarkerSize',2) 
     axis equal tight
     axis([xmin xmax ymin ymax])
     grid on
@@ -174,8 +174,8 @@ for ii = 1 : length(freq)
     set(ax1,'YTickLabel',[])
     set(ax1,'YDir','normal')
     set(ax1,'XTickLabel',[])
-    plot(Out_grav(:,1),Out_grav(:,2),'k--','LineWidth',2) 
-    plot(Out_lake(:,1),Out_lake(:,2),'r.','MarkerSize',2) 
+%     plot(Out_grav(:,1),Out_grav(:,2),'k--','LineWidth',2) 
+%     plot(Out_lake(:,1),Out_lake(:,2),'r.','MarkerSize',2) 
     axis equal tight
     axis([xmin xmax ymin ymax])
     grid on
@@ -191,8 +191,8 @@ for ii = 1 : length(freq)
     set(ax1,'YTickLabel',[])
     set(ax1,'YDir','normal')
     set(ax1,'XTickLabel',[])
-    plot(Out_grav(:,1),Out_grav(:,2),'k--','LineWidth',2) 
-    plot(Out_lake(:,1),Out_lake(:,2),'r.','MarkerSize',2) 
+%     plot(Out_grav(:,1),Out_grav(:,2),'k--','LineWidth',2) 
+%     plot(Out_lake(:,1),Out_lake(:,2),'r.','MarkerSize',2) 
     axis equal tight
     axis([xmin xmax ymin ymax])
     grid on
@@ -208,8 +208,8 @@ for ii = 1 : length(freq)
     set(ax1,'YTickLabel',[])
     set(ax1,'YDir','normal')
     set(ax1,'XTickLabel',[])
-    plot(Out_grav(:,1),Out_grav(:,2),'k--','LineWidth',2) 
-    plot(Out_lake(:,1),Out_lake(:,2),'r.','MarkerSize',2) 
+%     plot(Out_grav(:,1),Out_grav(:,2),'k--','LineWidth',2) 
+%     plot(Out_lake(:,1),Out_lake(:,2),'r.','MarkerSize',2) 
     axis equal tight
     axis([xmin xmax ymin ymax])
     grid on
@@ -225,8 +225,8 @@ for ii = 1 : length(freq)
     set(ax1,'YTickLabel',[])
     set(ax1,'YDir','normal')
     set(ax1,'XTickLabel',[])
-    plot(Out_grav(:,1),Out_grav(:,2),'k--','LineWidth',2) 
-    plot(Out_lake(:,1),Out_lake(:,2),'r.','MarkerSize',2) 
+%     plot(Out_grav(:,1),Out_grav(:,2),'k--','LineWidth',2) 
+%     plot(Out_lake(:,1),Out_lake(:,2),'r.','MarkerSize',2) 
     axis equal tight
     axis([xmin xmax ymin ymax])
     grid on

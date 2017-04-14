@@ -12,10 +12,10 @@ addpath ..\
 dsep = '\';
 
 
-meshfile = '..\Mesh_20m.msh';
-FMmodelfile = '..\Geology.dat';
+meshfile = '..\..\Mesh_20m.msh';
+FMmodelfile = '..\..\Geology.dat';
 
-XMLfile = '..\Geology.xml';
+XMLfile = '..\..\Geology.xml';
 
 % % List of model files
 % work_dir = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\Forward\Mesh_20m_Dens';
@@ -38,13 +38,13 @@ XMLfile = '..\Geology.xml';
 % modelfile = 'Cond_Randn_Std_model.con'; ylbl{1} = 'Conductivity';
 % modelOut = 'Median_Std_model.con';
 % axlim = ([-5e-2 5e-2]);
-% axlim = ([-5 -0.1]);
+axlim = ([-5 -0.1]);
 % ndv = 1e-8;
 
 
-work_dir = 'C:\LC\Private\dominiquef\Projects\4414_Minsim\Modeling\Forward\Mesh_20m_Cond';
-modelfile = 'Inv_VTEM_1D.con'; ylbl{1} = 'Conductivity';
-modelOut = 'Cond_Median_Std.con';
+work_dir = 'C:\Egnyte\Private\dominiquef\Projects\4414_Minsim\Modeling\Forward\Compilation\Models';
+modelfile = 'Cond_Median_DH_Inv1D.con'; ylbl{1} = 'Conductivity';
+modelOut = 'Cond_Median_Randn.con';
 ndv = 1e-8;
 
 dh_file = 'dhData';
@@ -96,24 +96,24 @@ for ii = 1 : length(geoID)
 %     else
         
         indx = FMmodel == geoID(ii) & phymodel ~= ndv & phymodel ~= -9999;
-        
-        if sum(indx)~=0
-            
-            stat{1}(ii,1) = median(phymodel(indx));
-            stat{1}(ii,2) = std(phymodel(indx));
-            stat{1}(ii,3) = min(phymodel(indx));
-            stat{1}(ii,4) = max(phymodel(indx));
-
-        end
-
+%         
 %         if sum(indx)~=0
 %             
-%             stat{1}(ii,1) = log10(median(phymodel(indx)));
-%             stat{1}(ii,2) = log10(std(phymodel(indx)));
+%             stat{1}(ii,1) = median(phymodel(indx));
+%             stat{1}(ii,2) = std(phymodel(indx));
 %             stat{1}(ii,3) = min(phymodel(indx));
 %             stat{1}(ii,4) = max(phymodel(indx));
 % 
 %         end
+
+        if sum(indx)~=0
+            
+            stat{1}(ii,1) = log10(median(phymodel(indx)));
+            stat{1}(ii,2) = log10(std(phymodel(indx)));
+            stat{1}(ii,3) = min(phymodel(indx));
+            stat{1}(ii,4) = max(phymodel(indx));
+
+        end
 %     end
     
 end
@@ -232,14 +232,14 @@ ylim([0 1750])
 %% Ouput a mean density model
 m_out = ones(size(FMmodel))*ndv;
 
-for ii = 1 : length(geoID)
+for ii = 2 : length(geoID)
     
     indx = FMmodel == geoID(ii);
     
-    rand_m = stat{1}(ii,1);
+%     rand_m = stat{1}(ii,1);
 
 %     rand_m = randn(sum(indx),1)*stat{1}(ii,1)*0.05 + stat{1}(ii,1);
-%     rand_m = (randn(sum(indx),1))*10^(stat{1}(ii,1))*0.01 + 10^stat{1}(ii,1);
+    rand_m = (randn(sum(indx),1))*10^(stat{1}(ii,1))*0.01 + 10^stat{1}(ii,1);
 
 %     rand_m(rand_m<0) = 0;
     m_out(indx) = rand_m;

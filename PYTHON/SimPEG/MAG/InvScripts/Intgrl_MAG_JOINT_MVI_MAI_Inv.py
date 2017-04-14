@@ -31,7 +31,7 @@ import os
 
 # Define the inducing field parameter
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Modelling\\Synthetic\\Block_Gaussian_topo\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Triple_Block_lined\\"
+work_dir = "C:\\Users\\DominiqueFournier\\Dropbox\\Two_Blocks_test\\SingleBlock\\"
 out_dir = "SimPEG_PF_Inv\\"
 input_file = "SimPEG_MAG.inp"
 

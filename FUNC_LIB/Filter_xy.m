@@ -52,4 +52,6 @@ for ii = 1 : nstn
 
 end
 
+indx = indx==1;
+
 % scatter(XYZd_out(:,1),XYZd_out(:,2),'r*');title('After sorting');

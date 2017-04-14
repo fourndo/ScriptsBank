@@ -1,5 +1,5 @@
 function write_MAG3D_TMI(file_name,B0,BI,BD,MI,MD,obsx,obsy,obsz,TMI,wd)
-% function write_MAG3D_TMI(out_dir,file_name,H,I,D,obsx,obsy,obsz,TMI,wd)
+% function write_MAG3D_TMI(file_name,B0,BI,BD,MI,MD,obsx,obsy,obsz,TMI,wd)
 % Write 3-component obs file in UBC format with prescribed values
 
 ndata = length(obsx);

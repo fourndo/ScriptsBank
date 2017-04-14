@@ -26,7 +26,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-work_dir = "C:\\Users\dominiquef.MIRAGEOSCIENCE\\ownCloud\\Research\\Modelling\\Synthetic\\Block_Gaussian_topo\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\"
 out_dir = "SimPEG_PF_Inv\\"
 input_file = "SimPEG_MAG.inp"
 # %%
@@ -76,7 +76,7 @@ opt = Optimization.ProjectedGNCG(maxIter=25, lower=-np.inf,
 
 # Define misfit function (obs-calc)
 dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.Wd = 1./survey.std
+dmis.W = 1./survey.std
 
 # Create the default L2 inverse problem from the above objects
 invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
@@ -100,7 +100,7 @@ mstart = np.zeros(nC)
 mrec = inv.run(mstart)
 
 # Ouput result
-Mesh.TensorMesh.writeModelUBC(mesh,work_dir + out_dir + "EquivalentSource.sus", surfMap*mrec)
+Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + "EquivalentSource.sus", surfMap*mrec)
 
 
 # %% STEP 2: COMPUTE AMPLITUDE DATA
@@ -109,21 +109,22 @@ Mesh.TensorMesh.writeModelUBC(mesh,work_dir + out_dir + "EquivalentSource.sus", 
 
 # Won't store the sensitivity and output 'xyz' data.
 prob.forwardOnly = True
-prob.rtype = 'xyz'
-pred = prob.Intrgl_Fwr_Op(m=mrec)
+pred_x = prob.Intrgl_Fwr_Op(m=mrec, recType='x')
+pred_y = prob.Intrgl_Fwr_Op(m=mrec, recType='y')
+pred_z = prob.Intrgl_Fwr_Op(m=mrec, recType='z')
 
 ndata = survey.nD
 
-damp = np.sqrt(pred[:ndata]**2. +
-               pred[ndata:2*ndata]**2. +
-               pred[2*ndata:]**2.)
+d_amp = np.sqrt(pred_x**2. +
+                pred_y**2. +
+                pred_z**2.)
 
 rxLoc = survey.srcField.rxList[0].locs
 # PF.Magnetics.plot_obs_2D(rxLoc,survey.dobs,varstr='TMI Data')
 # PF.Magnetics.plot_obs_2D(rxLoc,damp,varstr='Amplitude Data')
 
 # Write data out
-PF.Magnetics.writeUBCobs(work_dir + out_dir + 'Amplitude_data.obs', survey, damp)
+PF.Magnetics.writeUBCobs(work_dir + out_dir + 'Amplitude_data.obs', survey, d_amp)
 
 # %% STEP 3: RUN AMPLITUDE INVERSION
 # Now that we have |B| data, we can invert. This is a non-linear inversion,
@@ -144,22 +145,24 @@ prob = PF.Magnetics.MagneticAmplitude(mesh, chiMap=idenMap,
                                       actInd=active)
 prob.chi = mstart
 
-# Change the survey to xyz components
-survey.srcField.rxList[0].rxType = 'xyz'
 
 # Pair the survey and problem
 survey.pair(prob)
 
 # Re-set the observations to |B|
-survey.dobs = damp
+survey.dobs = d_amp
 
 # Create a sparse regularization
 reg = Regularization.Sparse(mesh, indActive=active, mapping=idenMap)
 reg.mref = driver.mref
+reg.norms = driver.lpnorms
+if driver.eps is not None:
+    reg.eps_p = driver.eps[0]
+    reg.eps_q = driver.eps[1]
 
 # Data misfit function
 dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.Wd = 1/survey.std
+dmis.W = 1/survey.std
 
 # Add directives to the inversion
 opt = Optimization.ProjectedGNCG(maxIter=100, lower=0., upper=1.,
@@ -172,8 +175,7 @@ invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
 betaest = Directives.BetaEstimate_ByEig()
 
 # Specify the sparse norms
-IRLS = Directives.Update_IRLS(norms=driver.lpnorms,
-                              eps=driver.eps, f_min_change=1e-3,
+IRLS = Directives.Update_IRLS(f_min_change=1e-3,
                               minGNiter=3, coolingRate=1, chifact=0.25,
                               maxIRLSiter=1)
 
@@ -181,9 +183,13 @@ IRLS = Directives.Update_IRLS(norms=driver.lpnorms,
 # weights are update between each iteration.
 update_Jacobi = Directives.Amplitude_Inv_Iter()
 
+saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
+saveModel.fileName = work_dir + out_dir + 'ModelAmp'
+
 # Put all together
 inv = Inversion.BaseInversion(invProb,
-                              directiveList=[IRLS, update_Jacobi, betaest])
+                              directiveList=[IRLS, update_Jacobi, betaest,
+                                             saveModel])
 
 # Invert
 mrec = inv.run(mstart)

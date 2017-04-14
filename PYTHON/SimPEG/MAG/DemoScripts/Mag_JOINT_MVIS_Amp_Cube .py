@@ -17,24 +17,22 @@ This is done in three parts:
 
 Created on December 7th, 2016
 
+
 @author: fourndo@gmail.com
 
 """
 from SimPEG import Mesh, Directives, Maps, InvProblem, Optimization, DataMisfit, Inversion, Utils, Regularization
 import SimPEG.PF as PF
-from SimPEG import mkvc
 import numpy as np
-import scipy.sparse as sp
 import matplotlib.pyplot as plt
 import os
+import scipy.sparse as sp
 
 # # STEP 1: Setup and data simulation # #
-
 
 # Magnetic inducing field parameter (A,I,D)
 B = [50000, 90, 0]
 
-from SimPEG import Mesh
 # Create a mesh
 dx = 5.
 npad = 0
@@ -80,6 +78,7 @@ rxLoc = np.c_[Utils.mkvc(X.T), Utils.mkvc(Y.T), Utils.mkvc(Z.T)]
 rxLoc = PF.BaseMag.RxObs(rxLoc)
 srcField = PF.BaseMag.SrcField([rxLoc], param=(B[0], B[1], B[2]))
 survey = PF.BaseMag.LinearSurvey(srcField)
+survey_amp = PF.BaseMag.LinearSurvey(srcField)
 
 # We can now create a susceptibility model and generate data
 # Here a simple block in half-space
@@ -95,8 +94,6 @@ M = PF.Magnetics.dipazm_2_xyz(np.ones(nC) * 45., np.ones(nC) * 90.)
 #M = PF.Magnetics.dipazm_2_xyz(np.ones(nC) * B[1], np.ones(nC) * B[2])
 
 
-m = mkvc(sp.diags(model, 0) * M)
-
 # Create active map to go from reduce set to full
 actvMap = Maps.InjectActiveCells(mesh, actv, -100)
 
@@ -105,43 +102,52 @@ idenMap = Maps.IdentityMap(nP=nC)
 
 # Create the forward problem (forwardOnly)
 prob = PF.Magnetics.MagneticIntegral(mesh, chiMap=idenMap, actInd=actv,
-                                     M=M, forwardOnly=True)
+                                     M=M, silent=True)
 
 # Pair the survey and problem
 survey.pair(prob)
 
-# Compute forward model some data
-d = prob.fields(model)
+
+prob.forwardOnly = True
+pred_x = prob.Intrgl_Fwr_Op(m=model, recType='x')
+pred_y = prob.Intrgl_Fwr_Op(m=model, recType='y')
+pred_z = prob.Intrgl_Fwr_Op(m=model, recType='z')
+d_TMI = prob.Intrgl_Fwr_Op(m=model, recType='tmi')
+
+ndata = survey.nD
+
+d_amp = np.sqrt(pred_x**2. +
+                pred_y**2. +
+                pred_z**2.)
 
 # Add noise and uncertainties
 # We add some random Gaussian noise (1nT)
-d_TMI = d + np.random.randn(len(d))*0.
-wd = np.ones(len(d_TMI))  # Assign flat uncertainties
+d_TMI += np.random.randn(len(d_TMI))*0.
+wd = np.ones(len(d_TMI))*1.  # Assign flat uncertainties
 survey.dobs = d_TMI
 survey.std = wd
 
-# %% # RUN MVI INVERSION
-# Create active map to go from reduce set to full
-# Creat reduced identity map
+rxLoc = survey.srcField.rxList[0].locs
+
+# # RUN THE MVI-CARTESIAN FIRST
+# Create identity map
 idenMap = Maps.IdentityMap(nP=3*nC)
 
+mstart = np.ones(3*len(actv))*1e-4
+
 # Create the forward model operator
-prob = PF.Magnetics.MagneticVector(mesh, chiMap=idenMap,
+prob_MVI = PF.Magnetics.MagneticVector(mesh, chiMap=idenMap,
                                      actInd=actv)
 
-
-# Set starting mdoel
-mstart = np.ones(3*len(actv))*1e-4
 # Explicitely set starting model
-prob.chi = mstart
-
+prob_MVI.chi = mstart
 
 # Pair the survey and problem
-survey.pair(prob)
+survey.pair(prob_MVI)
 
 
 # Create sensitivity weights from our linear forward operator
-wr = np.sum(prob.F**2., axis=0)**0.5
+wr = np.sum(prob_MVI.F**2., axis=0)**0.5
 wr = (wr/np.max(wr))
 
 # Create a block diagonal regularization
@@ -168,7 +174,7 @@ dmis = DataMisfit.l2_DataMisfit(survey)
 dmis.W = 1./survey.std
 
 # Add directives to the inversion
-opt = Optimization.ProjectedGNCG(maxIter=10, lower=-10., upper=10.,
+opt = Optimization.ProjectedGNCG(maxIter=7, lower=-10., upper=10.,
                                  maxIterCG=20, tolCG=1e-3)
 
 invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
@@ -177,13 +183,10 @@ betaest = Directives.BetaEstimate_ByEig()
 # Here is where the norms are applied
 IRLS = Directives.Update_IRLS(f_min_change=1e-4,
                               minGNiter=3, beta_tol=1e-2)
-# IRLS._target = 10
 
 update_Jacobi = Directives.UpdatePreCond()
 targetMisfit = Directives.TargetMisfit()
 
-# saveModel = Directives.SaveUBCVectorsEveryIteration(mapping=actvMap)
-# saveModel.fileName = work_dir + out_dir + 'MVI_C'
 inv = Inversion.BaseInversion(invProb,
                               directiveList=[betaest, IRLS, update_Jacobi])
 
@@ -191,14 +194,54 @@ mrec_MVI = inv.run(mstart)
 
 beta = invProb.beta
 
-# %% RUN MVI-S
+#%% # Now create the joint problems
 
-# # STEP 3: Finish inversion with spherical formulation
+# AMPLITUDE
+# Create active map to go from reduce space to full
+actvMap = Maps.InjectActiveCells(mesh, actv, -100)
+nC = int(len(actv))
+
+
+
+mcol = mrec_MVI.reshape((nC, 3), order='F')
+amp = np.sum(mcol**2.,axis=1)**0.5
+Mx = Utils.sdiag(mcol[:, 0]/amp)
+My = Utils.sdiag(mcol[:, 1]/amp)
+Mz = Utils.sdiag(mcol[:, 2]/amp)
+
+M = sp.vstack((Mx, My, Mz))
+
+
+# Create identity map
+idenMap = Maps.IdentityMap(nP=nC)
+
+wires = Maps.Wires(('p', nC), ('s', nC), ('t', nC))
+
+# Create the forward model operator
+prob_amp = PF.Magnetics.MagneticAmplitude(mesh, chiMap=wires.p,
+                                      actInd=actv, M=M, magType='full')
+
+# Change the survey to xyz components
+survey_amp.srcField.rxList[0].rxType = 'xyz'
+
+# Pair the survey and problem
+survey_amp.pair(prob_amp)
+
+# Re-set the observations to |B|
+survey_amp.dobs = d_amp
+survey_amp.std = wd
+
+# Data misfit function
+dmis_amp = DataMisfit.l2_DataMisfit(survey_amp)
+dmis_amp.W = 1./survey_amp.std
+
+
+#  MVI-S
+
 mstart = PF.Magnetics.xyz2atp(mrec_MVI)
+prob_MVI.ptype = 'Spherical'
 
-prob.ptype = 'Spherical'
-prob.chi = mstart
-
+prob_MVI.chi = mstart
 # Create a block diagonal regularization
 wires = Maps.Wires(('amp', nC), ('theta', nC), ('phi', nC))
 
@@ -210,28 +253,32 @@ reg_a.eps_p = 1e-3
 reg_a.eps_q = 1e-3
 
 
+
 reg_t = Regularization.Sparse(mesh, indActive=actv, mapping=wires.theta)
 reg_t.alpha_s = 0.
 reg_t.space = 'spherical'
-reg_t.norms = [2, 2, 2, 2]
+reg_t.norms = [2,2,2,2]
 reg_t.eps_q = 1e-2
 # reg_t.alpha_x, reg_t.alpha_y, reg_t.alpha_z = 0.25, 0.25, 0.25
 
 reg_p = Regularization.Sparse(mesh, indActive=actv, mapping=wires.phi)
 reg_p.alpha_s = 0.
 reg_p.space = 'spherical'
-reg_p.norms = [2, 2, 2, 2]
+reg_p.norms = [2,2,2,2]
 reg_p.eps_q = 1e-2
 
 reg = reg_a + reg_t + reg_p
 reg.mref = np.zeros(3*nC)
 
 # Data misfit function
-dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.W = 1./survey.std
+dmis_MVI = DataMisfit.l2_DataMisfit(survey)
+dmis_MVI.W = 1./survey.std
+
+# JOIN TO PROBLEMS
+dmis = dmis_amp + dmis_MVI
 
 # Add directives to the inversion
-opt = Optimization.ProjectedGNCG(maxIter=25,
+opt = Optimization.ProjectedGNCG(maxIter=20,
                                  lower=[0., -np.inf, -np.inf],
                                  upper=[10., np.inf, np.inf],
                                  maxIterLS=10,
@@ -240,136 +287,110 @@ opt = Optimization.ProjectedGNCG(maxIter=25,
                                  stepOffBoundsFact=1e-8)
 
 invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
-#  betaest = Directives.BetaEstimate_ByEig()
 
-# Here is where the norms are applied
-IRLS = Directives.Update_IRLS(f_min_change=1e-4,
-                              minGNiter=2, beta_tol=1e-2,
-                              coolingRate=2)
-
-invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
+# LIST OF DIRECTIVES
 # betaest = Directives.BetaEstimate_ByEig()
-
-
-# Special directive specific to the mag amplitude problem. The sensitivity
-# weights are update between each iteration.
+IRLS = Directives.Update_IRLS(f_min_change=1e-4,
+                              minGNiter=3, beta_tol=1e-2,
+                              coolingRate=3)
 update_SensWeight = Directives.UpdateSensWeighting()
 update_Jacobi = Directives.UpdatePreCond()
 ProjSpherical = Directives.ProjSpherical()
+JointAmpMVI = Directives.JointAmpMVI()
 betaest = Directives.BetaEstimate_ByEig()
-
+#saveModel = Directives.SaveUBCVectorsEveryIteration(mapping=actvMap,
+#                                                    saveComp=True,
+#                                                    spherical=True)
 
 inv = Inversion.BaseInversion(invProb,
-                              directiveList=[ProjSpherical, IRLS, update_SensWeight,  
+                              directiveList=[ProjSpherical, JointAmpMVI, IRLS, update_SensWeight, 
                                              update_Jacobi])
 
+# Run JOINT
 
 mrec_MVI_S = inv.run(mstart)
 
-mrec_MVI_S_xyz = PF.Magnetics.atp2xyz(mrec_MVI_S)
-# Mesh.TensorMesh.writeUBC(mesh,out_dir + '\Mesh.msh')
-# Mesh.TensorMesh.writeModelUBC(mesh,out_dir + '\MVI_amp.sus',mrec_MVI_S[:nC])
-# Mesh.TensorMesh.writeModelUBC(mesh,out_dir + '\MVI_phi.sus',mrec_MVI_S[2*nC:])
-# Mesh.TensorMesh.writeModelUBC(mesh,out_dir + '\MVI_theta.sus',mrec_MVI_S[nC:2*nC])
+#NOTE - Would like to have dpred working on both surveys
 
-# mrec_MVI_S = PF.Magnetics.atp2xyz(mrec_MVI_S)
-# Mesh.TensorMesh.writeVectorUBC(mesh,out_dir + '\Vector_CAR.fld',mrec_MVI.reshape(mesh.nC,3,order='F'))
-# Mesh.TensorMesh.writeVectorUBC(mesh,out_dir + '\Vector_SPH.fld',mrec_MVI_S.reshape(mesh.nC,3,order='F'))
-
-# PF.Magnetics.writeUBCobs(out_dir + '\Obs.dat',survey,d_TMI)
+dpred = invProb.getFields(mrec_MVI_S)
 #%% Plot models
 from matplotlib.patches import Rectangle
 
-contours = [0.02]
+contours = [0.01]
+xlim = [-60,60]
 
-vmin = 0.
-xlim = [-60, 60]
+ypanel = midx
+zpanel = -4
 
-# # FIRST MODEL # #
+fig = plt.figure(figsize=(5, 5))
+ax3 = plt.subplot(2,2,1)
+out = PF.Magnetics.plot_obs_2D(rxLoc, d=d_TMI, fig=fig, ax=ax3)
+ax3.set_title('Obs-TMI')
+ax3.set_xlabel('X (m)')
+ax3.set_ylabel('Y (m)')
+
+ax2 = plt.subplot(2,2,2)
+out = PF.Magnetics.plot_obs_2D(rxLoc, d=d_amp, fig=fig, ax=ax2)
+ax3.set_title('Obs-Amplitude')
+ax3.set_xlabel('X (m)')
+ax3.set_ylabel('Y (m)')
+
+ax2 = plt.subplot(2,2,3)
+out = PF.Magnetics.plot_obs_2D(rxLoc, d=d_TMI-dpred[1], fig=fig, ax=ax2)
+ax3.set_title('Res-TMI')
+ax3.set_xlabel('X (m)')
+ax3.set_ylabel('Y (m)')
+
+ax2 = plt.subplot(2,2,4)
+out = PF.Magnetics.plot_obs_2D(rxLoc, d=d_amp-dpred[0], fig=fig, ax=ax2)
+ax3.set_title('Res-Amplitude')
+ax3.set_xlabel('X (m)')
+ax3.set_ylabel('Y (m)')
+
+#fig = plt.figure(figsize=(5, 2.5))
+#ax2 = plt.subplot()
+#PF.Magnetics.plotModelSections(mesh, model, normal='y', ind=midy, subFact=2, scale=0.25, xlim=[-xlim, xlim], ylim=[-xlim, 5],
+#                      axs=ax2, vmin=0, vmax=vmax, contours = contours)
+#for midx in locx:
+#    ax2.add_patch(Rectangle((mesh.vectorCCx[midx-nX]-dx/2.,mesh.vectorCCz[midz-nX]-dx/2.),(2*nX+1)*dx,(2*nX+1)*dx, facecolor = 'none', edgecolor='k'))
+#ax2.grid(color='w', linestyle='--', linewidth=0.5)
+#loc = ax2.get_position()
+#ax2.set_position([loc.x0+0.025, loc.y0+0.025, loc.width, loc.height])
+#ax2.set_xlabel('X (m)')
+#ax2.set_ylabel('Depth (m)')
+
+vmax = None
+vmin = model.min()
 fig = plt.figure(figsize=(5, 2.5))
 ax2 = plt.subplot()
-
-vmax = model.max()
-ax2, im2, cbar = PF.Magnetics.plotModelSections(mesh, m, normal='y',
-                               ind=midy, axs=ax2,
-                               xlim=xlim, scale = 0.3, vec ='w',
+mrec = PF.Magnetics.atp2xyz(mrec_MVI_S)
+scl_vec = np.max(mrec)/np.max(model) * 0.25
+PF.Magnetics.plotModelSections(mesh, mrec, normal='y',
+                               ind=ypanel, axs=ax2,
+                               xlim=xlim, scale=scl_vec, vec='w',
                                ylim=[xlim[0], 5],
                                vmin=vmin, vmax=vmax)
 for midx in locx:
     ax2.add_patch(Rectangle((mesh.vectorCCx[midx-nX]-dx/2.,mesh.vectorCCz[midz-nX]-dx/2.),(2*nX+1)*dx,(2*nX+1)*dx, facecolor = 'none', edgecolor='k'))
 ax2.grid(color='w', linestyle='--', linewidth=0.5)
+
+
 loc = ax2.get_position()
 ax2.set_position([loc.x0+0.025, loc.y0+0.025, loc.width, loc.height])
 ax2.set_xlabel('X (m)')
 ax2.set_ylabel('Depth (m)')
+ax2.set_title('Joint MVI-S/Amplitude')
 
-# fig = plt.figure(figsize=(5, 2.5))
-# ax1 = plt.subplot()
-
-# ax1, im2, cbar = PF.Magnetics.plotModelSections(mesh, m, normal='z',
-#                                ind=midz, axs=ax1,
-#                                xlim=xlim, scale = 0.3, vec ='w',
-#                                ylim=xlim,
-#                                vmin=vmin, vmax=vmax)
-# for midx in locx:
-#     ax1.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]+dx/2.,mesh.vectorCCy[midy-nX-1]+dx/2.),3*dx,3*dx, lw=2, facecolor = 'none', edgecolor='r'))
-# ax1.set_title('(a) True')
-# ax1.xaxis.set_visible(False)
-
-# # SECOND MODEL # #
-vmax = mrec_MVI.max()
-scale = mrec_MVI.max()/m.max()*0.3
-fig = plt.figure(figsize=(5, 2.5))
+vmax = None
+vmin = model.min()
+fig = plt.figure(figsize=(5, 5))
 ax2 = plt.subplot()
-# ax3, im2, cbar = PF.Magnetics.plotModelSections(mesh, mrec_MVI, normal='z',
-#                                ind=midz, axs=ax3,
-#                                xlim=xlim, scale = scale, vec ='w',
-#                                ylim=xlim,
-#                                vmin=vmin, vmax=vmax)
-# for midx in locx:
-#     ax3.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]+dx/2.,mesh.vectorCCy[midy-nX-1]+dx/2.),3*dx,3*dx, lw=2, facecolor = 'none', edgecolor='r'))
-
-ax2, im2, cbar = PF.Magnetics.plotModelSections(mesh, mrec_MVI, normal='y',
-                               ind=midy, axs=ax2,
-                               xlim=xlim, scale = scale, vec ='w',
-                               ylim=[xlim[0], 5],
+mrec = PF.Magnetics.atp2xyz(mrec_MVI_S)
+scl_vec = np.max(mrec)/np.max(model) * 0.25
+PF.Magnetics.plotModelSections(mesh, mrec, normal='z',
+                               ind=-3, axs=ax2,
+                               xlim=xlim, scale=scl_vec,
+                               ylim=xlim,
                                vmin=vmin, vmax=vmax)
-for midx in locx:
-    ax2.add_patch(Rectangle((mesh.vectorCCx[midx-nX]-dx/2.,mesh.vectorCCz[midz-nX]-dx/2.),(2*nX+1)*dx,(2*nX+1)*dx, facecolor = 'none', edgecolor='k'))
-ax2.grid(color='w', linestyle='--', linewidth=0.5)
-loc = ax2.get_position()
-ax2.set_position([loc.x0+0.025, loc.y0+0.025, loc.width, loc.height])
-ax2.set_title('MVI-C')
-ax2.set_xlabel('X (m)')
-ax2.set_ylabel('Depth (m)')
-
-# # THIRD MODEL # #
-fig = plt.figure(figsize=(5, 2.5))
-ax2 = plt.subplot()
-vmax = mrec_MVI_S_xyz.max()
-scale = mrec_MVI_S_xyz.max()/m.max()*0.3
-
-# # ax5, im2, cbar = PF.Magnetics.plotModelSections(mesh, mrec_MVI_S, normal='z',
-# #                                ind=midz, axs=ax5,
-# #                                xlim=xlim, scale = scale, vec ='w',
-# #                                ylim=xlim,
-# #                                vmin=vmin, vmax=vmax)
-# for midx in locx:
-#     ax5.add_patch(Rectangle((mesh.vectorCCx[midx-nX-1]+dx/2.,mesh.vectorCCy[midy-nX-1]+dx/2.),3*dx,3*dx, lw=2, facecolor = 'none', edgecolor='r'))
-
-
-ax2, im2, cbar = PF.Magnetics.plotModelSections(mesh, mrec_MVI_S_xyz, normal='y',
-                               ind=midy, axs=ax2,
-                               xlim=xlim, scale = scale, vec ='w',
-                               ylim=[xlim[0], 5],
-                               vmin=vmin, vmax=vmax)
-for midx in locx:
-    ax2.add_patch(Rectangle((mesh.vectorCCx[midx-nX]-dx/2.,mesh.vectorCCz[midz-nX]-dx/2.),(2*nX+1)*dx,(2*nX+1)*dx, facecolor = 'none', edgecolor='k'))
-ax2.grid(color='w', linestyle='--', linewidth=0.5)
-loc = ax2.get_position()
-ax2.set_position([loc.x0+0.025, loc.y0+0.025, loc.width, loc.height])
-ax2.set_title('MVI-S')
-ax2.set_xlabel('X (m)')
-ax2.set_ylabel('Depth (m)')
-
-plt.show()
+ax2.set_title('Joint solution')
+ax2.set_ylabel('Elevation (m)', size=14)

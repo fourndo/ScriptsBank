@@ -26,7 +26,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Modelling\\Synthetic\\Block_Gaussian_topo\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Modelling\\Synthetic\\Block_Gaussian_topo\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\SingleBlock\Simpeg\\"
+#work_dir = "C:\\Egnyte\\Private\\dominiquef\\Projects\\4559_CuMtn_ZTEM\\Modeling\\MAG\\A1_Fenton\\"
 out_dir = "SimPEG_PF_Inv\\"
 input_file = "SimPEG_MAG.inp"
 # %%
@@ -41,7 +44,9 @@ mesh = driver.mesh
 survey = driver.survey
 actv = driver.activeCells
 
+
 nC = len(actv)
+
 
 # Create active map to go from reduce set to full
 actvMap = Maps.InjectActiveCells(mesh, actv, -100)
@@ -57,24 +62,30 @@ survey.pair(prob)
 
 # Create sensitivity weights from our linear forward operator
 rxLoc = survey.srcField.rxList[0].locs
-wr = np.sum(prob.G**2., axis=0)**0.5
+wr = np.zeros(prob.F.shape[1])
+for ii in range(survey.nD):
+    wr += (prob.F[ii, :]/survey.std[ii])**2.
+wr = wr**0.5
 wr = (wr/np.max(wr))
+
 
 # Create a regularization
 reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
-reg.norms = ([0, 1, 1, 1])
-reg.eps_p = 1e-3
-reg.eps_q = 1e-3
+reg.norms = driver.lpnorms
+
+if driver.eps is not None:
+    reg.eps_p = driver.eps[0]
+    reg.eps_q = driver.eps[1]
 
 reg.cell_weights = wr
-
+reg.mref = driver.mref
 # Data misfit function
 dmis = DataMisfit.l2_DataMisfit(survey)
 dmis.W = 1./survey.std
 
 # Add directives to the inversion
-opt = Optimization.ProjectedGNCG(maxIter=100, lower=0., upper=1.,
-                                 maxIterLS=20, maxIterCG=10, tolCG=1e-3)
+opt = Optimization.ProjectedGNCG(maxIter=20, lower=0., upper=10.,
+                                 maxIterLS=20, maxIterCG=10, tolCG=1e-4)
 invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
 betaest = Directives.BetaEstimate_ByEig()
 
@@ -83,16 +94,22 @@ betaest = Directives.BetaEstimate_ByEig()
 #  model parameters
 IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=3, maxIRLSiter=10)
 update_Jacobi = Directives.Update_lin_PreCond()
+
+saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
+saveModel.fileName = work_dir + out_dir + 'ModelSus'
+
 inv = Inversion.BaseInversion(invProb,
-                              directiveList=[IRLS, update_Jacobi, betaest])
+                              directiveList=[betaest, IRLS, update_Jacobi,  saveModel])
 
 # Run the inversion
-m0 = np.ones(nC)*1e-4  # Starting model
+m0 = driver.m0  # Starting model
 mrec = inv.run(m0)
 
 # Outputs
-Mesh.TensorMesh.writeModelUBC(mesh,work_dir + out_dir + "Amplitude_l2l2.sus", actvMap*reg.l2model)
-Mesh.TensorMesh.writeModelUBC(mesh,work_dir + out_dir + "Amplitude_lplq.sus", actvMap*invProb.model)
-PF.Magnetics.writeUBCobs(work_dir+out_dir + 'Amplitude_Inv.pre', survey, invProb.dpred)
+Mesh.TensorMesh.writeModelUBC(mesh,work_dir + out_dir + "SensWeight.sus", actvMap*(wr**0.5))
+if reg.l2model is not None:
+	Mesh.TensorMesh.writeModelUBC(mesh,work_dir + out_dir + "MAG_SuS_l2l2.sus", actvMap*reg.l2model)
+Mesh.TensorMesh.writeModelUBC(mesh,work_dir + out_dir + "MAG_SuS_lplq.sus", actvMap*invProb.model)
+PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MAG_SuS_Inv.pre', survey, invProb.dpred)
 
 #PF.Magnetics.plot_obs_2D(rxLoc,invProb.dpred,varstr='Amplitude Data')

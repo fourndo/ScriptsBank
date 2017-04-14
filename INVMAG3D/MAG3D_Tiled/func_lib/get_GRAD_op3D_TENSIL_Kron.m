@@ -43,11 +43,12 @@ g1( ind( val ~=-140 & val ~= 10 ) ) = 0;
 g1( ind( val ==-140 )) = 1;
 g1(ind( val ==10 ) ) = -1;
 
+g1(logical(speye(size(g1))))=-1;
 % Remove nullcells
 g1 = g1(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g1),2) ~= 2;
-g1(indx,:) = 0;
+% indx = sum(abs(g1),2) ~= 2;
+% g1(indx,:) = 0;
 
 % Gradient g-y
 g2 = T;
@@ -55,11 +56,12 @@ g2( ind( val ~=-100 & val ~= 10 ) ) = 0;
 g2( ind( val ==-100 )) = 1;
 g2(ind( val ==10 ) ) = -1;
 
+g2(logical(speye(size(g2))))=-1;
 % Remove nullcells
 g2 = g2(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g2),2) ~= 2;
-g2(indx,:) = 0;
+% indx = sum(abs(g2),2) ~= 2;
+% g2(indx,:) = 0;
 
 % Gradient g-y-z
 g3 = T;
@@ -67,11 +69,12 @@ g3( ind( val ~=-60 & val ~= 10 ) ) = 0;
 g3( ind( val ==-60 )) = 1;
 g3(ind( val ==10 ) ) = -1;
 
+g3(logical(speye(size(g3))))=-1;
 % Remove nullcells
 g3 = g3(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g3),2) ~= 2;
-g3(indx,:) = 0;
+% indx = sum(abs(g3),2) ~= 2;
+% g3(indx,:) = 0;
 
 % Gradient g-y-z
 g4 = T;
@@ -79,11 +82,12 @@ g4( ind( val ~=-70 & val ~= 10 ) ) = 0;
 g4( ind( val ==-70 )) = 1;
 g4(ind( val ==10 ) ) = -1;
 
+g4(logical(speye(size(g4))))=-1;
 % Remove nullcells
 g4 = g4(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g4),2) ~= 2;
-g4(indx,:) = 0;
+% indx = sum(abs(g4),2) ~= 2;
+% g4(indx,:) = 0;
 
 % Gradient g-y-z
 g5 = T;
@@ -91,11 +95,12 @@ g5( ind( val ~=-50 & val ~= 10 ) ) = 0;
 g5( ind( val ==-50 )) = 1;
 g5(ind( val ==10 ) ) = -1;
 
+g5(logical(speye(size(g5))))=-1;
 % Remove nullcells
 g5 = g5(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g5),2) ~= 2;
-g5(indx,:) = 0;
+% indx = sum(abs(g5),2) ~= 2;
+% g5(indx,:) = 0;
 
 % Gradient g-y-z
 g6 = T;
@@ -103,11 +108,12 @@ g6( ind( val ~=-30 & val ~= 10 ) ) = 0;
 g6( ind( val ==-30 )) = 1;
 g6(ind( val ==10 ) ) = -1;
 
+g6(logical(speye(size(g6))))=-1;
 % Remove nullcells
 g6 = g6(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g6),2) ~= 2;
-g6(indx,:) = 0;
+% indx = sum(abs(g6),2) ~= 2;
+% g6(indx,:) = 0;
 
 % Gradient g-y-z
 g7 = T;
@@ -115,11 +121,12 @@ g7( ind( val ~=14 & val ~= 10 ) ) = 0;
 g7( ind( val ==14 )) = 1;
 g7(ind( val ==10 ) ) = -1;
 
+g7(logical(speye(size(g7))))=-1;
 % Remove nullcells
 g7 = g7(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g7),2) ~= 2;
-g7(indx,:) = 0;
+% indx = sum(abs(g7),2) ~= 2;
+% g7(indx,:) = 0;
 
 
 % Gradient g-y-z
@@ -128,11 +135,12 @@ g8( ind( val ~=6 & val ~= 10 ) ) = 0;
 g8( ind( val ==6 )) = 1;
 g8(ind( val ==10 ) ) = -1;
 
+g8(logical(speye(size(g8))))=-1;
 % Remove nullcells
 g8 = g8(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g8),2) ~= 2;
-g8(indx,:) = 0;
+% indx = sum(abs(g8),2) ~= 2;
+% g8(indx,:) = 0;
 
 % Gradient g-y-z
 g9 = T;
@@ -140,11 +148,12 @@ g9( ind( val ~=7 & val ~= 10 ) ) = 0;
 g9( ind( val ==7 )) = 1;
 g9(ind( val ==10 ) ) = -1;
 
+g9(logical(speye(size(g9))))=-1;
 % Remove nullcells
 g9 = g9(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g9),2) ~= 2;
-g9(indx,:) = 0;
+% indx = sum(abs(g9),2) ~= 2;
+% g9(indx,:) = 0;
 
 % Gradient g-y-z
 g10 = T;
@@ -152,11 +161,12 @@ g10( ind( val ~=5 & val ~= 10 ) ) = 0;
 g10( ind( val ==5 )) = 1;
 g10(ind( val ==10 ) ) = -1;
 
+g10(logical(speye(size(g10))))=-1;
 % Remove nullcells
 g10 = g10(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g10),2) ~= 2;
-g10(indx,:) = 0;
+% indx = sum(abs(g10),2) ~= 2;
+% g10(indx,:) = 0;
 
 % Gradient g-y-z
 g11 = T;
@@ -164,11 +174,12 @@ g11( ind( val ~=3 & val ~= 10 ) ) = 0;
 g11( ind( val ==3 )) = 1;
 g11(ind( val ==10 ) ) = -1;
 
+g11(logical(speye(size(g11))))=-1;
 % Remove nullcells
 g11 = g11(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g11),2) ~= 2;
-g11(indx,:) = 0;
+% indx = sum(abs(g11),2) ~= 2;
+% g11(indx,:) = 0;
 
 % Gradient g-y-z
 g12 = T;
@@ -176,11 +187,12 @@ g12( ind( val ~=140 & val ~= 10 ) ) = 0;
 g12( ind( val ==140 )) = 1;
 g12(ind( val ==10 ) ) = -1;
 
+g12(logical(speye(size(g12))))=-1;
 % Remove nullcells
 g12 = g12(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g12),2) ~= 2;
-g12(indx,:) = 0;
+% indx = sum(abs(g12),2) ~= 2;
+% g12(indx,:) = 0;
 
 % Gradient g-y-z
 g13 = T;
@@ -188,11 +200,12 @@ g13( ind( val ~=100 & val ~= 10 ) ) = 0;
 g13( ind( val ==100 )) = 1;
 g13(ind( val ==10 ) ) = -1;
 
+g13(logical(speye(size(g13))))=-1;
 % Remove nullcells
 g13 = g13(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g13),2) ~= 2;
-g13(indx,:) = 0;
+% indx = sum(abs(g13),2) ~= 2;
+% g13(indx,:) = 0;
 
 % Gradient g-y-z
 g14 = T;
@@ -200,11 +213,12 @@ g14( ind( val ~=60 & val ~= 10 ) ) = 0;
 g14( ind( val ==60 )) = 1;
 g14(ind( val ==10 ) ) = -1;
 
+g14(logical(speye(size(g14))))=-1;
 % Remove nullcells
 g14 = g14(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g14),2) ~= 2;
-g14(indx,:) = 0;
+% indx = sum(abs(g14),2) ~= 2;
+% g14(indx,:) = 0;
 
 % Gradient g-y-z
 g15 = T;
@@ -212,11 +226,12 @@ g15( ind( val ~=70 & val ~= 10 ) ) = 0;
 g15( ind( val ==70 )) = 1;
 g15(ind( val ==10 ) ) = -1;
 
+g15(logical(speye(size(g15))))=-1;
 % Remove nullcells
 g15 = g15(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g15),2) ~= 2;
-g15(indx,:) = 0;
+% indx = sum(abs(g15),2) ~= 2;
+% g15(indx,:) = 0;
 
 % Gradient g-y-z
 g16 = T;
@@ -224,11 +239,12 @@ g16( ind( val ~=50 & val ~= 10 ) ) = 0;
 g16( ind( val ==50 )) = 1;
 g16(ind( val ==10 ) ) = -1;
 
+g16(logical(speye(size(g16))))=-1;
 % Remove nullcells
 g16 = g16(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g16),2) ~= 2;
-g16(indx,:) = 0;
+% indx = sum(abs(g16),2) ~= 2;
+% g16(indx,:) = 0;
 
 % Gradient g-y-z
 g17 = T;
@@ -236,11 +252,12 @@ g17( ind( val ~=30 & val ~= 10 ) ) = 0;
 g17( ind( val ==30 )) = 1;
 g17(ind( val ==10 ) ) = -1;
 
+g17(logical(speye(size(g17))))=-1;
 % Remove nullcells
 g17 = g17(nullcell==1,nullcell==1);
 % Find row to remove
-indx = sum(abs(g17),2) ~= 2;
-g17(indx,:) = 0;
+% indx = sum(abs(g17),2) ~= 2;
+% g17(indx,:) = 0;
 
 G{1} = g1;G{2} = g2;G{3} = g3;G{4} = g4;G{5} = g5;G{6} = g6;
 G{7} = g7;G{8} = g8;G{9} = g9;G{10} = g10;G{11} = g11;G{12} = g12;

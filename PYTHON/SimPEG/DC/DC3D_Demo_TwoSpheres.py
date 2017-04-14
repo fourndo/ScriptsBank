@@ -30,7 +30,8 @@ import time
 import re
 import numpy.matlib as npm
 import scipy.interpolate as interpolation
-
+import scipy.sparse as sp
+import numpy as np
 #plt.close('all')
 #==============================================================================
 # from readUBC_DC3Dobs import readUBC_DC3Dobs
@@ -45,7 +46,7 @@ from matplotlib.colors import LogNorm
 import os
 
 #home_dir = 'C:\\Users\\dominiquef.MIRAGEOSCIENCE\\ownCloud\\Research\\MtIsa\\Modeling'
-home_dir = 'C:\\Users\\dominiquef.MIRAGEOSCIENCE\\ownCloud\\Research\\Modelling\\Synthetic\\Two_Sphere'
+home_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Two_Sphere'
 dsep = '\\'
 #from scipy.linalg import solve_banded
 
@@ -349,7 +350,7 @@ if stype != 'gradient':
     
     #%% Create a 2D mesh along axis of Tx end points and keep z-discretization
     dx = np.min( [ np.min(mesh.hx), np.min(mesh.hy) ])
-    nc = np.ceil(dl_len/dx)+3
+    nc = int(np.ceil(dl_len/dx)+3)
     
     padx = dx*np.power(1.4,range(1,15))
     
@@ -397,14 +398,14 @@ if stype != 'gradient':
     axs.set_ylim(zmin,zmax)
     axs.set_xlim(xmin,xmax)
     plt.gca().set_aspect('equal', adjustable='box')
-    x = np.linspace(xmin,xmax, 5)
-    axs.set_xticks(map(int, x))
-    axs.set_xticklabels(map(str, map(int, x)),size=12)
-    z = np.linspace(zmin,zmax, 3)
-    axs.set_yticks(map(int, z))
-    axs.set_ylabel('Depth (m)')
-    axs.set_yticklabels(map(str, map(int, z)),size=12)
-    axs.axes.get_xaxis().set_visible(False)
+#    x = np.linspace(xmin,xmax, 5)
+#    axs.set_xticks(map(int, x))
+#    axs.set_xticklabels(map(str, map(int, x)),size=12)
+#    z = np.linspace(zmin,zmax, 3)
+#    axs.set_yticks(map(int, z))
+#    axs.set_ylabel('Depth (m)')
+#    axs.set_yticklabels(map(str, map(int, z)),size=12)
+#    axs.axes.get_xaxis().set_visible(False)
     
 #    circle1=plt.Circle((loc[0,0]+dx_in/2.,loc[2,0]+dx_in/2.),radi[0],color='w',fill=False, lw=3)
 #    circle2=plt.Circle((loc[0,1]+dx_in/2.,loc[2,1]+dx_in/2.),radi[1],color='k',fill=False, lw=3)
@@ -432,9 +433,9 @@ if stype != 'gradient':
     axs.set_ylim(zmin,zmax)
     axs.set_xlim(xmin,xmax)
     plt.gca().set_aspect('equal', adjustable='box')
-    x = np.linspace(xmin,xmax, 5)
-    axs.set_xticks(map(int, x))
-    axs.set_xticklabels(map(str, map(int, x)),size=12)
+#    x = np.linspace(xmin,xmax, 5)
+#    axs.set_xticks(map(int, x))
+#    axs.set_xticklabels(map(str, map(int, x)),size=12)
 #    z = np.linspace(-n*a,0, 5)
 #    z_label = np.linspace(n,1, 5)
 #    axs.set_yticks(map(int, z))
@@ -486,16 +487,24 @@ if stype != 'gradient':
             fid = open(inv_dir + dsep + mshfile2d,'w')
             fid.write('%i\n'% mesh2d.nCx)
             fid.write('%f %f 1\n'% (mesh2d.vectorNx[0],mesh2d.vectorNx[1]))
+            fid.close()
+            fid= open(inv_dir + dsep + mshfile2d,'ab')
             np.savetxt(fid, np.c_[mesh2d.vectorNx[2:],np.ones(mesh2d.nCx-1)], fmt='\t %e %i',delimiter=' ',newline='\n')
+            fid.close()
+            fid = open(inv_dir + dsep + mshfile2d,'a')
             fid.write('\n')
             fid.write('%i\n'% mesh2d.nCy)
             fid.write('%f %f 1\n'%( 0,mesh2d.hy[-1]))
+            fid.close()
+            fid= open(inv_dir + dsep + mshfile2d,'ab')
             np.savetxt(fid, np.c_[np.cumsum(mesh2d.hy[-2::-1])+mesh2d.hy[-1],np.ones(mesh2d.nCy-1)], fmt='\t %e %i',delimiter=' ',newline='\n')
             fid.close()
             
             # Export 2D model
             fid = open(inv_dir + dsep + modfile2d,'w')
             fid.write('%i %i\n'% (mesh2d.nCx,mesh2d.nCy))
+            fid.close()
+            fid= open(inv_dir + dsep + mshfile2d,'ab')
             np.savetxt(fid, mkvc(m2D[::-1,:].T), fmt='%e',delimiter=' ',newline='\n')
             fid.close()
             
@@ -702,11 +711,11 @@ if stype != 'gradient':
             axs.set_xlim(xmin,xmax)
             plt.gca().set_aspect('equal', adjustable='box')
             x = np.linspace(xmin,xmax, 5)
-            axs.set_xticks(map(int, x))
-            axs.set_xticklabels(map(str, map(int, x)),size=12)
-            z = np.linspace(zmin,zmax, 4)
-            axs.set_yticks(map(int, z))
-            axs.set_yticklabels(map(str, map(int, z)),size=12)
+#            axs.set_xticks(map(int, x))
+#            axs.set_xticklabels(map(str, map(int, x)),size=12)
+#            z = np.linspace(zmin,zmax, 4)
+#            axs.set_yticks(map(int, z))
+#            axs.set_yticklabels(map(str, map(int, z)),size=12)
             axs.set_ylabel('Depth (m)')
             
     #        circle1=plt.Circle((loc[0,0]+dx_in/2.,loc[2,0]+dx_in/2.),radi[0],color='w',fill=False, lw=3)

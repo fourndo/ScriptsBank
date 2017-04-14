@@ -1,4 +1,4 @@
-function [H, BI, BD, MI, MD, dtype, obsx, obsy, obsz, d, wd] = read_MAG3D_obs(Obsfile)
+function [H, BI, BD, MI, MD, obsx, obsy, obsz, d, wd] = read_MAG3D_obs(Obsfile)
 % [ObsX, ObsY, ObsZ, d, Wd, H, I, D] = read_UBCobs(Obsfile)
 % Load UBC observations and generate error weighting matrix
 
@@ -6,7 +6,7 @@ fid = fopen(Obsfile,'r');
 
 % Extract Incl, Declin and field strength
 line = fgets(fid); 
-data = regexp(strtrim(line),'[ ]+','split');
+data = regexp(strtrim(line),'\s*','split');
 BI = str2double(data{1});
 BD = str2double(data{2});
 H = str2double(data{3});
@@ -17,17 +17,17 @@ H = str2double(data{3});
 
 % Extract Incl, Declin of magnetization and type of data
 line = fgets(fid);
-data = regexp(strtrim(line),'[ ]+','split');
+data = regexp(strtrim(line),'\s*','split');
 MI = str2double(data{1});
 MD = str2double(data{2});
 dtype = str2double(data{3}); 
 
 % Extract number of data for each components
 line = fgets(fid);
-data = regexp(strtrim(line),'[ ]+','split');
+data = regexp(strtrim(line),'\s*','split');
 
 
-if dtype==1 
+if dtype~=0
     ndata = str2double(data{1});
     
     d = zeros( ndata , 1 ) ;

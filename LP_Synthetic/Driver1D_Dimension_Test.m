@@ -9,7 +9,7 @@
 % Written by: D. Fournier
 % Last Update: November 11, 2014
 
-close all
+% close all
 clear all
 
 addpath data\
@@ -21,10 +21,10 @@ addpath C:\Users\DominiqueFournier\Documents\GIT\CodeBank\FUNC_LIB
 %% INPUT VARIABLES
 
 % Model space
-nx = 200;
+nx = 100;
 
 % Kernel
-nk = 30; %number of frequencies
+nk = 10; %number of frequencies
 
 decay = -0.20;
 
@@ -35,12 +35,12 @@ amp_pct = 0.05;
 floor_pct = 0.02;
 
 % Lp-norm parameters
-pQ = [2 0]%0:.1:2;%0%
-qQ = [0 2]%0:.1:2;%0%
-lQ = [0 1]%ones(1,1)*1.0%[0.25:0.25:1.75]%0.1:0.4:1.9;
+pQ = 2;%[2 0]%0:.1:2;%0%
+qQ = 2;%[0 2]%0:.1:2;%0%
+lQ = 2;%[0 1]%ones(1,1)*1.0%[0.25:0.25:1.75]%0.1:0.4:1.9;
 
 % Add an extra test to find best starting beta for lplq
-chi_vec = 1%[2 3 4 5 7.5 10 20 30];
+chi_vec = 1;%[2 3 4 5 7.5 10 20 30];
 % multip = 100;
 
 % Percentile for cutoff
@@ -50,9 +50,14 @@ eps_q =1e-3;
 %% SCRIPT STARTS HERE
 %% % Generate kernel functions and depth weighting
 x = (0 : 1/(nx) : 1);
+
 mcell=nx;
 dx=ones(1,mcell) * abs((min(x)-max(x))/mcell);
 
+% Change one cell and re-adjust discretization from o to 1
+dx(60) = dx(60)*5;
+dx = dx/sum(dx);
+x = [0 cumsum(dx)];
 
 set(figure, 'Position', [50 0 775 1000]);
 % plot_h = tight_subplot(2,2,[.05 .01],[.1 0.1]);
@@ -75,12 +80,12 @@ for ii = 1 : nk
 
 end
 
-% wr = (sum(G.^2,1)).^0.5;
+wr = (sum(G.^2,1)).^0.5;
 wr = (wr / max(wr)).^0.5;
 
 IWr = spdiags(1./wr',0,mcell,mcell);
 Wr = spdiags(wr',0,mcell,mcell);
-Wrx = spdiags(wr(1:end-1)',0,mcell-1,mcell-1);
+Wrx = spdiags(wr',0,mcell,mcell);
 
 % figure(1); plot(wr','r--','LineWidth',3);
 axis square;grid on
@@ -95,13 +100,13 @@ xlabel('$\mathbf{z}$', 'interpreter', 'latex','FontSize',16);
 % set(a(2),'LineWidth',3,'Color',[1 0 0],'LineStyle','--'); 
 %% Generate model
 
-x = (1/nx : 1/(nx) : 1) ;
+x = x(2:end) ;
 
-cntr = round(nx/4);
+cntr = round(nx/2);
 
 % Create mdoel: Square and tanh functions
-model = 0.4* exp(-(((x-3*cntr/nx) ).^2 * nx)); 
-
+% model = 0.4* exp(-(((x-3*cntr/nx) ).^2 * nx)); 
+model = zeros(length(x),1);
 model(cntr-round(cntr/4):cntr+round(cntr/4))=0.25;
 
 model=model(:);
@@ -164,19 +169,7 @@ d = Wd * d;
 
 %% INVERSION
 % Create inversion parameters
-[Wx,Vx] = getWx1D(nx,dx);
-[Ws] = speye(mcell);
-
-Wx = Wx(1:end-1,:);
-Vx = Vx(1:end-1,1:end-1);
-
-V = spdiags(sqrt(dx'),0,nx,nx);
-s= ones(mcell,1);
-t= ones(mcell,1);
-
-% Global constant
-as = 1.0 / min(dx) ^2;  %Smallnest term
-ax = 1.0;               %Smoothness term                     
+                  
 
 % Store all the final models
 
@@ -194,32 +187,56 @@ axs{2} = axes('Position',[0.44 .3 .65 .65]);
 % plot_h = tight_subplot(1,2,[.1 .1],[.2 0.2]);
 % Iterate over all the combination of norms as specified by the vectors
 % pvec, qvec and lvec.
-for rr = [2 1]
+% for rr = [1]
  counter = 1;  
-if rr == 2
-
-G = Gin*IWr;
-
-else
+% if rr == 2
+% 
+% G = Gin*IWr;
+% 
+% else
     
     G = Gin;
     
-end
-for ll= 1:length(lQ)
+% end
+for ll= 1:2
 
-            
-            
-            
-            % Message prompt
-            head = ['lp: ' num2str(pQ(ll)) ' lq: ' num2str(qQ(ll)) ' psi: ' num2str(lQ(ll))];
-            fprintf('Starting lp inversion %s\n',...
-                head)
-            
-            invmod      = ones(mcell,1)*1e-1;       % Initial model
-            
-            if rr == 2
-            invmod      = Wr*invmod;       % Initial model 
+            [Wx,Vx] = getWx1D(nx,dx);
+            [Ws] = speye(mcell);
+            if ll == 1
+                
+                
+                Wx(end,:) = 0;
+                Wx(end,end)=1;
+%                 Vx = Vx(1:end-1,1:end-1);%speye(nx-1,nx-1);%
+
+                V = spdiags(sqrt(dx'),0,nx,nx);%speye(nx,nx);%
+                s= ones(mcell,1);
+                t= ones(mcell,1);
+
+                % Global constant
+                as = 1.0;% / min(dx) ^2;  %Smallnest term
+                ax = 0.0;               %Smoothness term   
+                
+                
+            else
+                
+                Wx(end,:) = 0;%Wx = Wx(1:end-1,:);
+                Vx = speye(nx,nx);
+
+                V = speye(nx,nx);
+                s= ones(mcell,1);
+                t= ones(mcell,1);
+
+                % Global constant
+                as = 1.0;% / min(dx) ^2;  %Smallnest term
+                ax = 0.0;               %Smoothness term   
+
+
             end
+            
+            
+            invmod      = randn(mcell,1)*1e-5;       % Initial model
+            
             
             phi_d       = sum((G*invmod - d).^2);   % Initial misfit
 
@@ -236,42 +253,12 @@ for ll= 1:length(lQ)
             phi = [];
             
             % Paremeters for epsilon cooling
-            traffic_p = 1;
-            traffic_q = 1;
-            group_p = 0;
             p_tresh = 1;
             q_tresh = 1;
             
             delta_p = [];
             delta_q = [];
                         
-            % Define two zones with different lp,lq
-            zone{1,1} = 1:75;  
-            zone{2,1} = 125:200; 
-
-            % Transition zone with linear interp
-            zone{3,1} = 76:124;
-            linterp = cumsum(ones(length(zone{3,1}),1)/length(zone{3,1}));
-            
-            % Z{1} = ones(mcell,1);
-            z{1} = ones(mcell,1);%zeros(nx,1); z{1}(zone{1,1}) = 1;
-            trans{1} = ones(mcell,1);%z{1}; trans{1}(zone{3,1}) = 1-linterp;
-            
-%             z{2} = zeros(nx,1); z{2}(zone{2,1}) = 1;
-%             trans{2} = z{2}; trans{2}(zone{3,1}) = 1-linterp(end:-1:1);
-                        
-            pvec = ones(nx,1) * pQ(ll);%(0.*trans{1} + 2.*trans{2}) ./ (trans{1} + trans{2}) ;
-            
-            qvec = ones(size(Wx,1),1) * qQ(ll);%(0.*trans{1} + 2.*trans{2}) ./ (trans{1} + trans{2}) ;
-            
-            lvec = ones(nx,1) * lQ(ll);
-%             lvec(z{1}==1) = 0;
-%             lvec(z{2}==1) = 2;
-           
-            traffic_p = 1;
-            traffic_q = 1;
-            group_p = mcell;
-            
         while switcher ~= 3
 
                     count=count+1;
@@ -280,12 +267,12 @@ for ll= 1:length(lQ)
 
                         delta_p(count) = prctile(abs(invmod(invmod ~= 0)),pct_cutoff)*5;
                         
-                        if rr == 2
-                            gradm = abs(Wx * IWr * invmod);
-                        
-                        else
-                            gradm = abs(Wx * invmod);
-                        end
+%                         if rr == 2
+%                             gradm = abs(Wx * IWr * invmod);
+%                         
+%                         else
+                        gradm = abs(Wx * invmod);
+%                         end
                         
                         delta_q(count) = prctile(gradm(gradm~=0),pct_cutoff)*5;
 %                         delta_q(count) = max(abs(invmod));                        
@@ -299,17 +286,17 @@ for ll= 1:length(lQ)
                         aVRWs = sqrt(as) *  V * Ws;
                         aVRWx = sqrt(ax) *  Vx * Wx;
                         
-                        if rr==1
+%                         if rr==1
                             
-                            aVRWs = Wr * aVRWs ;
-                            aVRWx = Wrx * aVRWx ;
+                        aVRWs = Wr * aVRWs ;
+                        aVRWx = Wrx * aVRWx ;
                         
-                        end
+%                         end
                         
                         MOF = aVRWs'*aVRWs + aVRWx'*aVRWx;
                         
                         if count==1
-                            beta = sum(sum(G.^2,1)) / sum(diag(MOF,0).^2) *1e+1;
+                            beta = 1e+8;%sum(sum(G.^2,1)) / sum(diag(MOF,0).^2) *1e+3;
                         end
                         
 %                         lambda(count) = beta(count);
@@ -320,156 +307,9 @@ for ll= 1:length(lQ)
 
                         p_tresh = 0.01;
                         q_tresh = 0.01;
-                        
-                    else
-                        
-%                         fprintf('# # LP-LQ ITER# #');
-                        if switcher ~=2
-                            
-                            lp_count = lp_count+1;
-                            
-                        else
-                            
-                            beta_count = beta_count+1;
-                            
-                        end
-                        
-                        
-                        if lp_count == 1
-                            
-                            p_tresh = eps_p;%prctile(abs(invmod(invmod ~= 0)),pct_cutoff);
-%                             gradm = abs(Vx * Wx * invmod);
-                            q_tresh = eps_q;%prctile(gradm(gradm~=0),pct_cutoff);
-
-                        
-                            delta_p(count) = 1e-1;%delta_p(count-1)/2;
-                            delta_q(count) = 1e-1;%delta_q(count-1)/2;
-                            %x_tresh.^2;
-%                             figure; hist(abs(invmod),20);
-%                             ylim([0 100])
-%                             set(figure(100), 'Position', [50 200 750 750])
-%                             plot(x,model,'LineWidth',2);axis([x(1) x(end) -0.1 0.5]);hold on
-%                             axis square
-%                             grid on
-            
-                        end
-                        
-                        if delta_p(end)> eps_p;%traffic_p(end)*100 > 1 && switcher == 1
-                            
-                            delta_p(count) = delta_p(end)/2;
-                            
-                        else 
-                            
-                            delta_p(count) = delta_p(count-1);
-                            
-                        end
-                        
-                        if delta_q(end)> eps_q;%traffic_q(end)*100 > 1 && switcher == 1
-                            
-                            delta_q(count) = delta_q(end)/2;
-                            
-                        else
-
-                            delta_q(count) = delta_q(count-1);
-                            
-                        end
-                        
-                        if delta_p(end)< eps_p && delta_q(end)< eps_q%traffic_p(end)*100 < 1 && traffic_q(end)*100 < 1 && switcher == 1
-                            
-                            delta_q(count) = eps_q;
-                            delta_p(count) = eps_p;
-                            switcher = 2;
-                            
-                        end
-                            
-       
-%                         x_tresh = dkdt(pvec,delta(count));
-
-                        if rr == 2
-                           
-                            rs = 1./ ( abs(invmod) .^2 + delta_p(count).^2 ) .^( (1-pvec/2) );
-                            rx = 1./ ( abs(Wx * invmod) .^2 + delta_q(count).^2 ) .^( (1-qvec/2) );
-                            
-                        else
-                            
-                            rs = 1./ ( abs(invmod) .^2 + delta_p(count).^2 ) .^( (1-pvec/2) );
-                            rx = 1./ ( abs(Wx * invmod) .^2 + delta_q(count).^2 ) .^( (1-qvec/2) );
-                            
-                        end
-                        
-                        Rs = spdiags( rs.^0.5 ,0,mcell,mcell);
-                        Rx = spdiags( rx.^0.5 ,0,size(Wx,1),size(Wx,1));
-                       
-                                                
-%                         scale_p = zeros(mcell,1);
-%                         scale_x = zeros(mcell,1);
-                        
-                            avrws =  Rs * Ws ;
-                            avrwx =  Rx * Wx ;
-                            
-                                                                
-                            eta_s = delta_p(count)^(1-pQ(ll)/2);%1 / max(abs( (avrws)'*(avrws) * invmod ));                        
-                            eta_x = delta_q(count)^(1-qQ(ll)/2);%1 / max(abs( (avrwx)'*(avrwx) * invmod ));
-
-                            
-%                             theta_s = theta_s + sqrt( max_qs )  * T  ;
-%                             theta_x = theta_x + sqrt( max_qx )  * T  ;
- 
-                                                                       
-                        aVRWs =  spdiags( sqrt( lvec * as *eta_s ),0,mcell,mcell)  *  Rs * V * Ws ;
-                        aVRWx =  spdiags( sqrt((2.0 - lvec) * ax *eta_x ),0,size(Wx,1),size(Wx,1)) *  Rx * Vx * Wx;
-%                          figure(100);plot((aVRWx)'*(aVRWx) * invmod );
-                        if rr ==1
-                            
-                            aVRWs = Wr * aVRWs ;
-                            aVRWx = Wrx * aVRWx ;
-                            
-                        end
-                        
-                        gamma = phi_m(count-1) /...
-                            ( invmod' * (aVRWs' * aVRWs + aVRWx' * aVRWx) * invmod );
-                                                                                                 
-                        aVRWs = sqrt(gamma) * aVRWs;
-                        aVRWx = sqrt(gamma) * aVRWx;
-                        
-                        MOF = ( aVRWs' * aVRWs + aVRWx' * aVRWx );
-                        
-%                         mu = ( phi_m(count-1) ) / (invmod'*MOF*invmod ) ;
-       
-%                         beta(count) = beta(count);
-                        
-%                         figure(100)
-%                         [mm,idx] = sort(invmod);
-%                         gradphi = abs(mm)./(mm.^2 + delta_p(end).^2).^(1-pvec/2);
-%                         hist(mm,15); hold on
-%                         plot(abs(mm),gradphi/max(gradphi)*50,'r');
-%                         plot([p_tresh p_tresh],[0 200],'--');
-%                         ylim([0 55])
-%                         xlim([0 0.5])
-%                         hold off
-                        
                     end
 
-                group_p(count) = sum(abs(invmod) <= p_tresh);
-                group_q(count) = sum(abs(Vx*Wx*invmod) <= q_tresh);
-                
-%                 fprintf('\n# # # # # #\n');
-%                 fprintf('BETA ITER: \t %i  \nbeta: \t %8.5e \n',count,beta(count));
-
                 m_in = invmod;  % Save initial model for backtracking steps
-                
-%                 eigval_qtG = eig(G'*G); 
-%                 eigval_MOF = eig( lambda(count) * (MOF) );
-%                 
-%                 eigval = eig( G'*G + lambda(count) * (MOF));
-%                 
-%                 condnum = max(abs(eigval)) / min(abs(eigval));
-%                 
-%                 figure(4); 
-% %                 plot(eigval_qtG,'*'); hold on
-% %                 plot(eigval_MOF,'ro'); hold on
-%                 plot(eigval,'*'); hold off
-%                 fprintf('Condition number: %f\n',condnum);
 
                 diagA = sum(G.^2,1) + beta(count)*spdiags(MOF,0)';
                 PreC     = Pac * spdiags(1./diagA(:),0,mcell,mcell);
@@ -483,18 +323,9 @@ for ll= 1:length(lQ)
                 sqrt( beta(count) ) * ( aVRWx * zeros(mcell,1))] ;
 
                 [invmod,~,cg_iter] = PCGLSQ( invmod, A , b, PreC, Pac );
-%                 tncg = tncg + ncg;
-%                 [invmod,cg_iter] = GNsolver( G, invmod, d, phi(end), MOF, PreC, Pac, lambda(count) , aVRWs, aVRWx ,[],[]);             
                 ncg(counter) = ncg(counter) + cg_iter;
                 
-                if count > 1
-                    temp = sum(abs(invmod) <= p_tresh);                     
-                    traffic_p(count) = abs(group_p(count) - temp) / group_p(count);
-                    
-                    temp = sum(abs(Vx*Wx*invmod) <= q_tresh);
-                    traffic_q(count) = abs(group_q(count) - temp) / group_q(count);
-                    
-                end
+
                 
                 % Measure the change in model update
                 if count==1 
@@ -529,46 +360,15 @@ for ll= 1:length(lQ)
                     continue
 
                 end    
-                
+
             % Check to see if overshooted the target misfit,
             % If yes, then compare with the previous iteration and keep
             % closest                
             if phi_d(count) < target * 0.99 && switcher~=1
                 
+                switcher=3;
                 phi_d(count) = sum((G*(invmod)-d).^2);                       
                 
-%                 fprintf('---------->');
-%                 fprintf(' misfit:\t %8.5e ',phi_d(count));
-%                 fprintf('Relative dm:\t %8.5e ', rdm(count));
-%                 fprintf('<----------\n');
-%                 fprintf('\n# NEXT ITER: INCREASING BETA #\n');
-                
-                if switcher == 0
-                    
-                    % Come back almost a full beta step
-                    beta(count+1) = beta(count) * 1.1;
-                
-                    switcher = 1;
-                    
-%                 elseif rdm(count) < 5e-3
-%                     
-%                     beta(count+1) = beta(count) * target / phi_d(count);
-% 
-%                     
-                else
-                   
-                    % Slowly backtrack
-%                     beta(count+1) = beta(count) * 1.05;
-                    beta(count+1) = beta(count) * target / phi_d(count);
-                end
-                
-                
-                
-%                 invmod = m_in;
-%                 phi_d(count) = phi_d(count-1);
-                
-%                 count = count-1;
-%                 continue
             
             % Else reduce beta and continue inversion
             elseif phi_d(count) > target * 1.01 && switcher ~= 1
@@ -591,20 +391,6 @@ for ll= 1:length(lQ)
                     
                 end
                 
-            else
-                
-                
-%                 fprintf('---------->')
-%                 fprintf(' misfit:\t %8.5e ',phi_d(count))
-%                 fprintf(' ** Relative dm:\t %8.5e ', rdm(count));
-%                 fprintf('<----------\n')
-%                 fprintf('\n# NEXT ITER - STATIONNARY STEP #\n');
-                
-                if switcher == 0
-                    switcher = 1;
-                end
-                
-                beta(count+1) = beta(count);
 
                  
             end
@@ -619,93 +405,106 @@ for ll= 1:length(lQ)
 %             axis([0 mcell -.1 0.6]);
 %             axis square
 
-            
-            
+
         end
                     % OPTIONAL: Plot model
-            if rr == 2
-                invmod = IWr*invmod;
-            end
+%             if rr == 2
+%                 invmod = IWr*invmod;
+%             end
             
             model_error = norm(model-invmod,1);
 
+            xx = kron(x,[1,1]);
+            mm = kron(invmod,[1;1]);
             
-            if rr == 1
-                
-            axes(axs{counter});
-            plot(x,model); hold on
-            plot(x, invmod,'k--','LineWidth',2); 
-            
-            else
-            axes(axs{counter});
-            plot(x, invmod,'r','LineWidth',2); hold on
-            
-            if ll == 1
-                
-                text(.35,0.43,['$\mathbf{q:' num2str(qQ(ll)) '}$'],'interpreter', 'latex','FontSize',12)
+            if ll ==1
+                subplot(1,1,1);
+                plot(x,model); hold on
+                plot(xx(1:end-1), mm(2:end),'k','LineWidth',2); 
+                ylim([-0.1 0.4])
+                MOF_1 = MOF;
 
             else
-                text(.35,0.43,['$\mathbf{p: ' num2str(pQ(ll)) ',\; q:' num2str(qQ(ll)) '}$'],'interpreter', 'latex','FontSize',12)
+                plot(xx(1:end-1), mm(2:end),'r','LineWidth',2); 
+                ylim([-0.1 0.4])
             end
-            text(.35,0.39,['$\mathbf{\phi_d} = ' num2str(round(phi_d(count)*100)/100) '$'],'interpreter', 'latex','FontSize',10)
-            text(.35,0.35,['$\epsilon = 10^{' num2str(round(log10(delta_p(end))*10)/10) '}$'],'interpreter', 'latex','FontSize',10)
-            text(.35,0.31,['$\|\mathbf{m - m^*}\|$ = ' num2str(round(model_error*100)/100)],'interpreter', 'latex','FontSize',10)
-
-            grid on
-            axis([0 1 -.025 0.5]);
             
-            if ll == 1
-            ylabel('\bf{m}', 'interpreter', 'latex','FontSize',14);
+%             if rr == 1
+            % For ploting only
             
-            end
-                xlabel('z', 'interpreter', 'latex','FontSize',14);
-                set(get(gca,'YLabel'),'Rotation',360);
-                ylabh = get(gca,'YLabel');
-                set(ylabh,'Position',get(ylabh,'Position') - [0.1 .025 0.00]);
-                
-            if ll==1
-                
-                
-                text(0.9,0.425,'(a)', 'interpreter', 'latex','FontSize',14,'HorizontalAlignment','center','VerticalAlignment','middle');
-            else
-                
-                set(gca,'YTickLabel',[]);
-                text(0.9,0.425,'(b)', 'interpreter', 'latex','FontSize',14,'HorizontalAlignment','center','VerticalAlignment','middle');
-
-                
             
-            end
-            axis square
-                
-            end
+%             else
+%             axes(axs{counter});
+%             plot(x, invmod,'r','LineWidth',2); hold on
+%             
+%             if ll == 1
+%                 
+%                 text(.35,0.43,['$\mathbf{q:' num2str(qQ(ll)) '}$'],'interpreter', 'latex','FontSize',12)
+% 
+%             else
+%                 text(.35,0.43,['$\mathbf{p: ' num2str(pQ(ll)) ',\; q:' num2str(qQ(ll)) '}$'],'interpreter', 'latex','FontSize',12)
+%             end
+%             text(.35,0.39,['$\mathbf{\phi_d} = ' num2str(round(phi_d(count)*100)/100) '$'],'interpreter', 'latex','FontSize',10)
+%             text(.35,0.35,['$\epsilon = 10^{' num2str(round(log10(delta_p(end))*10)/10) '}$'],'interpreter', 'latex','FontSize',10)
+%             text(.35,0.31,['$\|\mathbf{m - m^*}\|$ = ' num2str(round(model_error*100)/100)],'interpreter', 'latex','FontSize',10)
+% 
+%             grid on
+%             axis([0 1 -.025 0.5]);
+%             
+%             if ll == 1
+%             ylabel('\bf{m}', 'interpreter', 'latex','FontSize',14);
+%             
+%             end
+%                 xlabel('z', 'interpreter', 'latex','FontSize',14);
+%                 set(get(gca,'YLabel'),'Rotation',360);
+%                 ylabh = get(gca,'YLabel');
+%                 set(ylabh,'Position',get(ylabh,'Position') - [0.1 .025 0.00]);
+%                 
+%             if ll==1
+%                 
+%                 
+%                 text(0.9,0.425,'(a)', 'interpreter', 'latex','FontSize',14,'HorizontalAlignment','center','VerticalAlignment','middle');
+%             else
+%                 
+%                 set(gca,'YTickLabel',[]);
+%                 text(0.9,0.425,'(b)', 'interpreter', 'latex','FontSize',14,'HorizontalAlignment','center','VerticalAlignment','middle');
+% 
+%                 
+%             
+%             end
+%             axis square
+%                 
+%             end
             
             
 %             figure; plotyy(1:count,phi_d,1:count,phi_m);
 
             ldml(counter) = norm(model-invmod,2);
-%             fprintf('Relative dm:\t %8.5e \n', rdm(count));
-%             fprintf('End of lp inversion. Number of iterations: %i\n',count)
-%             fprintf('Final model misfit: %8.3e\n\n',ldml(counter))
+            fprintf('Relative dm:\t %8.5e \n', rdm(count));
+            fprintf('End of lp inversion. Number of iterations: %i\n',count)
+            fprintf('Final beta: %.4e\n', beta(end));
+            fprintf('Final phi_m: %.4e\n', phi_m(end));
+            fprintf('Final model misfit: %8.3e\n\n',ldml(counter))
             
             counter = counter+1;
             
 
         end
 
-end
+% end
 
 %%
-axes('Position',[.6 .35 .01 .01])
-plot(1,1,'b');hold on
-plot(1,1,'r','LineWidth',2);hold on
-plot(1,1,'k--','LineWidth',2);hold on
-set(gca,'Visible','off');
+% axes('Position',[.6 .35 .01 .01])
+% plot(1,1,'b');hold on
+% plot(1,1,'r','LineWidth',2);hold on
+% plot(1,1,'k--','LineWidth',2);hold on
+% set(gca,'Visible','off');
 
-h = legend('$m^*$','$\phi({\hat m})$',...
-'$\phi({m})$','Location','North');
+% h = legend('$m^*$','$\phi({\hat m})$',...
+% '$\phi({m})$','Location','North');
 % h = legend('$m^*$','$\phi({\hat m}) = \| \;\mathbf{\hat F} \; \mathbf{ \hat m } - \mathbf{d}\|_2^2 + \| \;\mathbf{\hat W}_{ m} \; \mathbf{ \hat m }\|_2^2$',...
 % '$\phi({m}) = \| \;\mathbf{F} \; \mathbf{m } - \mathbf{d}\|_2^2 + \| \mathbf{W}_{r}\;\mathbf{W}_{m} \; \mathbf{ m }\|_2^2$','Location','North');
-set(h,'Interpreter', 'latex','FontSize',12)
+% set(h,'Interpreter', 'latex','FontSize',12)
 
 % save('l1','l1');
 % save('l2','l2');

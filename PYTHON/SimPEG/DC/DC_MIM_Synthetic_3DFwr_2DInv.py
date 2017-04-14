@@ -41,7 +41,7 @@ import scipy.interpolate as interpolation
 from matplotlib.colors import LogNorm
 import os
 
-home_dir = 'C:\\Users\\dominiquef.MIRAGEOSCIENCE\\ownCloud\\Research\\MtIsa\\Modeling'
+home_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\MtIsa\\Modeling'
 #home_dir = 'C:\\Users\\dominiquef.MIRAGEOSCIENCE\\ownCloud\\Research\\Modelling\\Synthetic\\Two_Sphere'
 dsep = '\\'
 #from scipy.linalg import solve_banded
