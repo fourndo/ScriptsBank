@@ -30,7 +30,7 @@ addpath .\functions
 
 %% INPUTS PARAMETERS
 % Load files
-work_dir ='C:\Users\DominiqueFournier\ownCloud\Research\Kevitsa\Modeling\MAG\Aiborne\SimPEG_PF_Inv_MVI_S\Tiles_l2';
+work_dir ='C:\Users\DominiqueFournier\ownCloud\Research\Kevitsa\Modeling\MAG\Aiborne\100m\Tiles_l2';
 
 outFile = 'SimPEG_Merged.sus';
 % cd(work_dir);
@@ -51,7 +51,7 @@ dsep = '\';
 
 %## Input files ##
 % Specify final mesh file 
-VM_meshfile = [work_dir dsep '..\..\Mesh_global_50m.msh'];
+VM_meshfile = [work_dir dsep '..\Mesh_global_100m.msh'];
 
 % Flag for topography: 'no_topo' | 'topofile' | 'nullfile'
 % flag1 = 'no_topo';

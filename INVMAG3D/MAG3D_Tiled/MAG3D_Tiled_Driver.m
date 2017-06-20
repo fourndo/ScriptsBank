@@ -27,8 +27,8 @@ dsep = '\';
 % work_dir = 'C:\LC\Private\dominiquef\Projects\Gervais_Solado\Processing\Inversion';
 % work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Nut_Cracker\Tiled_MAG3D';
 % work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Triple_Block_lined';
-work_dir = 'C:\Users\DominiqueFournier\ownCloud\Research\Modelling\Synthetic\Dipping_Plane';
-
+% work_dir = 'C:\Users\DominiqueFournier\ownCloud\Research\Modelling\Synthetic\Dipping_Plane';
+work_dir = 'C:\Users\DominiqueFournier\ownCloud\Research\Synthetic\Fold';
 out_dir = [work_dir dsep 'ALL_Tiles'];
 mkdir(out_dir);
 

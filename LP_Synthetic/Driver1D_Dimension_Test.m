@@ -69,14 +69,14 @@ for ii = 1 : nk
     
     b = basis * 2*pi* (ii);
     a = decay * (ii);
-    
+    xc = (x(2:end) + x(1:end-1))/2;
     G(ii,1:mcell) = exp( a * x(2:end) ) .* (a/(a^2+b^2)*cos (b * x(2:end)) + b/(a^2+b^2) *sin (b * x(2:end))) -...
         exp( a * x(1:end-1) ) .* (a/(a^2+b^2)*cos (b * x(1:end-1)) + b/(a^2+b^2) *sin (b * x(1:end-1)));
-
-    G(ii,1:mcell) = G(ii,1:mcell) / max(G(ii,1:mcell));
+%       G(ii,:) = exp( a * xc ) .* cos (b * xc);
+%     G(ii,1:mcell) = G(ii,1:mcell) / max(G(ii,1:mcell));
     
-    wr = wr + ((exp( a*x(2:end))-exp( a * x(1:end-1) ))/a) ;
-    plot( x(2:end) , G(ii,:) );hold on
+%     wr = wr + ((exp( a*x(2:end))-exp( a * x(1:end-1) ))/a) ;
+    plot( xc , G(ii,:) );hold on
 
 end
 
@@ -206,7 +206,7 @@ for ll= 1:2
                 
                 
                 Wx(end,:) = 0;
-                Wx(end,end)=1;
+%                 Wx(end,end)=1;
 %                 Vx = Vx(1:end-1,1:end-1);%speye(nx-1,nx-1);%
 
                 V = spdiags(sqrt(dx'),0,nx,nx);%speye(nx,nx);%
@@ -265,7 +265,7 @@ for ll= 1:2
 
                     if switcher == 0   %First iteration
 
-                        delta_p(count) = prctile(abs(invmod(invmod ~= 0)),pct_cutoff)*5;
+%                         delta_p(count) = prctile(abs(invmod(invmod ~= 0)),pct_cutoff)*5;
                         
 %                         if rr == 2
 %                             gradm = abs(Wx * IWr * invmod);
@@ -274,7 +274,7 @@ for ll= 1:2
                         gradm = abs(Wx * invmod);
 %                         end
                         
-                        delta_q(count) = prctile(gradm(gradm~=0),pct_cutoff)*5;
+%                         delta_q(count) = prctile(gradm(gradm~=0),pct_cutoff)*5;
 %                         delta_q(count) = max(abs(invmod));                        
                         % Initial beta trace(G'G) / trace(phim)
 

@@ -267,9 +267,10 @@ while switcher ~= 3
         if lp_count == 1
 %             target = target /10;
             % Fix treshold for smallness term
-            [epsp,epsq] = get_eps(invmod,10,Gx,Gy,Gz);
+            
             if isempty(eps_p)
                 eps_p = epsp;
+                [epsp,epsq] = get_eps(invmod,10,Gx,Gy,Gz);
             end
             
             if isempty(eps_q)
