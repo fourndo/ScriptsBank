@@ -56,17 +56,33 @@ survey = driver.survey
 actv = driver.activeCells
 
 
-os.system('if not exist ' + work_dir + out_dir + tile_dirl2 + ' mkdir ' + work_dir+out_dir+tile_dirl2)
-os.system('if not exist ' + work_dir + out_dir + tile_dirlp + ' mkdir ' + work_dir+out_dir+tile_dirlp)
+os.system('mkdir ' + work_dir+out_dir+tile_dirl2)
+os.system('mkdir ' + work_dir+out_dir+tile_dirlp)
+
+nD = int(survey.nD*0.5)
+print("nD ratio:" + str(nD) +'\\' + str(survey.nD) )
+indx = np.random.randint(0, high=survey.nD, size=nD)
+# Create a new downsampled survey
+locXYZ = survey.srcField.rxList[0].locs[indx,:]
+
+dobs = survey.dobs
+std = survey.std
+
+rxLoc = PF.BaseGrav.RxObs(locXYZ)
+srcField = PF.BaseMag.SrcField([rxLoc], param=survey.srcField.param)
+survey = PF.BaseMag.LinearSurvey(srcField)
+survey.dobs = dobs[indx]
+survey.std = std[indx]
+
+PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MAG_Inv_Sub.obs', survey, survey.dobs)
 
 
 
-Mesh.TensorMesh.writeUBC(mesh, work_dir + out_dir + tile_dirl2 + "MAG_Tile" + str(tt) + ".msh")
-Mesh.TensorMesh.writeUBC(mesh, work_dir + out_dir + tile_dirlp + "MAG_Tile" + str(tt) + ".msh")
+Mesh.TensorMesh.writeUBC(mesh, work_dir + out_dir + tile_dirl2 + "MAGsus" + ".msh")
+Mesh.TensorMesh.writeUBC(mesh, work_dir + out_dir + tile_dirlp + "MAGsus" + ".msh")
 
 nC = len(actv)
 # print("Tile "+str(tt))
-print(nC, np.sum(ind_t))
 # Create active map to go from reduce space to full
 actvMap = Maps.InjectActiveCells(mesh, actv, -100)
 
@@ -135,9 +151,9 @@ mrec = inv.run(mstart)
 
 # Outputs
 if getattr(invProb, 'l2model', None) is not None:
-    Mesh.TensorMesh.writeModelUBC(mesh,work_dir + out_dir + tile_dirl2 + "MAG_Tile" + str(tt) + ".sus", actvMap*invProb.l2model)
+    Mesh.TensorMesh.writeModelUBC(mesh,work_dir + out_dir + tile_dirl2 + "MAGsus" + ".sus", actvMap*invProb.l2model)
 
-Mesh.TensorMesh.writeModelUBC(mesh,work_dir + out_dir + tile_dirlp + "MAG_Tile" + str(tt) + ".sus", actvMap*invProb.model)
+Mesh.TensorMesh.writeModelUBC(mesh,work_dir + out_dir + tile_dirlp + "MAGsus" + ".sus", actvMap*invProb.model)
 PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MAG.pre', survey, invProb.dpred)
 
 

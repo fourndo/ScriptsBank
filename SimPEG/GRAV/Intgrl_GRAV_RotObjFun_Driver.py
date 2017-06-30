@@ -39,8 +39,8 @@ survey.dobs = dobs[indx]
 survey.std = std[indx]
 #
 #rxLoc = survey.srcField.rxList[0].locs
-#d = survey.dobs
-#wd = survey.std
+d = survey.dobs
+wd = survey.std
 
 ndata = survey.srcField.rxList[0].locs.shape[0]
 
@@ -78,7 +78,7 @@ if driver.wgtfile is None:
     # wr = wr**2.
 
     # Make depth weighting
-    wr = np.sum(prob.F**2., axis=0)**0.5
+    wr = np.sum(prob.G**2., axis=0)**0.5
     wr = (wr/np.max(wr))
     # wr_out = actvMap * wr
 
@@ -97,18 +97,21 @@ if driver.eps is not None:
     reg_a.eps_q = driver.eps[1]
 
 
-opt = Optimization.ProjectedGNCG(maxIter=100, lower=driver.bounds[0],upper=driver.bounds[1], maxIterLS = 20, maxIterCG= 10, tolCG = 1e-3)
+#%%
+opt = Optimization.ProjectedGNCG(maxIter=100, lower=driver.bounds[0],
+                                 upper=driver.bounds[1], maxIterLS = 20,
+                                 maxIterCG= 10, tolCG = 1e-3)
 dmis = DataMisfit.l2_DataMisfit(survey)
 dmis.W = 1./wd
 invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
 
 betaest = Directives.BetaEstimate_ByEig()
 IRLS = Directives.Update_IRLS(f_min_change=1e-4, minGNiter=3)
-update_Jacobi = Directives.UpdatePreCond()
-saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
-saveModel.fileName = work_dir + dsep + out_dir + 'GRAV'
+update_Jacobi = Directives.Update_lin_PreCond()
+#saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
+#saveModel.fileName = work_dir + dsep + out_dir + 'GRAV'
 inv = Inversion.BaseInversion(invProb, directiveList=[betaest, IRLS,
-                                                      update_Jacobi, saveModel])
+                                                      update_Jacobi])
 # Run inversion
 mrec = inv.run(mstart)
 
@@ -119,7 +122,7 @@ survey.dobs = pred
 # PF.Gravity.plot_obs_2D(survey, 'Observed Data')
 print("Final misfit:" + str(np.sum(((d-pred)/wd)**2.)))
 
-m_out = actvMap*staticCells*invProb.l2model
+m_out = actvMap*staticCells*IRLS.l2model
 
 # Write result
 Mesh.TensorMesh.writeModelUBC(mesh, work_dir + dsep + out_dir + 'SimPEG_inv_l2l2.den',m_out)
@@ -127,3 +130,4 @@ Mesh.TensorMesh.writeModelUBC(mesh, work_dir + dsep + out_dir + 'SimPEG_inv_l2l2
 m_out = actvMap*staticCells*mrec
 # Write result
 Mesh.TensorMesh.writeModelUBC(mesh, work_dir + dsep + out_dir + 'SimPEG_inv_lplq.den',m_out)
+
