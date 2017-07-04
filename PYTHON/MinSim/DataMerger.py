@@ -23,19 +23,19 @@ import re
 
 work_dir = 'C:\\Egnyte\\Private\\dominiquef\\Projects\\4414_Minsim\\Modeling\\Forward\\'
 
-out_dir = 'C:\\Egnyte\\Private\\dominiquef\\Projects\\4414_Minsim\\Modeling\\Forward\\Compilation\\DC\\'
+out_dir = 'C:\\Egnyte\\Private\\dominiquef\\Projects\\4414_Minsim\\Modeling\\Forward\\Compilation\\'
 
-local_dir = {'MAG':'FWR_MAG\\Airborne\\',
-             'Gz':'FWR_Gz\\Ground\\Complex\\',
+local_dir = {'MAG':'FWR_MAG\\Ground\\',
+             'Gz':'FWR_Gz\\Ground\\FWR_Gz\\',
              'TDEM':'FWR_TDEM\\OUT_DIR\\Grid65p5\\',
              'DC': '\\FWR_DC\\clean',
              'GDEM':'FWR_GTEM\\OUT_DIR\\',
-             'Gxx':'FWR_Gz\\Airborne\\FWR_Gxx\\',
-             'Gxy':'FWR_Gz\\Airborne\\FWR_Gxy\\',
-             'Gxz':'FWR_Gz\\Airborne\\FWR_Gxz\\',
-             'Gyy':'FWR_Gz\\Airborne\\FWR_Gyy\\',
-             'Gyz':'FWR_Gz\\Airborne\\FWR_Gyz\\',
-             'Gzz':'FWR_Gz\\Airborne\\FWR_Gzz\\'}
+             'Gxx':'FWR_Gz\\Ground\\FWR_Gxx\\',
+             'Gxy':'FWR_Gz\\Ground\\FWR_Gxy\\',
+             'Gxz':'FWR_Gz\\Ground\\FWR_Gxz\\',
+             'Gyy':'FWR_Gz\\Ground\\FWR_Gyy\\',
+             'Gyz':'FWR_Gz\\Ground\\FWR_Gyz\\',
+             'Gzz':'FWR_Gz\\Ground\\FWR_Gzz\\'}
 #work_dir = 'C:\\LC\\Private\\dominiquef\\Projects\\4414_Minsim\\Modeling\\VPmg\\FWR_Gz\\V2'
 
 #work_dir = 'C:\\LC\\Private\\dominiquef\\Projects\\4414_Minsim\\Modeling\\VPmg\\
@@ -45,10 +45,10 @@ mesh = Mesh.TensorMesh.readUBC(meshfile)
 ore = np.loadtxt(work_dir + 'Ore_Lenses.xyz')
 dtype = 'MAG'
 
-outfile = 'Airborne_MAG.dat'
+outfile = 'Ground_Mag.dat'
 #outfile = 'Ground_'+ dtype + '_Complex.dat'
-label = 'mGal'#'TMI (nT)'#'$10^{-4}$ mGal/m'#'$\partial B_z/\partial z$'
-vmin, vmax = -300, 1200#-20, 20#
+label = 'TMI (nT)'#'mGal'#'$10^{-4}$ mGal/m'#'$\partial B_z/\partial z$'
+vmin, vmax = -20, 20#-300, 1200#
 xmin, xmax = 313520, 317450
 ymin, ymax = 6065430, 6076085
 #%% Progress function
@@ -133,6 +133,7 @@ if np.all([dtype != 'TDEM',dtype != 'GDEM', dtype != 'DC']):
     ii = 0
 
 
+
     for tile in AllData:
 
         logicX = np.logical_and(np.min(tile[:, 0]) < X, np.max(tile[:, 0]) > X)
@@ -148,15 +149,39 @@ if np.all([dtype != 'TDEM',dtype != 'GDEM', dtype != 'DC']):
         gridx, gridy = np.meshgrid(rowx, rowy)
 
         # Radial weights
-        r = ((gridx - np.median(tile[:, 0]))**2. +
-             (gridy - np.median(tile[:, 1]))**2.) + 1e-1
+#        r = ((gridx - np.median(tile[:, 0]))**2. +
+#             (gridy - np.median(tile[:, 1]))**2.) + 1e-1
+#
+#        wght = 1./r**3.
+        # Create dissolving tile
+        nx = rowx.shape[0]
+        ny = rowy.shape[0]
+        wghtx, wghty = np.meshgrid(np.abs(np.asarray(range(nx))-np.ceil(nx)/2), np.abs(np.asarray(range(ny))-np.ceil(ny)/2))
 
-        wght = 1./r**3.
+        wght = np.max(np.c_[mkvc(wghtx),mkvc(wghty)], axis=1)
 
+        # Normalize it and cosine it
+        wght = 1-wght/wght.max() + 1e-6
+        wght = -0.5 * np.cos(np.pi*wght) + 0.5
+        wght = wght.reshape(gridx.shape, order='F')**2.
+#        plt.figure()
+#        plt.imshow(wght.reshape(gridx.shape))
 
         # Resample the grid
         data = griddata(tile[:, 0:2], tile[:, 3],
                         (gridx, gridy))
+
+        # Check if level of current values matches the new one
+        # otherwise sub-stract a DC
+        temp_val = dataGrid[inDex]
+        temp_wgt = wghtGrid[inDex]
+
+        indTmp = temp_val != 0
+
+        if indTmp.any():
+
+            dc = np.mean(temp_val[indTmp]/temp_wgt[indTmp] - mkvc(data)[indTmp])
+            data += dc
 
         # Append result to the full grid
         dataGrid[inDex] += mkvc((data*wght))
@@ -182,8 +207,7 @@ if np.all([dtype != 'TDEM',dtype != 'GDEM', dtype != 'DC']):
     #%% Plot result
     dataGrid = dataGrid.reshape(len(gCx),len(gCy))
     fig, axs = plt.figure(figsize=(5,9)), plt.subplot()
-    plt.contourf(gCx,gCy,dataGrid.T,100, cmap = 'jet', vmin=vmin, vmax=vmax)
-    plt.clim(vmin,vmax)
+    plt.contourf(gCx,gCy,dataGrid.T,100, cmap = 'jet')
     plt.xlim(xmin,xmax)
     plt.ylim(ymin,ymax)
     plt.colorbar(orientation='vertical', shrink=0.5, label=label)
@@ -197,25 +221,25 @@ if np.all([dtype != 'TDEM',dtype != 'GDEM', dtype != 'DC']):
 
     #%% Pplot true data
 
-    dataObs = np.loadtxt(work_dir+'\\Observed_Gridded50m.dat')
-    fig, axs = plt.figure(figsize=(5,9)), plt.subplot()
+    # dataObs = np.loadtxt(work_dir+'\\Observed_Gridded50m.dat')
+    # fig, axs = plt.figure(figsize=(5,9)), plt.subplot()
 
-    gCx = np.unique(dataObs[:,0])
-    gCy = np.unique(dataObs[:,1])
+    # gCx = np.unique(dataObs[:,0])
+    # gCy = np.unique(dataObs[:,1])
 
-    dataGrid = dataObs[:,-1].reshape((len(gCx), len(gCy)), order='F')
-    plt.contourf(gCx,gCy,dataGrid.T,100, cmap = 'jet', vmin=vmin, vmax=vmax)
-    plt.clim(vmin,vmax)
-    plt.xlim(xmin,xmax)
-    plt.ylim(ymin,ymax)
-    plt.colorbar(orientation='vertical', shrink=0.5, label=label)
+    # dataGrid = dataObs[:,-1].reshape((len(gCx), len(gCy)), order='F')
+    # plt.contourf(gCx,gCy,dataGrid.T,100, cmap = 'jet', vmin=vmin, vmax=vmax)
+    # plt.clim(vmin,vmax)
+    # plt.xlim(xmin,xmax)
+    # plt.ylim(ymin,ymax)
+    # plt.colorbar(orientation='vertical', shrink=0.5, label=label)
 
-    plt.contour(gCx,gCy,dataGrid.T,10,colors='k')
-    plt.scatter(ore[:,0],ore[:,1],c='k', s = 1, linewidth=0)
+    # plt.contour(gCx,gCy,dataGrid.T,10,colors='k')
+    # plt.scatter(ore[:,0],ore[:,1],c='k', s = 1, linewidth=0)
 
-    axs.set_aspect('equal')
-    axs.set_title('Observed')
-    plt.savefig(out_dir + 'Observed.png')
+    # axs.set_aspect('equal')
+    # axs.set_title('Observed')
+    # plt.savefig(out_dir + 'Observed.png')
 
 #%% Deal with TDEM data
 elif dtype == 'TDEM':
