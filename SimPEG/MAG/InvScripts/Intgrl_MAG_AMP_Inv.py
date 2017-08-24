@@ -27,9 +27,9 @@ import matplotlib.pyplot as plt
 import os
 
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Triple_Block_lined\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Nut_Cracker\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
 
-out_dir = "SimPEG_PF_Inv\\"
+out_dir = "SimPEG_AMP_Inv\\"
 input_file = "SimPEG_MAG.inp"
 # %%
 # Read in the input file which included all parameters at once
@@ -178,13 +178,13 @@ betaest = Directives.BetaEstimate_ByEig()
 
 # Specify the sparse norms
 IRLS = Directives.Update_IRLS(f_min_change=1e-3,
-                              minGNiter=3, coolingRate=1, chifact=0.25,
+                              minGNiter=3, coolingRate=1, chifact_target=0.25,
                               maxIRLSiter=3)
 
 # Special directive specific to the mag amplitude problem. The sensitivity
 # weights are update between each iteration.
-update_SensWeight = Directives.UpdateSensWeighting()
-update_Jacobi = Directives.UpdatePreCond()
+update_SensWeight = Directives.UpdateSensWeighting(everyIter=True)
+update_Jacobi = Directives.UpdatePreCond(epsilon=1e-3)
 
 saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
 saveModel.fileName = work_dir + out_dir + 'AmpInv'

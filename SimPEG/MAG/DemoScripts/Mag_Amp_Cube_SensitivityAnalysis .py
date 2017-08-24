@@ -30,7 +30,7 @@ import os
 # # STEP 1: Setup and data simulation # #
 
 # Magnetic inducing field parameter (A,I,D)
-B = [50000, 90, 0]
+B = [50000, 45, 90]
 
 # Create a mesh
 dx = 5.
@@ -41,7 +41,7 @@ hzind = [(dx, 0, -1.3), (dx, 20)]
 
 mesh = Mesh.TensorMesh([hxind, hyind, hzind], 'CC0')
 mesh.x0[2] -= mesh.vectorNz[-1]
-
+norms = [2, 2, 2, 2]
 susc = 0.025
 nX = 2
 
@@ -192,6 +192,7 @@ prob.model = mstart
 survey.srcField.rxList[0].rxType = 'xyz'
 
 # Pair the survey and problem
+survey.unpair()
 survey.pair(prob)
 
 # Re-set the observations to |B|
@@ -202,7 +203,7 @@ wr = (wr/np.max(wr))
 # Create a sparse regularization
 reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
 reg.mref = mstart*0.
-reg.norms=[0,1,1,1]
+reg.norms=norms
 reg.eps_p = 1e-3
 reg.eps_q = 1e-3
 reg.cell_weights = wr
@@ -226,7 +227,7 @@ IRLS = Directives.Update_IRLS(f_min_change=1e-3,
                               minGNiter=2, chifact=1,
                               coolingRate = 2)
 
-# First experiment we won't update the sensitivity weighting 
+# First experiment we won't update the sensitivity weighting
 update_SensWeight = Directives.UpdateSensWeighting(everyIter = False)
 update_Jacobi = Directives.UpdatePreCond()
 
@@ -241,7 +242,7 @@ pred_MAI = invProb.dpred
 
 reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
 reg.mref = mstart*0.
-reg.norms=[0,1,1,1]
+reg.norms=norms
 reg.eps_p = 1e-3
 reg.eps_q = 1e-3
 # Data misfit function
@@ -328,7 +329,7 @@ vmax = None#mrec_MAI.max()
 # ax3.xaxis.set_visible(False)
 
 out = PF.Magnetics.plot_obs_2D(rxLoc, d=pred_MAI, fig=fig, ax=ax3,
-                               title='Predicted TMI')
+                               title='Predicted Amplitude (noScale)')
 ax3.set_xlabel('X (m)')
 ax3.set_ylabel('Y (m)')
 
@@ -355,7 +356,7 @@ vmax= None#mrec_MAIS.max()
 #                       title="Esus Model", axs=ax3, vmin=0, vmax=vmax, contours = contours)
 # ax3.xaxis.set_visible(False)
 out = PF.Magnetics.plot_obs_2D(rxLoc, d=pred_MAIS, fig=fig, ax=ax3,
-                               title='Predicted Amplitudey')
+                               title='Predicted Amplitude')
 ax3.set_xlabel('X (m)')
 ax3.set_ylabel('Y (m)')
 

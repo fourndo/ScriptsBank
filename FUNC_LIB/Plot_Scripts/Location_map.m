@@ -6,11 +6,11 @@ clear all
 close all
 
 addpath '..\.'
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Paul_Lake\Modeling\Inversion';
-topofile = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Paul_Lake\Data\CDED\CDED_076_c_d_250k.dat';
-location = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Paul_Lake\Data\Thematic\Canada\Canada_pt.dat';
+work_dir = 'C:\Users\DominiqueFournier\ownCloud\Research\Paul_Lake\Data';
+topofile = 'C:\Users\DominiqueFournier\ownCloud\Research\Paul_Lake\Data\CDED\CDED_076_c_d_250k.dat';
+location = 'C:\Users\DominiqueFournier\ownCloud\Research\Paul_Lake\Data\Thematic\Canada\Canada_pt.dat';
 
-pipe_file = 'Pipes43101';
+pipe_file = 'Ekati\PipesUTM';
 
 obsfile = 'Obs_Paul_Lake_SUB_1pc_2nT.dat';
 
@@ -18,7 +18,7 @@ dsep = '\';
 
 
 %% Load tiles and deposit name
-load([work_dir dsep pipe_file]); pipes = Pipes43101;
+load([work_dir dsep pipe_file]);
 
 %% Load topography and generate contours
 % topo = read_UBC_topo([work_dir dsep topofile]);
@@ -33,7 +33,7 @@ load([work_dir dsep pipe_file]); pipes = Pipes43101;
 % T = scatteredInterpolant(topo(:,1),topo(:,2),topo(:,3));
 % tgrid = T(X,Y);
 
-load('C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Paul_Lake\Data\CDED\CDED_076_c_d_250k')
+load('C:\Users\DominiqueFournier\ownCloud\Research\Paul_Lake\Data\CDED\CDED_076_c_d_250k')
 set(figure, 'Position', [50 25 850 650]); 
 ax1 = axes('Position',[0.1 .1 .8 .8]);
 
@@ -62,10 +62,10 @@ ylabel('North (m)')
 grid on
 %% Plot pipe location
 
-
-for ii = 1 : size(pipes,1)
+plot(pipes.X,pipes.Y,'k^','MarkerSize',5,'MarkerFaceColor','k')
+for ii = 1 : size(pipes.NAME,1)
     
-    plot(pipes{ii,5},pipes{ii,6},'k^','MarkerSize',5,'MarkerFaceColor','k')
+    text(pipes.X(ii),pipes.Y(ii),pipes.NAME{ii},'interpreter','latex','HorizontalAlignment','right','VerticalAlignment','top')
     
 end
 
@@ -75,6 +75,8 @@ plot(518140,7176600,'ro','MarkerFaceColor','r','MarkerSize',5)
 text(534900,7152500,'Diavik','interpreter','latex','HorizontalAlignment','right','VerticalAlignment','top','BackgroundColor','w')
 plot(534900,7152500,'ro','MarkerFaceColor','r','MarkerSize',5)
 
+text(55750,7133500,'DO-27','interpreter','latex','HorizontalAlignment','right','VerticalAlignment','top','BackgroundColor','w')
+plot(534900,7122500,'ro','MarkerFaceColor','r','MarkerSize',5)
 
 %% Add inset map of Canada
 ax2 = axes('Position',[0.69 .69 .20 .20]);

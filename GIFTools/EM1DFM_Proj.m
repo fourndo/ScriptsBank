@@ -3,22 +3,35 @@ dsep = '\';
 work_dir = 'C:\Users\DominiqueFournier\Google Drive\Tli_Kwi_Cho\Modelling\Inversion\EM\DIGHEM\1D\DIGHEM_TKC_Line10';
 data1D = 'DIGHEM_line10.obs';
 topomodel = 'nullcell.dat';
+toposurf = '..\TKCtopo.dat';
 mesh3Dfile = 'UBC_mesh_small_TOP.msh';
 mesh1Dfile = 'start.con';
+
 
 % Create project and load core files
 proj = GIFproject;
 proj.setWorkDir(work_dir);
+
 % mesh3D = mesh3D(proj); mesh3D.readFile([proj.workDir dsep mesh3Dfile]);
+data3D = 'E3DinvWrite.obs';
+data3DObj = FEMxyz.readDobs(proj,[work_dir dsep data3D]);
+
+% Read in topo
+topo = TOPOdata(proj);
+topo.readFile([work_dir dsep toposurf]);
 
 % Create 1D mesh
-mesh1D = mesh1D(proj); 
-mesh1D.readFile([proj.workDir dsep mesh1Dfile]);
+msh1D = mesh1D(proj); 
+msh1D.readFile([proj.workDir dsep mesh1Dfile]);
 
 % Import 1D model
 mod = GIFmodel(proj);
-mod.setMesh(mesh1D);
+mod.setMesh(msh1D);
 mod.readFile([proj.workDir dsep mesh1Dfile]);
+
+% Write 1D model and mesh two ways
+msh1D.writeFile([work_dir '\mesh1Dout.con'], mod);
+mod.writeFile([work_dir '\mod1Dout.con']);
 
 % ALTERNATIVE - Load model and mesh at once
 mod = GIFmodel.importGIFMeshModelFiles(proj,[proj.workDir dsep mesh1Dfile],[proj.workDir dsep mesh1Dfile],'cond','test');
@@ -31,8 +44,9 @@ data = EM1DFMinversion.readDobs(inv, [proj.workDir dsep data1D]);
 inv.setDobs(data)
 
 % Assign the mesh1D, which will generate a 3D mesh and ijk link with data
-inv.setMesh(mesh1D);
-
+inv.setMesh(msh1D);
+msh3D = inv.getMesh();
+msh3D.writeFile([proj.workDir dsep 'Mesh3D.msh'])
 % Write input file
 EM1DFMinversion.writeInp(inv)
 
@@ -44,6 +58,12 @@ inv.writeDobs(inv.getDobs, [proj.workDir dsep 'em1dfm.obs'], inv.getDataOptions)
 
 % Run inversion
 EM1DFMinversion.runInversion(inv,true);
+
+% Read the predicted data
+EM1DFMinversion.readPred(inv, [proj.workDir dsep 'em1dfm.prd']);
+
+% Read the outfile
+inv.readOut();
 
 % Read in the inverted conductivities in 1D format
 invMod = inv.readModel([proj.workDir dsep 'em1dfm_con.mod']);
@@ -60,8 +80,9 @@ inv.setInterpolationMatrix( 3, 200, 1, 1);
 
 % Interpolate from soundings to full mesh
 m3D = inv.interp1D_to_3D(inv.getItem{end}.getValue);
+
 % Write to file
 mod3D.setValue(m3D);
 mod3D.writeFile([proj.workDir dsep 'Inv1DInterp3D.con']);
 
-
+% 

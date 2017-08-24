@@ -15,9 +15,9 @@ import os
 # Define the inducing field parameter
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Modelling\\Synthetic\\Block_Gaussian_topo\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Triple_Block_lined\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Nut_Cracker\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
 
-out_dir = "SimPEG_PF_Inv\\"
+out_dir = "SimPEG_JOINT_Inv\\"
 input_file = "SimPEG_MAG.inp"
 
 
@@ -275,10 +275,10 @@ invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
 # LIST OF DIRECTIVES
 # betaest = Directives.BetaEstimate_ByEig()
 IRLS = Directives.Update_IRLS(f_min_change=1e-4,
-                              minGNiter=3, beta_tol=1e-2,
-                              coolingRate=3)
+                              minGNiter=2, beta_tol=1e-2,
+                              coolingRate=2)
 update_SensWeight = Directives.UpdateSensWeighting()
-update_Jacobi = Directives.UpdatePreCond()
+update_Jacobi = Directives.UpdatePreCond(epsilon=1e-7)
 ProjSpherical = Directives.ProjSpherical()
 JointAmpMVI = Directives.JointAmpMVI()
 betaest = Directives.BetaEstimate_ByEig(beta0_ratio = 1e+1)
@@ -286,7 +286,7 @@ saveModel = Directives.SaveUBCModelEveryIteration(mapping = actvMap)
 saveModel.fileName = work_dir+out_dir + 'JOINT_MVIS_A'
 
 inv = Inversion.BaseInversion(invProb,
-                              directiveList=[betaest, ProjSpherical, IRLS, update_SensWeight, 
+                              directiveList=[betaest, ProjSpherical, JointAmpMVI, IRLS, update_SensWeight, 
                                              update_Jacobi, saveModel])
 
 # Run JOINT
@@ -297,5 +297,5 @@ mrec = inv.run(mstart)
 mvec = PF.Magnetics.atp2xyz(mrec)
 PF.Magnetics.plotModelSections(mesh, mvec, normal='z',
                                ind=-5,
-                               scale=scl_vec, vec='w',
+                               scale=0.1, vec='w',
                                )

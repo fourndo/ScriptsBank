@@ -14,12 +14,12 @@ import os
 
 # Define the inducing field parameter
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Modelling\\Synthetic\\Block_Gaussian_topo\\"
-#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Triple_Block_lined\\"
-# work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Nut_Cracker\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\SingleBlock\\Simpeg\\"
-work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\"
 out_dir = "SimPEG_MVIS\\"
-input_file = "MB_100m_input_file.inp"
+input_file = "SimPEG_MAG.inp"
 
 
 # %% INPUTS
@@ -132,14 +132,14 @@ reg_t = Regularization.Sparse(mesh, indActive=actv, mapping=wires.theta)
 reg_t.alpha_s = 0.
 reg_t.space = 'spherical'
 reg_t.norms = driver.lpnorms[4:8]
-reg_t.eps_q = 2e-2
+reg_t.eps_q = 5e-2
 # reg_t.alpha_x, reg_t.alpha_y, reg_t.alpha_z = 0.25, 0.25, 0.25
 
 reg_p = Regularization.Sparse(mesh, indActive=actv, mapping=wires.phi)
 reg_p.alpha_s = 0.
 reg_p.space = 'spherical'
 reg_p.norms = driver.lpnorms[8:]
-reg_p.eps_q = 1e-2
+reg_p.eps_q = 5e-2
 
 reg = reg_a + reg_t + reg_p
 reg.mref = np.zeros(3*nC)
@@ -158,10 +158,9 @@ opt = Optimization.ProjectedGNCG(maxIter=40,
                                  upper=Ubound,
                                  maxIterLS=10,
                                  maxIterCG=20, tolCG=1e-3,
-                                 LSalwaysPass=True,
                                  stepOffBoundsFact=1e-8)
 
-invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
+invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta*10)
 #  betaest = Directives.BetaEstimate_ByEig()
 
 # Here is where the norms are applied

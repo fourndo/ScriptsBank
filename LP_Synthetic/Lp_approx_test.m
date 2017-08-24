@@ -66,9 +66,9 @@ V = reshape(UV(2,:),size(Xvec,1),size(Xvec,2));
 % figure; imagesc(xx,yy,misfit); colorbar
 
 set(figure, 'Position', [50 0 775 1000]);
-plot_h = tight_subplot(3,3,[.01 .01],[.1 0.1]);
+% plot_h = tight_subplot(3,3,[.01 .01],[.1 0.1]);
 
-axes(plot_h(1));
+subplot(3,3,1);
 % plot the origin for reference
 plot([lob hib],[0 0],'k:');
 plot([0 0],[lob hib],'k:');
@@ -98,7 +98,7 @@ text(-.15,0.9,'$\phi_d = \|\mathbf{F \; m - d}\|_2^2$', 'interpreter', 'latex','
 smallest = l2_func([1 0;0 1],[X(:)-mref(1) Y(:)-mref(2)]);
 smallest = reshape(smallest,size(X,1),size(X,2));
 % set(figure, 'Position', [50 200 500 500]); axis square
-axes(plot_h(2));
+subplot(3,3,2);
 % plot the origin for reference
 plot([lob hib],[0 0],'k:');
 plot([0 0],[lob hib],'k:');
@@ -138,7 +138,7 @@ title('\boldmath$\phi_m^{(1)}$', 'interpreter', 'latex','FontSize',16);
 misfit_reg = misfit + beta*smallest;
 [yval2,xval2] = find(misfit_reg==min(min(misfit_reg))); mis_func([xx(xval2) yy(yval2)]);
 % set(figure, 'Position', [50 200 500 500]); axis square
-axes(plot_h(3));
+subplot(3,3,3);
 % plot the origin for reference
 plot([lob hib],[0 0],'k:');
 plot([0 0],[lob hib],'k:');
@@ -235,7 +235,7 @@ for pp = 1 : 2
 reg = lp_func([X(:) Y(:)], p(pp) , epsl*100);
 reg = reshape(reg,size(X,1),size(X,2));
 % set(figure, 'Position', [50 200 500 500]); axis square
-axes(plot_h(pp*3+1));
+subplot(3,3,pp*3+1);
 % plot the origin for reference
 plot([lob hib],[0 0],'k:');hold on;
 plot([0 0],[lob hib],'k:'); 
@@ -273,7 +273,7 @@ end
 % set(gca,'Ydir','normal')
 
 %% Plot Base map
-axes(plot_h(pp*3+2));
+subplot(3,3,pp*3+2);
 % plot the origin for reference
 plot([lob hib],[0 0],'k:');hold on;
 plot([0 0],[lob hib],'k:');
@@ -290,7 +290,7 @@ if  pp == 1
     set(gca,'XTickLabel',[]);
     
 end
-axes(plot_h(pp*3+3));
+subplot(3,3,pp*3+3);
 % plot the origin for reference
 plot([lob hib],[0 0],'k:');hold on;
 plot([0 0],[lob hib],'k:');
@@ -317,7 +317,7 @@ for jj = 1 : 2
     IRLS = reshape(IRLS,size(X,1),size(X,2))*scale;
       
     % set(figure, 'Position', [50 200 500 500]); axis square
-    axes(plot_h(pp*3+2));
+    subplot(3,3,pp*3+2);
                
     UV = -grad_l2([Xvec(:) Yvec(:)],R);
     U = reshape(UV(1,:),size(Xvec,1),size(Xvec,2));
@@ -357,7 +357,7 @@ for jj = 1 : 2
     end
 
     % Iterate until convergence
-    axes(plot_h(pp*3+3));
+  subplot(3,3,pp*3+3);
     
     
     plot([lob hib],[0 0],'k:');

@@ -28,7 +28,7 @@ close all
 
 addpath '.\Functions';
 
-work_dir    = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Documents\GIT\UBC_GIF\em_examples\geophysical_survey\FDEM\EM1DFM';
+work_dir    = 'C:\Users\DominiqueFournier\Desktop\Teck\TeckLouisRosenthal\FEM';
 % work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Maysam\DIGHEM';
 dsep = '\';
 
@@ -99,7 +99,7 @@ end
 
 %% Reformat data in array structure
 % Last entry specifies the minimum distance between points
-freqin = [875 4920 33000];% 5001 901]; %DIGHEM
+freqin = [875 4920 33000];
 
 % Load data matrix and reformat to structure
 % dataMat = load([work_dir '\data']);
@@ -119,7 +119,7 @@ data = load_EM1DFM_obs(work_dir,obsfile);
 [stnID,IA,IC] = unique(data{9}(:,3));
 
 xy = data{9}(IA,1:2);
-xy(:,1) = xy(:,1) - data{1}(IA,1);
+% xy(:,1) = xy(:,1) - data{1}(IA,1);
 xyz = [xy -data{1}(IA,3)];
 % data{7} = abs(data{7});
 
@@ -128,17 +128,17 @@ nstn = size(xyz,1);
 % % Create beta vector
 beta = ones(nstn,1)*beta;
 %% Change uncertainties
-freqs = unique(data{3}(:));
-floor = ones(length(freqs))*10;%1:length(freqs);
-pct = ones(length(freqs))*.1;
-
-for ii = 1:length(freqs)
-    indx = data{3}(:)==freqs(ii);
-    data{8}(indx,1) = abs(data{7}(indx,1)) * pct(ii) + floor(ii);
-    data{8}(indx,2) = abs(data{7}(indx,2)) * pct(ii) + floor(ii);
-end
-
-data{7}(:,2)=abs(data{7}(:,2));
+% freqs = unique(data{3}(:));
+% floor = ones(length(freqs))*10;%1:length(freqs);
+% pct = ones(length(freqs))*.1;
+% 
+% for ii = 1:length(freqs)
+%     indx = data{3}(:)==freqs(ii);
+%     data{8}(indx,1) = abs(data{7}(indx,1)) * pct(ii) + floor(ii);
+%     data{8}(indx,2) = abs(data{7}(indx,2)) * pct(ii) + floor(ii);
+% end
+% 
+% data{7}(:,2)=abs(data{7}(:,2));
 %% Downsample data
 % figure;
 % scatter(xyz(:,1),xyz(:,2),3);hold on
