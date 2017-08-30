@@ -14,7 +14,7 @@ import os
 
 # Define the inducing field parameter
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Modelling\\Synthetic\\Block_Gaussian_topo\\"
-#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
+# work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
 work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\SingleBlock\\Simpeg\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\"
@@ -132,14 +132,14 @@ reg_t = Regularization.Sparse(mesh, indActive=actv, mapping=wires.theta)
 reg_t.alpha_s = 0.
 reg_t.space = 'spherical'
 reg_t.norms = driver.lpnorms[4:8]
-reg_t.eps_q = 5e-2
+reg_t.eps_q = 1e-2
 # reg_t.alpha_x, reg_t.alpha_y, reg_t.alpha_z = 0.25, 0.25, 0.25
 
 reg_p = Regularization.Sparse(mesh, indActive=actv, mapping=wires.phi)
 reg_p.alpha_s = 0.
 reg_p.space = 'spherical'
 reg_p.norms = driver.lpnorms[8:]
-reg_p.eps_q = 5e-2
+reg_p.eps_q = 1e-2
 
 reg = reg_a + reg_t + reg_p
 reg.mref = np.zeros(3*nC)
@@ -175,9 +175,9 @@ invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
 # Special directive specific to the mag amplitude problem. The sensitivity
 # weights are update between each iteration.
 ProjSpherical = Directives.ProjSpherical()
-update_SensWeight = Directives.UpdateSensWeighting()
+update_SensWeight = Directives.UpdateSensWeighting(epsilon=1e-3)
 update_Jacobi = Directives.UpdatePreCond()
-saveModel = Directives.SaveUBCModelEveryIteration(mapping = actvMap)
+saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
 saveModel.fileName = work_dir+out_dir + 'MVI_S'
 
 inv = Inversion.BaseInversion(invProb,
@@ -186,3 +186,7 @@ inv = Inversion.BaseInversion(invProb,
 
 mrec_MVI_S = inv.run(mstart)
 
+Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_theta.sus',
+                              actvMap * (mrec_MVI_S[nC:2*nC]))
+Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_phi.sus',
+                              actvMap * (mrec_MVI_S[2*nC:]))

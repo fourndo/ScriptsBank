@@ -3,7 +3,7 @@
 close all
 clear all
 
-addpath C:\Users\dominiquef.MIRAGEOSCIENCE\Dropbox\Master\FUNC_LIB
+% addpath C:\Users\dominiquef.MIRAGEOSCIENCE\Dropbox\Master\FUNC_LIB
 
 
 %% Set up problem
@@ -65,7 +65,7 @@ V = reshape(UV(2,:),size(Xvec,1),size(Xvec,2));
 
 % figure; imagesc(xx,yy,misfit); colorbar
 
-set(figure, 'Position', [50 0 775 1000]);
+set(figure, 'Position', [50 0 800 800]);
 % plot_h = tight_subplot(3,3,[.01 .01],[.1 0.1]);
 
 subplot(3,3,1);
@@ -300,7 +300,7 @@ plot(0,0,'k*','LineWidth',1)
 plot( [lob hib]  ,[(y_0(1) - (x_0(1) - lob)*eivec(1,2)/eivec(1,1)) ...
 (y_0(1) - (x_0(1) - hib)*eivec(1,2)/eivec(1,1))] ,'r--');
 plot( [0 x_0(1)]  ,[0 y_0(1)],'k--','LineWidth',1);
-    if  pp == 1
+if  pp == 1
     set(gca,'XTickLabel',[]);
     
 end
@@ -399,7 +399,7 @@ for jj = 1 : 2
 
     end
 
-     mis_func([x_iter y_iter])
+     mis_func([x_iter y_iter]);
      
 %     plot(x_iter,y_iter,'k^','MarkerSize',8);
 %     text(x0+0.05,y0+(-1)^jj*0.1,['\beta=' num2str(beta_in)],...
