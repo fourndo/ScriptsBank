@@ -31,7 +31,7 @@ workDir = 'C:\\Egnyte\\Private\\dominiquef\\Projects\\4414_Minsim\\Modeling\\For
 meshfile = 'Mesh_20m.msh'
 locfile = 'Mag_grid_50m.dat'
 modelfile = {'MAG': 'Mesh_20m_Susc\\Susc_Constrained.sus',
-             'DC': 'Mesh_20m_Cond\\Cond_Median_EDT.con',
+             'DC': 'Mesh_20m_Cond\\Cond_Median_NoOreShell.con',#Cond_Median_EDT.con',
              'Gz': 'Mesh_20m_Dens\\Dens_Constrained.den'}
 
 outDirDict = {'MAG': "\\FWR_MAG\\MAG_Tile",
@@ -81,7 +81,7 @@ nCx = int(np.floor((500/dx[0]))-1)
 core = {'DC': np.r_[np.ones(110)*dx[0]],
         'ATEM': np.r_[np.ones(5)*dx[1], [33, 26], np.ones(10)*dx[0],
                       [26, 33], np.ones(5)*dx[1]],
-        'GTEM': np.r_[dx[1], [33, 26], np.ones(nCx)*dx[0], np.ones(nCx)*dx[0],
+        'GTEM': np.r_[dx[1], [33, 26], np.ones(int(1.25*nCx))*dx[0], np.ones(nCx)*dx[0],
                       [26, 33], dx[1]],
         'Gz': np.r_[np.ones(15)*dx[1], [20, 15], np.ones(nCx)*dx[0],
                     [15, 20], np.ones(15)*dx[1]],
@@ -91,7 +91,7 @@ core = {'DC': np.r_[np.ones(110)*dx[0]],
 ndv = {'MAG': 0, 'Gz': 0, 'DC': 1e-8, 'FDEM': 1e-8, 'ATEM': 1e-8, 'GTEM': 1e-8}
 
 expf = 1.3
-npadxy = {'DC': 10, 'ATEM': 7, 'GTEM': 7, 'Gz': 7, 'MAG': 7}
+npadxy = {'DC': 10, 'ATEM': 7, 'GTEM': 10, 'Gz': 7, 'MAG': 7}
 npadz = {'DC': 10, 'ATEM': 10, 'GTEM': 10, 'Gz': 10, 'MAG': 10}
 
 gCx = np.asarray(range(9))*lenTile + offTile + mesh_global.x0[0]
@@ -213,6 +213,9 @@ for tID in tiles:
     if not indT[tID]:
         continue
 
+#    if not np.any(tID==np.r_[83, 84, 110, 134, 135]):
+#
+#        continue
     # INTERPOLATE THE MODEL TO LOCAL MESH
     for dID in dtype:
 
@@ -223,7 +226,7 @@ for tID in tiles:
 
         hx = np.r_[padxy[::-1], core[dID], padxy]
         hy = np.r_[padxy[::-1], core[dID], padxy]
-        hz = np.r_[padz, zvec]
+        hz = np.r_[padz[::-1], zvec]
 
         mesh = Mesh.TensorMesh([hx, hy, hz], 'CC0')
 
@@ -233,27 +236,27 @@ for tID in tiles:
         # Extract model from global to local mesh
         actv2 = Utils.surface2ind_topo(mesh, topo, 'N')
 
-        if ckdTree is None:
-            print("Creating ckTree... this might take a while")
-            ckdTree = Maps.Mesh2MeshTopo([mesh_global, mesh],
-                                         [actv, actv2], nIterpPts=12)
-
-        P = Maps.Mesh2MeshTopo([mesh_global, mesh],
-                               [actv, actv2], nIterpPts=12, tree=ckdTree.tree)
-
-        if dID == 'FDEM':
-            model_Tile = P*(model['DC'][actv])
-
-        elif dID == 'ATEM':
-            model_Tile = P*(model['DC'][actv])
-
-        elif dID == 'GTEM':
-            model_Tile = P*(model['DC'][actv])
-        else:
-            model_Tile = P*(model[dID][actv])
-
-        m = np.ones(mesh.nC)*ndv[dID]
-        m[actv2] = model_Tile
+#        if ckdTree is None:
+#            print("Creating ckTree... this might take a while")
+#            ckdTree = Maps.Mesh2MeshTopo([mesh_global, mesh],
+#                                         [actv, actv2], nIterpPts=12)
+#
+#        P = Maps.Mesh2MeshTopo([mesh_global, mesh],
+#                               [actv, actv2], nIterpPts=12, tree=ckdTree.tree)
+#
+#        if dID == 'FDEM':
+#            model_Tile = P*(model['DC'][actv])
+#
+#        elif dID == 'ATEM':
+#            model_Tile = P*(model['DC'][actv])
+#
+#        elif dID == 'GTEM':
+#            model_Tile = P*(model['DC'][actv])
+#        else:
+#            model_Tile = P*(model[dID][actv])
+#
+#        m = np.ones(mesh.nC)*ndv[dID]
+#        m[actv2] = model_Tile
         # mtemp = m.reshape(mesh.vnC, order='F')
         # mtemp[:npadxy[dID],:,:] = ndv[dID]
         # mtemp[-npadxy[dID]:,:,:] = ndv[dID]
@@ -437,16 +440,16 @@ for tID in tiles:
         elif dID == 'GTEM':
 
             # OPTION TO WRITE OUT
-            Mesh.TensorMesh.writeUBC(mesh,
-                                     workDir + outDir + 'Tile_' + str(tID) + '.msh')
-            Mesh.TensorMesh.writeModelUBC(mesh,
-                                          workDir + outDir + 'Tile_' + str(tID) + '.con', m)
+#            Mesh.TensorMesh.writeUBC(mesh,
+#                                     workDir + outDir + 'Tile_' + str(tID) + '.msh')
+#            Mesh.TensorMesh.writeModelUBC(mesh,
+#                                          workDir + outDir + 'Tile_' + str(tID) + '.con', m)
 
 #            halfSpaceProblemAnaDiff
             start_time = time.time()
 
-            rxLoc = grid_survey([10], [1000],
-                                x0=(X[tID], Y[tID], 1.), topo=topo)
+            rxLoc = grid_survey([20], [1000],
+                                x0=(X[tID], Y[tID], 5.), topo=topo)
 
 
             print("Solve Tile %i in %s seconds" % (tID, time.time()-start_time))
@@ -455,7 +458,7 @@ for tID in tiles:
             fid = open(workDir + outDir + 'Trx_Tile_' + str(tID) + '.loc', 'wb')
 #            fid.write('IGNORE -9.9999 \n\n')
             line = 'N_TRX 1\n\n' + 'TRX_ORIG\n' + '5\n'
-            
+
             fid.write(line.encode('utf-8'))
 
 
@@ -485,7 +488,7 @@ for tID in tiles:
 
             line = 'N_RECV ' + str(rxLoc.shape[0]) + '\n'
             fid.write(line.encode('utf-8'))
-            
+
 #            fid.write('N_TIME ' + str(len(times)) + '\n\n')
 
             np.savetxt(fid, rxLoc, fmt='%e', delimiter=' ', newline='\n')
@@ -495,41 +498,41 @@ for tID in tiles:
     gc.collect()
 
 
+# %% Write out GOcad polyline
+if dtype[0] == 'GTEM':
 
-if dtype == 'GTEM':
-
-    # %% Write out GOcad polyline
-    fid = open(workDir + '\\FWR_GTEM\\GroundLoops.pl', 'w')
-    fid.write('GOCAD PLine 1\n')
-    fid.write('HEADER {name:GTEM_Loops}\n')
-    fid.write('PROPERTIES ID\n')
-    fid.write('PROPERTY_CLASSES id\n')
-    fid.write('PROPERTY_CLASS_HEADER id {\n')
-    fid.write('name:ID\n')
-    fid.write('}\n')
+    
+    fid = open(workDir + '\\FWR_GTEM\\GroundLoops.pl', 'wb')
+    fid.write(('GOCAD PLine 1\n').encode())
+    fid.write(('HEADER {name:GTEM_Loops}\n').encode())
+    fid.write(('PROPERTIES ID\n').encode())
+    fid.write(('PROPERTY_CLASSES id\n').encode())
+    fid.write(('PROPERTY_CLASS_HEADER id {\n').encode())
+    fid.write(('name:ID\n').encode())
+    fid.write(('}\n').encode())
 
     count_vrx = 0
     count_tx = -1
     for tx in TxLoop:
 
-        fid.write('ILINE\n')
+        fid.write(('ILINE\n').encode())
 
         count_tx += 1
         for ii in range(4):
             count_vrx += 1
-            fid.write('PVRTX ')
+            fid.write(('PVRTX ').encode())
             np.savetxt(fid, np.r_[count_vrx, tx[ii,:], count_tx].reshape((1,5)), fmt='%i',delimiter=' ')
 
         count_vrx -= 3
 
         for ii in range(3):
-            fid.write('SEG ')
+            fid.write(('SEG ').encode())
             np.savetxt(fid, np.r_[count_vrx+ii,count_vrx+ii+1].reshape((1,2)), fmt='%i',delimiter=' ')
 
-        fid.write('SEG ')
+        fid.write(('SEG ').encode())
         np.savetxt(fid, np.r_[count_vrx+ii+1,count_vrx].reshape((1,2)), fmt='%i',delimiter=' ')
 
         count_vrx += 4
 
-    fid.write('END')
+    fid.write(('END').encode())
     fid.close()

@@ -20,8 +20,8 @@ from pymatsolver import PardisoSolver
 
 
 wrType = 'distanceW'
-changeMref = True
-mref_val = 1e-3
+changeMref = False
+mref_val = 2e-2
 
 # Create the mesh
 csx, csy, csz = 100., 100., 100. 
@@ -55,7 +55,7 @@ background = 0.01
 sigma = np.ones(mesh.nC)*background
 sigma[blkind1] = 0.1
 sigma[blkind2] = 0.001
-sigma[overburden] = 0.01
+sigma[overburden] = 0.02
 # Create a flat topo
 topoXYZ = Utils.ndgrid(mesh.vectorNx, mesh.vectorNy, np.r_[-1.])
 
@@ -111,7 +111,7 @@ depth = depth/depth.max()
 d0 = survey.dpred(m0)
 dobs = survey.makeSyntheticData(mtrue, std=0.02)
 
-wd = 1./(abs(dobs)*0.01)
+wd = 1./(abs(dobs)*0.005)
 
 
 
@@ -122,9 +122,9 @@ survey.dobs = dobs
 dmisfit = DataMisfit.l2_DataMisfit(survey)
 dmisfit.W = wd
 reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
-reg.norms = [2,2,2,2]
+reg.norms = [0,2,2,2]
 reg.mref = mref
-reg.eps_p = 1e-1
+reg.eps_p = 1e-3
 reg.eps_q = 1e-3
 
 # Compute sensitivity weight
@@ -142,9 +142,9 @@ elif wrType == 'distanceW':
     wr = wr/wr.max()
 
 #reg.cell_weights = wr
-# opt = Optimization.ProjectedGNCG(maxIter=20, lower=-5, upper=5,
-#                                  maxIterLS=20, maxIterCG=10, tolCG=1e-4)
-opt = Optimization.InexactGaussNewton(maxIter = 15)
+opt = Optimization.ProjectedGNCG(maxIter=20, lower=-6, upper=6,
+                                  maxIterLS=20, maxIterCG=10, tolCG=1e-4)
+#opt = Optimization.InexactGaussNewton(maxIter = 20)
 
 invProb = InvProblem.BaseInvProblem(dmisfit, reg, opt, beta=beta)
 # Create an inversion object
@@ -153,7 +153,7 @@ betaest = Directives.BetaEstimate_ByEig(beta0_ratio=1e0)
 # save = Directives.SaveOutputEveryIteration()
 target = Directives.TargetMisfit()
 update_IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=2, maxIRLSiter=10)
-updateWr = Directives.Update_DC_Wr(wrType=wrType, changeMref=changeMref)
+updateWr = Directives.Update_DC_Wr(wrType=wrType, changeMref=changeMref, eps=4e-8)
 
 inv = Inversion.BaseInversion(invProb, directiveList=[update_IRLS, updateWr])
 problem.counter = opt.counter = Utils.Counter()
@@ -174,7 +174,7 @@ vmax = -1.5
 
 mout = np.log10(expmap*mopt)
 
-indz= -8
+indz= -1
 indx1 = 19
 indy1 = 25
 xlim = [-2000, 2000]
@@ -238,7 +238,7 @@ ax.set_aspect('equal')
 #ax.plot(-rectxzx, rectxzz,'k-',lw=3)
 #ax.set_aspect('equal')
 #
-#plt.savefig(figName, bbox_inches='tight')
+plt.savefig(figName, bbox_inches='tight')
 
 #%% PLOT HISTOGRAM
 if changeMref:
@@ -267,3 +267,23 @@ ax.set_xlim(lim_val)
 ax.set_ylim([0, 5e+3])
 
 plt.savefig(figName, bbox_inches='tight')
+
+#%%
+import scipy.sparse as sp
+Japprox = np.sum((problem.getJ(mopt, problem.fields(mopt)))**2.,axis=0)**0.5
+pctVal = np.percentile(Japprox,np.asarray(range(20))*5)
+
+#%%
+threshold = pctVal[2]
+step = mopt - m0
+
+indx = Japprox > threshold 
+
+P = sp.spdiags(indx*1.,0, mesh.nC, mesh.nC)
+mtest = mopt.copy()
+mtest[indx==False] = np.log(1e-8)
+ddata = np.sum(((survey.dpred(mtest) - survey.dobs)*wd)**2.)/2
+print(ddata, threshold)
+# plt.figure()
+# plt.plot(np.dot(prob.G*P,step))
+# plt.plot(survey.dobs)

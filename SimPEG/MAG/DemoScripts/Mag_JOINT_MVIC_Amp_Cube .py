@@ -191,7 +191,7 @@ dmis_amp = DataMisfit.l2_DataMisfit(survey_amp)
 dmis_amp.W = 1./survey_amp.std
 
 
-# Create a block diagonal regularization
+# Create wires for four model parameters diagonal regularization
 wires = Maps.Wires(('a', nC), ('p', nC), ('s', nC), ('t', nC))
 
 # Create a regularization
@@ -222,11 +222,11 @@ reg = reg_a + reg_p + reg_s + reg_t
 reg.mref = np.zeros(4*nC)
 
 
-# JOIN TO PROBLEMS
+# JOIN TWO PROBLEMS
 dmis = dmis_amp + dmis_MVI
 
-Lbound = np.kron(np.asarray([0, -np.inf, -np.inf, -np.inf]),np.ones(nC))
-Ubound = np.kron(np.asarray([10, np.inf, np.inf, np.inf]),np.ones(nC))
+Lbound = np.kron(np.asarray([0, -np.inf, -np.inf, -np.inf]), np.ones(nC))
+Ubound = np.kron(np.asarray([10, np.inf, np.inf, np.inf]), np.ones(nC))
 
 # Add directives to the inversion
 opt = Optimization.ProjectedGNCG(maxIter=20,
@@ -255,7 +255,7 @@ betaest = Directives.BetaEstimate_ByEig()
 #                                                    spherical=True)
 
 inv = Inversion.BaseInversion(invProb,
-                              directiveList=[betaest, JointAmpMVI, IRLS, update_SensWeight, 
+                              directiveList=[betaest, JointAmpMVI, IRLS, update_SensWeight,
                                              update_Jacobi])
 
 # Run JOINT
@@ -276,25 +276,25 @@ ypanel = midx
 zpanel = -4
 
 fig = plt.figure(figsize=(5, 5))
-ax1 = plt.subplot(2,2,1)
+ax1 = plt.subplot(2, 2, 1)
 out = PF.Magnetics.plot_obs_2D(rxLoc, d=d_TMI, fig=fig, ax=ax1)
 ax1.set_title('Obs-TMI')
 ax1.set_xlabel('X (m)')
 ax1.set_ylabel('Y (m)')
 
-ax2 = plt.subplot(2,2,2)
+ax2 = plt.subplot(2, 2, 2)
 out = PF.Magnetics.plot_obs_2D(rxLoc, d=d_amp, fig=fig, ax=ax2)
 ax2.set_title('Obs-Amplitude')
 ax2.set_xlabel('X (m)')
 ax2.set_ylabel('Y (m)')
 
-ax3 = plt.subplot(2,2,3)
+ax3 = plt.subplot(2, 2, 3)
 out = PF.Magnetics.plot_obs_2D(rxLoc, d=d_TMI-dpred[1], fig=fig, ax=ax3)
 ax3.set_title('Res-TMI')
 ax3.set_xlabel('X (m)')
 ax3.set_ylabel('Y (m)')
 
-ax4 = plt.subplot(2,2,4)
+ax4 = plt.subplot(2, 2, 4)
 out = PF.Magnetics.plot_obs_2D(rxLoc, d=d_amp-dpred[0], fig=fig, ax=ax4)
 ax4.set_title('Res-Amplitude')
 ax4.set_xlabel('X (m)')
@@ -316,12 +316,13 @@ vmax = None
 vmin = model.min()
 fig = plt.figure(figsize=(5, 2.5))
 ax2 = plt.subplot()
-scl_vec = np.max(mrec)/np.max(model) * 0.25
+scl_vec = np.max(wires_misfit.pst*mrec)/np.max(model) * 0.1
 PF.Magnetics.plotModelSections(mesh, wires_misfit.pst*mrec, normal='y',
                                ind=ypanel, axs=ax2,
                                xlim=xlim, scale=scl_vec, vec='w',
                                ylim=[xlim[0], 5],
                                vmin=vmin, vmax=vmax)
+
 for midx in locx:
     ax2.add_patch(Rectangle((mesh.vectorCCx[midx-nX]-dx/2.,mesh.vectorCCz[midz-nX]-dx/2.),(2*nX+1)*dx,(2*nX+1)*dx, facecolor = 'none', edgecolor='k'))
 ax2.grid(color='w', linestyle='--', linewidth=0.5)
@@ -356,19 +357,20 @@ ax2.set_ylabel('Depth (m)')
 ax2.set_title('Amplitude solution')
 
 
-vmax = None
-vmin = model.min()
-fig = plt.figure(figsize=(5, 5))
-ax2 = plt.subplot()
-scl_vec = np.max(wires_misfit.pst*mrec)/np.max(model) * 0.1
-PF.Magnetics.plotModelSections(mesh, wires_misfit.pst*mrec, normal='z',
-                               ind=-4, axs=ax2,
-                               xlim=xlim, scale=scl_vec,
-                               ylim=xlim,
-                               vmin=vmin, vmax=vmax)
-ax2.set_title('Joint solution')
-ax2.set_ylabel('Elevation (m)', size=14)
+# vmax = None
+# vmin = model.min()
+# fig = plt.figure(figsize=(5, 5))
+# ax2 = plt.subplot()
+# scl_vec = np.max(wires_misfit.pst*mrec)/np.max(model) * 0.1
+# PF.Magnetics.plotModelSections(mesh, wires_misfit.pst*mrec, normal='y',
+#                                ind=ypanel, axs=ax2,
+#                                xlim=xlim, scale=scl_vec, vec='w',
+#                                ylim=[xlim[0], 5],
+#                                vmin=vmin, vmax=vmax)
+# ax2.set_title('Joint solution')
+# ax2.set_ylabel('Elevation (m)', size=14)
 
-Mesh.TensorMesh.writeUBC(mesh,'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\SingleBlock\\Simpeg\\Mesh.msh')
-Mesh.TensorMesh.writeModelUBC(mesh,'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\SingleBlock\\Simpeg\\JointMVIC_Amp.sus',wires_misfit.a*mrec)
-PF.MagneticsDriver.writeVectorUBC(mesh,'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\SingleBlock\\Simpeg\\JointMVIC.fld',(wires_misfit.pst*mrec).reshape((nC,3), order='f'))
+plt.show()
+# Mesh.TensorMesh.writeUBC(mesh,'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\SingleBlock\\Simpeg\\Mesh.msh')
+# Mesh.TensorMesh.writeModelUBC(mesh,'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\SingleBlock\\Simpeg\\JointMVIC_Amp.sus',wires_misfit.a*mrec)
+# PF.MagneticsDriver.writeVectorUBC(mesh,'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\SingleBlock\\Simpeg\\JointMVIC.fld',(wires_misfit.pst*mrec).reshape((nC,3), order='f'))

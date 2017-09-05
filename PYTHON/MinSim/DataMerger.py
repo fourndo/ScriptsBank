@@ -29,7 +29,7 @@ local_dir = {'MAG':'FWR_MAG\\Ground\\',
              'Gz':'FWR_Gz\\Ground\\FWR_Gz\\',
              'TDEM':'FWR_TDEM\\OUT_DIR\\Grid65p5\\',
              'DC': '\\FWR_DC\\clean',
-             'GDEM':'FWR_GTEM\\OUT_DIR\\',
+             'GTEM':'FWR_GTEM\\OUT_DIR\\',
              'Gxx':'FWR_Gz\\Ground\\FWR_Gxx\\',
              'Gxy':'FWR_Gz\\Ground\\FWR_Gxy\\',
              'Gxz':'FWR_Gz\\Ground\\FWR_Gxz\\',
@@ -43,7 +43,7 @@ meshfile = 'C:\\Egnyte\\Private\\dominiquef\\Projects\\4414_Minsim\\Modeling\\Fo
 mesh = Mesh.TensorMesh.readUBC(meshfile)
 
 ore = np.loadtxt(work_dir + 'Ore_Lenses.xyz')
-dtype = 'MAG'
+dtype = 'GTEM'
 
 outfile = 'Ground_Mag.dat'
 #outfile = 'Ground_'+ dtype + '_Complex.dat'
@@ -72,6 +72,7 @@ def progress(iter, prog, final):
 
     return prog
 
+
 def read_h3d_pred(predFile):
     """
     read_h3d_pred(predFile)
@@ -96,7 +97,7 @@ def read_h3d_pred(predFile):
             ii += 1
             obs.append(temp)
 
-    fid.close()
+    sfile.close()
 
     obs = np.asarray(obs)
 
@@ -105,7 +106,7 @@ def read_h3d_pred(predFile):
 #%% Body starts here
 os.chdir(work_dir+local_dir[dtype])
 
-if np.all([dtype != 'TDEM',dtype != 'GDEM', dtype != 'DC']):
+if np.all([dtype != 'TDEM',dtype != 'GTEM', dtype != 'DC']):
     AllData = []
     for file in glob.glob("*Tile*"):
         AllData.append(np.loadtxt(file))
@@ -306,48 +307,97 @@ elif dtype == 'TDEM':
     np.savetxt(fid, np.c_[AllData[:,0,0:2],AllData[:,:,-1]], fmt='%e',delimiter=' ',newline='\n')
     fid.close()
 
-elif dtype == 'GDEM':
+elif dtype == 'GTEM':
 
+    # Read the grid and extract survey lines
     # Re-organize data in to X,Y, t1, t2,... for each tile
+    # Write to gocad pline
     os.chdir(work_dir + local_dir[dtype])
 
     files = glob.glob("*Tile*")
-
-    tID = []
-    txLoc = []
-    for file in files :
-
-
+    nlines = 10
+    nstn = 20
+    times = []
+    vrtxID  = 1
+    dOut = []
+    for file in files:
+        print('Processing: ' + file)
         obj = read_h3d_pred(file)
+        tID = int(re.search('\d+', file).group())
 
-        times = np.unique(obj[:,3])
-        ntimes = len(times)
-        txLoc.append(np.c_[np.mean(obj[::ntimes,0]),np.mean(obj[::ntimes,1])])
-        tID.append(int(re.search('\d+',file).group()))
+        if ~np.any(times):
+            times = np.unique(obj[:, 3])
+            ntimes = len(times)
 
-        # Stack all the times
-        dOut = np.c_[obj[::ntimes,0],obj[::ntimes,1]]
+        # Create survey line and interpolate data
+        # ASSUME EW LINES FOR NOW
+        locs = np.c_[obj[::ntimes, 0], obj[::ntimes, 1]]
+
+        xlim = np.r_[locs[:, 0].min(), locs[:, 0].max()]
+        ylim = np.r_[locs[:, 1].min(), locs[:, 1].max()]
+
+        yline = np.linspace(ylim[0], ylim[1], nlines)
+        xstn = np.linspace(xlim[0], xlim[1], nstn)
+
+        [Y, X] = np.meshgrid(yline, xstn)
+        X, Y = mkvc(X), mkvc(Y)
+        nvrtx = X.shape[0]
+        vIDs = np.linspace(vrtxID, vrtxID+nvrtx-1, nvrtx)
+        loopID = np.kron(np.ones(nlines)*tID, np.ones(nstn))
+        lIDs = tID*100 + np.kron(np.r_[range(nlines)]+1, np.ones(nstn))
+
+        # Stack all the times, no topography for now
+        d = np.c_[vIDs, X, Y, np.zeros(nvrtx), loopID, lIDs]
 
         for tt in range(ntimes):
-            dOut = np.c_[dOut,-obj[tt::ntimes,-1]]
+
+            dtime = griddata(locs, -obj[tt::ntimes, -1], (X, Y), method='linear')
+            d = np.c_[d, dtime]
 
 
-        fid = open(out_dir + '\\Tile_' + str(tID[-1]) + '_XYd.obs', 'w')
-        fid.write('X Y ')
-        for tt in range(ntimes): fid.write('t' + str(tt) +'_' + str(int(times[tt]*10**6.)) + 'us ')
-        fid.write('\n')
-        np.savetxt(fid, dOut, fmt='%e',delimiter=' ',newline='\n')
-        fid.close()
+        dOut += [d]
+        vrtxID  += nvrtx
 
+#
+#
+#        for tt in range(ntimes):
+#            dOut = np.c_[dOut,-obj[tt::ntimes,-1]]
+#
+#
+#        fid = open(out_dir + '\\Tile_' + str(tID[-1]) + '_XYd.obs', 'w')
+#        fid.write('X Y ')
+#        for tt in range(ntimes): fid.write('t' + str(tt) +'_' + str(int(times[tt]*10**6.)) + 'us ')
+#        fid.write('\n')
+#        np.savetxt(fid, dOut, fmt='%e',delimiter=' ',newline='\n')
+#        fid.close()
 
-    tID = np.asarray(tID)
-    txLoc = np.squeeze(np.asarray(txLoc))
-    inds = np.argsort(tID)
+    # Write out a
+    fid = open(work_dir + 'GTEM_FWRdata_noOre.pl', 'wb')
 
-    fid = open(out_dir + '\\GridLocs.xyz', 'w')
-    np.savetxt(fid,np.c_[tID[inds],txLoc[inds]],fmt='%i',delimiter=' ',newline='\n')
+    fid.write(('GOCAD PLine 1\n').encode())
+    fid.write(('HEADER {\n').encode())
+    fid.write(('name:GTEM_FWRdata\n').encode())
+    fid.write(('}\n').encode())
+    fid.write(('PROPERTIES LoopID LineID dbdt\n').encode())
+    fid.write(('PROP_LEGAL\n').encode())
+    fid.write(('ESIZES 1 1 ' + str(ntimes)+ '\n').encode())
+    dOut = np.vstack(dOut)
+    lines = np.unique(dOut[:, 5])
+    for ll in range(lines.shape[0]):
+
+        fid.write(('ILINE\n').encode())
+
+        dsub = dOut[dOut[:, 5] == lines[ll], :]
+        for ii in range(dsub.shape[0]):
+            fid.write(('PVRTX ').encode())
+            np.savetxt(fid, dsub[ii,:].reshape((1,dsub.shape[1])), fmt=['%i', '%e', '%e', '%e', '%i', '%i']+['%e']*ntimes,delimiter=' ')
+
+        for ii in range(dsub.shape[0]-1):
+            fid.write(('SEG ').encode())
+            np.savetxt(fid, np.c_[dsub[ii,0],dsub[ii,0]+1].reshape((1,2)), fmt='%i',delimiter=' ')
+
+    fid.write(('END').encode())
     fid.close()
-
 
 
 elif dtype == 'DC':
