@@ -20,26 +20,23 @@ Created on December 7th, 2016
 @author: fourndo@gmail.com
 
 """
-from SimPEG import Mesh, Directives, Maps, InvProblem, Optimization, DataMisfit, Inversion, Utils, Regularization
+from SimPEG import Mesh, Directives, Maps, InvProblem, Optimization
+from SimPEG import DataMisfit, Inversion, Utils, Regularization
 from SimPEG.Utils import mkvc
 import SimPEG.PF as PF
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+from scipy.spatial import cKDTree
 import os
 
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\"
-#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Modelling\\Synthetic\\Block_Gaussian_topo\\"
-#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Nut_Cracker\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
 #work_dir = "C:\\Egnyte\\Private\\dominiquef\\Projects\\4559_CuMtn_ZTEM\\Modeling\\MAG\\A1_Fenton\\"
-work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\Aiborne\\'
-out_dir = "SimPEG_PF_Inv\\"
-tile_dirl2 = 'Tiles_l2\\'
-tile_dirlp = 'Tiles_lp\\'
+#work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\Aiborne\\'
+out_dir = "SimPEG_Susc_TileInv\\"
 input_file = "SimPEG_MAG.inp"
-
-max_mcell = 2.0e+5
-min_Olap = 5e+2
 
 # %%
 # Read in the input file which included all parameters at once
@@ -51,218 +48,262 @@ os.system('if not exist ' + work_dir + out_dir + ' mkdir ' + work_dir+out_dir)
 # Access the mesh and survey information
 mesh = driver.mesh
 survey = driver.survey
-actv = driver.activeCells
+actv = np.zeros(mesh.nC, dtype='bool')
+actv[driver.activeCells] = True
 
-# # TILE THE PROBLEM 
-lx = int(np.floor(np.sqrt(max_mcell/mesh.nCz)))
-##%% Create tiles
-## Begin tiling
+actvMap = Maps.InjectActiveCells(mesh, actv, -100)
+
+rxLoc = survey.srcField.rxList[0].locs
+tree = cKDTree(np.c_[mesh.gridCC[actv, 0],
+                     mesh.gridCC[actv, 1],
+                     mesh.gridCC[actv, 2]])
+
+
+# # TILE THE PROBLEM
+# #%% Create tiles
+# # Begin tiling
 
 # In the x-direction
-ntile = 1
-Olap  = -1
+nNx = 2
+nNy = 1
+maxObs = 30
 dx = [mesh.hx.min(), mesh.hy.min()]
 # Cell size
 
+xlim = [rxLoc[:, 0].min(), rxLoc[:, 0].max()]
+ylim = [rxLoc[:, 1].min(), rxLoc[:, 1].max()]
 
-while Olap < min_Olap:
-# for ii in range(5):
+nObs = 1e+8
+countx = 0
+county = 0
 
-    ntile += 1
+while nObs > maxObs:
 
-    # Set location of SW corners
-    x0 = np.asarray([mesh.vectorNx[0], mesh.vectorNx[-1] - lx*dx[0]])
+    nObs = 0
 
-    dx_t = np.round( ( x0[1] - x0[0] ) / ( (ntile-1) * dx[0]) )
-
-    if ntile>2:
-        x1 = np.r_[x0[0],
-                   x0[0] + np.cumsum(np.ones(ntile-2) * dx_t * dx[0]),
-                   x0[1]]
+    if countx > county:
+        nNx += 1
     else:
-        x1 = np.asarray([x0[0],x0[1]])
+        nNy += 1
 
+    countx = 0
+    county = 0
+    xtiles = np.linspace(xlim[0], xlim[1], nNx)
+    ytiles = np.linspace(ylim[0], ylim[1], nNy)
 
-    x2 = x1 + lx*dx[0];
+    inTile = []
+    # Number of points in each tiles
+    for ii in range(xtiles.shape[0]-1):
+        for jj in range(ytiles.shape[0]-1):
+            maskx = np.all([rxLoc[:, 0] >= xtiles[ii],
+                           rxLoc[:, 0] <= xtiles[int(ii+1)]], axis=0)
+            masky = np.all([rxLoc[:, 1] >= ytiles[jj],
+                           rxLoc[:, 1] <= ytiles[int(jj+1)]], axis=0)
 
-#     y1 = np.ones(x1.shape[0])*np.min(locs[:,1]);
-#     y2 = np.ones(x1.shape[0])*(np.min(locs[:,1]) + nCx*dx);
+            countx = np.max([np.sum(maskx), countx])
+            county = np.max([np.sum(masky), county])
 
-    Olap = x1[0] + lx*dx[0] - x1[1];
+            mask = np.all([maskx, masky], axis=0)
+            nObs = np.max([nObs, np.sum(mask)])
+            inTile += [mask]
 
+x1, x2 = xtiles[:-1], xtiles[1:]
+y1, y2 = ytiles[:-1], ytiles[1:]
 
-# Save x-corner location
-xtile = np.c_[x1,x2]
-
-
-
-# In the Y-direction
-ntile = 1
-Olap  = -1
-
-# Cell size
-
-while Olap < min_Olap:
-# for ii in range(5):
-
-    ntile += 1
-
-    # Set location of SW corners
-    y0 = np.asarray([mesh.vectorNy[0],mesh.vectorNy[-1] - lx*dx[0]])
-
-    dy_t = np.round( ( y0[1] - y0[0] ) / ( (ntile-1) * dx[0]) )
-
-    if ntile>2:
-        y1 = np.r_[y0[0],
-                   y0[0] + np.cumsum(np.ones(ntile-2) * dy_t * dx[0]),
-                   y0[1]]
-    else:
-        y1 = np.asarray([y0[0],y0[1]])
-
-
-    y2 = y1 + lx*dx[0];
-
-#     x1 = np.ones(y1.shape[0])*np.min(locs[:,0]);
-#     x2 = np.ones(y1.shape[0])*(np.min(locs[:,0]) + nCx*dx);
-
-    Olap = y1[0] + lx*dx[0] - y1[1];
-
-
-# Save x-corner location
-ytile = np.c_[y1,y2]
-
-
-X1,Y1 = np.meshgrid(x1,y1)
-X1,Y1 = mkvc(X1), mkvc(Y1)
-X2,Y2 = np.meshgrid(x2,y2)
-X2,Y2 = mkvc(X2), mkvc(Y2)
+X1, Y1 = np.meshgrid(x1, y1)
+X1, Y1 = mkvc(X1), mkvc(Y1)
+X2, Y2 = np.meshgrid(x2, y2)
+X2, Y2 = mkvc(X2), mkvc(Y2)
 
 # Plot data and tiles
-rxLoc = survey.srcField.rxList[0].locs
 fig, ax1 = plt.figure(), plt.subplot()
-PF.Magnetics.plot_obs_2D(rxLoc,survey.dobs, ax=ax1)
+PF.Magnetics.plot_obs_2D(rxLoc, survey.dobs, ax=ax1)
 for ii in range(X1.shape[0]):
-    ax1.add_patch(Rectangle((X1[ii],Y1[ii]),X2[ii]-X1[ii],Y2[ii]-Y1[ii], facecolor = 'none', edgecolor='k'))
+    ax1.add_patch(Rectangle((X1[ii], Y1[ii]),
+                            X2[ii]-X1[ii],
+                            Y2[ii]-Y1[ii],
+                            facecolor='none', edgecolor='k'))
+ax1.set_xlim([x1[0]-20, x2[-1]+20])
+ax1.set_ylim([y1[0]-20, y2[-1]+20])
 ax1.set_aspect('equal')
+plt.show()
 
 # LOOP THROUGH TILES
 npadxy = 8
-core_x = np.ones(lx)*dx[0]
-core_y = np.ones(lx)*dx[1]
-expf = 1.3 
-
-os.system('if not exist ' + work_dir + out_dir + tile_dirl2 + ' mkdir ' + work_dir+out_dir+tile_dirl2)
-os.system('if not exist ' + work_dir + out_dir + tile_dirlp + ' mkdir ' + work_dir+out_dir+tile_dirlp)
-
+expf = 1.3
+problems = []
+surveys = []
+surveyMask = np.ones(driver.survey.nD, dtype='bool')
 for tt in range(X1.shape[0]):
-    
+
+    if tt == 0:
+        tree = cKDTree(np.c_[mesh.gridCC[actv, 0],
+                             mesh.gridCC[actv, 1],
+                             mesh.gridCC[actv, 2]])
+
     midX = np.mean([X1[tt], X2[tt]])
     midY = np.mean([Y1[tt], Y2[tt]])
-    
+
+    # Make sure the core has odd number of cells + 3 buffer cells
+    nCx = int((X2[tt] - X1[tt]) / dx[0])
+    nCx += 7 - nCx % 2
+    nCy = int((Y2[tt] - Y1[tt]) / dx[1])
+    nCy += 7 - nCy % 2
+
+    core_x = np.ones(nCx)*dx[0]
+    core_y = np.ones(nCy)*dx[1]
+
     # Create new mesh
     padx = np.r_[dx[0]*expf**(np.asarray(range(npadxy))+1)]
     pady = np.r_[dx[1]*expf**(np.asarray(range(npadxy))+1)]
-    
+
+    # Add paddings
     hx = np.r_[padx[::-1], core_x, padx]
     hy = np.r_[pady[::-1], core_y, pady]
-#        hz = np.r_[padb*2.,[33,26],np.ones(25)*22,[18,15,12,10,8,7,6], np.ones(18)*5,5*expf**(np.asarray(range(2*npad)))]
     hz = mesh.hz
 
-    mesh_t = Mesh.TensorMesh([hx,hy,hz], 'CC0')
+    mesh_t = Mesh.TensorMesh([hx, hy, hz], 'CC0')
 
-#    mtemp._x0 = [x0[ii]-np.sum(padb), y0[ii]-np.sum(padb), mesh.x0[2]]
+    # Shift tile center to closest cell
+    shiftx = mesh.vectorCCx - midX
+    shifty = mesh.vectorCCy - midY
 
-    mesh_t._x0 = (mesh_t.x0[0] + midX, mesh_t.x0[1]+midY, mesh.x0[2])
-#        meshes.append(mtemp)
-    # Grab the right data
-    xlim = [mesh_t.vectorCCx[npadxy], mesh_t.vectorCCx[-npadxy]]
-    ylim = [mesh_t.vectorCCy[npadxy], mesh_t.vectorCCy[-npadxy]]
-    
-    ind_t = np.all([rxLoc[:,0] > xlim[0], rxLoc[:,0] < xlim[1],
-                    rxLoc[:,1] > ylim[0], rxLoc[:,1] < ylim[1]], axis=0)
-            
-    
-    
-    rxLoc_t = PF.BaseMag.RxObs(rxLoc[ind_t,:])
+    shiftx = shiftx[np.argmin(np.abs(shiftx))]
+    shifty = shifty[np.argmin(np.abs(shifty))]
+
+    mesh_t._x0 = (mesh_t.x0[0] + midX + shiftx,
+                  mesh_t.x0[1] + midY + shifty,
+                  mesh.x0[2])
+
+    # Grab the data for current tile
+    ind_t = np.all([rxLoc[:, 0] >= X1[tt], rxLoc[:, 0] <= X2[tt],
+                    rxLoc[:, 1] >= Y1[tt], rxLoc[:, 1] <= Y2[tt],
+                    surveyMask], axis=0)
+
+    # Remember selected data in case of tile overlap
+    surveyMask[ind_t] = False
+
+    # Create new survey
+    rxLoc_t = PF.BaseMag.RxObs(rxLoc[ind_t, :])
     srcField = PF.BaseMag.SrcField([rxLoc_t], param=survey.srcField.param)
     survey_t = PF.BaseMag.LinearSurvey(srcField)
     survey_t.dobs = survey.dobs[ind_t]
     survey_t.std = survey.std[ind_t]
+    survey_t.ind = ind_t
 
     # Extract model from global to local mesh
     if driver.topofile is not None:
         topo = np.genfromtxt(work_dir + driver.topofile,
                              skip_header=1)
-        actv = Utils.surface2ind_topo(mesh_t, topo, 'N')
-        actv = np.asarray(np.where(mkvc(actv))[0], dtype=int)
+        actv_t = Utils.surface2ind_topo(mesh_t, topo, 'N')
+        # actv_t = np.asarray(np.where(mkvc(actv))[0], dtype=int)
     else:
-        actv = np.ones(mesh_t.nC, dtype='bool')
+        actv_t = np.ones(mesh_t.nC, dtype='bool')
 
-    nC = len(actv)
-    
+    nC = len(actv_t)
+
     # Create active map to go from reduce set to full
-    actvMap = Maps.InjectActiveCells(mesh_t, actv, -100)
-    
-    # Creat reduced identity map
-    idenMap = Maps.IdentityMap(nP=nC)
-    
-    # Create the forward model operator
-    prob = PF.Magnetics.MagneticIntegral(mesh_t, chiMap=idenMap, actInd=actv)
-    
-    # Pair the survey and problem
-    survey_t.pair(prob)
-    
-    # Create sensitivity weights from our linear forward operator
-    
-    wr = np.zeros(prob.F.shape[1])
-    for ii in range(survey_t.nD):
-        wr += (prob.F[ii, :]/survey_t.std[ii])**2.
-    wr = wr**0.5
-    wr = (wr/np.max(wr))
-    
-    
-    # Create a regularization
-    reg = Regularization.Sparse(mesh_t, indActive=actv, mapping=idenMap)
-    reg.norms = driver.lpnorms
-    
-    if driver.eps is not None:
-        reg.eps_p = driver.eps[0]
-        reg.eps_q = driver.eps[1]
-    
-    reg.cell_weights = wr
-    reg.mref = np.zeros(mesh_t.nC)[actv]
-    
-    # Data misfit function
-    dmis = DataMisfit.l2_DataMisfit(survey_t)
-    dmis.W = 1./survey_t.std
-    
-    # Add directives to the inversion
-    opt = Optimization.ProjectedGNCG(maxIter=20, lower=0., upper=10.,
-                                     maxIterLS=20, maxIterCG=10, tolCG=1e-4)
-    invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
-    betaest = Directives.BetaEstimate_ByEig()
-    
-    # Here is where the norms are applied
-    # Use pick a treshold parameter empirically based on the distribution of
-    #  model parameters
-    IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=3, maxIRLSiter=10)
-    update_Jacobi = Directives.Update_lin_PreCond()
-    
-    saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
-    saveModel.fileName = work_dir + out_dir + 'ModelSus'
-    
-    inv = Inversion.BaseInversion(invProb,
-                                  directiveList=[betaest, IRLS, update_Jacobi,  saveModel])
-    
-    # Run the inversion
-    m0 = np.ones(mesh_t.nC)[actv]*1e-4  # Starting model
-    mrec = inv.run(m0)
-    
-    # Outputs
-    Mesh.TensorMesh.writeUBC(mesh_t,work_dir + out_dir + tile_dirl2 + "MAG_Tile"+ str(tt) +".msh")
-    Mesh.TensorMesh.writeUBC(mesh_t,work_dir + out_dir + tile_dirlp + "MAG_Tile"+ str(tt) +".msh")
-    Mesh.TensorMesh.writeModelUBC(mesh_t,work_dir + out_dir + tile_dirl2 + "MAG_Tile"+ str(tt) +".sus", actvMap*reg.l2model)
-    Mesh.TensorMesh.writeModelUBC(mesh_t,work_dir + out_dir + tile_dirlp + "MAG_Tile"+ str(tt) +".sus", actvMap*invProb.model)
-    PF.Magnetics.writeUBCobs(work_dir+out_dir + tile_dirlp + "MAG_Tile"+ str(tt) +"_Inv.pre", survey_t, invProb.dpred)
+    # actvMap = Maps.InjectActiveCells(mesh_t, actv, -100)
 
-#PF.Magnetics.plot_obs_2D(rxLoc,invProb.dpred,varstr='Amplitude Data')
+    # Creat reduced identity map
+    tileMap = Maps.Tile((mesh, actv), (mesh_t, actv_t), tree=tree)
+
+    # Create the forward model operator
+    prob = PF.Magnetics.MagneticIntegral(mesh_t, chiMap=tileMap, actInd=actv_t)
+
+    problems += [prob]
+    surveys += [survey_t]
+
+
+# Going through all problems:
+# 1- Pair the survey and problem
+# 2- Add up sensitivity weights
+# 3- Create a ComboProblem
+wrGlobal = np.zeros(int(actv.sum()))
+dmisfits = []
+for prob, survey in zip(problems, surveys):
+
+    survey.pair(prob)
+
+    # Data misfit function
+    dmis = DataMisfit.l2_DataMisfit(survey)
+    dmis.W = 1./survey.std
+
+    dmisfits += [dmis]
+
+    wr = np.sum(prob.G**2., axis=0)
+
+    wrGlobal += prob.chiMap.deriv(0).T*wr
+
+# Scale global weights for regularization
+wrGlobal = wrGlobal**0.5
+wrGlobal = (wrGlobal/np.max(wrGlobal))
+
+# Create combo misfit function
+if len(dmisfits) > 1:
+    ComboMisfit = dmisfits[0] + dmisfits[1]
+    for dmisfit in dmisfits[2:]:
+        ComboMisfit += dmisfit
+else:
+    ComboMisfit = dmisfits[0]
+
+# Create a regularization
+idenMap = Maps.IdentityMap(nP=int(np.sum(actv)))
+reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
+reg.norms = driver.lpnorms
+
+if driver.eps is not None:
+    reg.eps_p = driver.eps[0]
+    reg.eps_q = driver.eps[1]
+
+reg.cell_weights = wrGlobal
+reg.mref = np.zeros(mesh.nC)[actv]
+
+# Add directives to the inversion
+opt = Optimization.ProjectedGNCG(maxIter=20, lower=0., upper=10.,
+                                 maxIterLS=20, maxIterCG=10, tolCG=1e-4)
+invProb = InvProblem.BaseInvProblem(ComboMisfit, reg, opt)
+betaest = Directives.BetaEstimate_ByEig()
+
+# Here is where the norms are applied
+# Use pick a treshold parameter empirically based on the distribution of
+#  model parameters
+IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=3,
+                              maxIRLSiter=10)
+
+IRLS.target = driver.survey.nD
+update_Jacobi = Directives.UpdateJacobiPrecond()
+
+inv = Inversion.BaseInversion(invProb,
+                              directiveList=[betaest, IRLS, update_Jacobi])
+
+# Run the inversion
+m0 = np.ones(mesh.nC)[actv]*1e-4  # Starting model
+mrec = inv.run(m0)
+
+# Outputs
+Mesh.TensorMesh.writeUBC(mesh, work_dir + out_dir + "MAG_Tile.msh")
+Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + "MAG_Tile_l2.sus",
+                              actvMap*IRLS.l2model)
+Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + "MAG_Tile_lp.sus",
+                              actvMap*invProb.model)
+
+# Get predicted data for each tile and write full predicted to file
+dpred = np.zeros(driver.survey.nD)
+for ind, survey in enumerate(surveys):
+    dpred[survey.ind] += survey.dpred(mrec)
+    # PF.Magnetics.writeUBCobs(work_dir+out_dir + "Tile" + str(ind) + ".pre",
+    #                          survey, survey.dpred(mrec))
+
+PF.Magnetics.writeUBCobs(work_dir+out_dir + "MAG_Tile_Inv.pre",
+                         driver.survey, dpred)
+
+# # %% OUTPUT models for each tile
+# model = Mesh.TensorMesh.readModelUBC(driver.mesh,
+#                                      work_dir + '\Effec_sus_20mGrid.sus')
+# for ind, prob in enumerate(problems):
+#     Mesh.TensorMesh.writeUBC(prob.mesh,
+#                              work_dir + out_dir + "Tile" + str(ind) + ".msh")
+#     Mesh.TensorMesh.writeModelUBC(prob.mesh,
+#                                   work_dir + out_dir + "Tile" + str(ind) + ".sus", prob.mapping() * model)
+

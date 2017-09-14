@@ -15,6 +15,8 @@ import SimPEG.EM.FDEM as FDEM
 from SimPEG.EM.Static.Utils import readUBC_DC3Dobs
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
+from scipy import interpolate
+import numpy.matlib as npm
 import time
 import gc
 import os
@@ -28,7 +30,7 @@ out_dir = 'C:\\Egnyte\\Private\\dominiquef\\Projects\\4414_Minsim\\Modeling\\For
 local_dir = {'MAG':'FWR_MAG\\Ground\\',
              'Gz':'FWR_Gz\\Ground\\FWR_Gz\\',
              'TDEM':'FWR_TDEM\\OUT_DIR\\Grid65p5\\',
-             'DC': '\\FWR_DC\\clean',
+             'DC': '\\FWR_DC\\clean\\',
              'GTEM':'FWR_GTEM\\OUT_DIR\\',
              'Gxx':'FWR_Gz\\Ground\\FWR_Gxx\\',
              'Gxy':'FWR_Gz\\Ground\\FWR_Gxy\\',
@@ -43,7 +45,7 @@ meshfile = 'C:\\Egnyte\\Private\\dominiquef\\Projects\\4414_Minsim\\Modeling\\Fo
 mesh = Mesh.TensorMesh.readUBC(meshfile)
 
 ore = np.loadtxt(work_dir + 'Ore_Lenses.xyz')
-dtype = 'GTEM'
+dtype = 'DC'
 
 outfile = 'Ground_Mag.dat'
 #outfile = 'Ground_'+ dtype + '_Complex.dat'
@@ -354,9 +356,8 @@ elif dtype == 'GTEM':
             dtime = griddata(locs, -obj[tt::ntimes, -1], (X, Y), method='linear')
             d = np.c_[d, dtime]
 
-
         dOut += [d]
-        vrtxID  += nvrtx
+        vrtxID += nvrtx
 
 #
 #
@@ -372,7 +373,7 @@ elif dtype == 'GTEM':
 #        fid.close()
 
     # Write out a
-    fid = open(work_dir + 'GTEM_FWRdata_noOre.pl', 'wb')
+    fid = open(work_dir + 'GTEM_FWRdata.pl', 'wb')
 
     fid.write(('GOCAD PLine 1\n').encode())
     fid.write(('HEADER {\n').encode())
@@ -410,30 +411,176 @@ elif dtype == 'DC':
     tID = []
     for file in files :
 
-
         obj = readUBC_DC3Dobs(file)
 
         DcData.append(obj['DCsurvey'])
 
         txLoc.append(obj['DCsurvey'].srcList[0].loc[0])
-        tID.append(int(re.search('\d+',file).group()))
+        tID.append(int(re.search('\d+', file).group()))
 
     tID = np.asarray(tID)
     txLoc = np.asarray(txLoc)
     inds = np.argsort(tID)
 
-    fid = open(out_dir + '\\TxLocs.xyz', 'w')
-    np.savetxt(fid,np.c_[tID[inds],txLoc[inds]],fmt='%i',delimiter=' ',newline='\n')
-    fid.close()
+#    fid = open(out_dir + '\\TxLocs.xyz', 'w')
+#    np.savetxt(fid,np.c_[tID[inds],txLoc[inds]],fmt='%i',delimiter=' ',newline='\n')
+#    fid.close()
 
-    ii = -1
-    for survey in DcData:
+    # Loop through tile pair and calculate potential + apparent resistivity
+    ngridx = 9
+    ngridy = 23
+    nlines = 10
+    nstn = 20
 
-        ii += 1
-        locXY = survey.srcList[0].rxList[0].locs[0][:,:2]
-        phi = survey.dobs
+    count = -1
+    for ii in range(ngridx):
+        for jj in range(ngridy):
 
-        fid = open(out_dir + '\\Tile_' + str(tID[ii]) + '_XYphi.obs', 'w')
-        np.savetxt(fid, np.c_[locXY,phi], fmt='%e',delimiter=' ',newline='\n')
-        fid.close()
+            count += 1
+            
+            if not np.any(tID == count):
+                continue
+            
+            Aind = np.where(tID == count)[0][0]
 
+            # loop through pairs NS and EW
+            for pp in range(2):
+
+                if np.all([pp == 0, jj+3 < ngridy]):
+                    # Grab the north neighbour
+                    
+                    if not np.any(tID == (count + 3)):
+                        continue
+                    Bind = np.where(tID == count + 3)[0][0]
+                    xExtent = np.r_[-1000, 1000]
+                    yExtent = np.r_[475., 975]
+                    offsets = np.r_[0, 25]
+
+                elif np.all([pp == 1, ii+3 < ngridx]):
+
+                    # Grab the north neighbour
+                    if not np.any(tID == (count + 3*ngridy)):
+                        continue
+                    
+                    Bind = np.where(tID == count + 3*ngridy)[0][0]
+                    xExtent = np.r_[475., 975]
+                    yExtent = np.r_[-1000, 1000]
+                    offsets = np.r_[25, 0]
+
+                else:
+                    continue
+
+
+                # # Grab the pole location for supplied grid ID
+                # endl = np.c_[np.r_[X[tID]], np.r_[Y[tID]]]
+
+                # # Create grid of survey electrodes
+                # grid_x1, grid_y1 = np.meshgrid(np.linspace(X[tID[0]]-1000., X[tID[0]]+1000., 40.),
+                #                                np.linspace(Y[tID[0]]+475., Y[tID[0]]+975., 10.))
+
+                # grid_x2, grid_y2 = np.meshgrid(np.linspace(X[tID[0]]-1000., X[tID[0]]+1000., 40.),
+                #                                np.linspace(Y[tID[0]]+525., Y[tID[0]]+1025., 10.))
+
+
+                # Create survey line and interpolate data
+                # ASSUME EW LINES FOR NOW
+                loc_A = np.squeeze(txLoc[Aind, :])
+                loc_B = np.squeeze(txLoc[Bind, :])
+
+                xlim = np.r_[loc_A[0] + xExtent[0], loc_A[0] + xExtent[1]]
+                ylim = np.r_[loc_A[1] + yExtent[0], loc_A[1] + yExtent[1]]
+
+                if pp == 0:
+
+                    ystn = np.linspace(ylim[0], ylim[1], nstn)
+                    xline = np.linspace(xlim[0], xlim[1], nlines)
+
+                    [X_1, Y_1] = np.meshgrid(xline, ystn)
+                    [X_2, Y_2] = np.meshgrid(xline + offsets[0], ystn + offsets[1])
+
+                else:
+                    yline = np.linspace(ylim[0], ylim[1], nlines)
+                    xstn = np.linspace(xlim[0], xlim[1], nstn)
+
+                    [Y_1, X_1] = np.meshgrid(yline, xstn)
+                    [Y_2, X_2] = np.meshgrid(yline + offsets[1], xstn + offsets[0])
+
+#                X, Y = mkvc(X), mkvc(Y)
+
+                lineID = np.kron(np.r_[range(nlines)]+1, np.ones(nstn))
+
+
+                # Find the closest grids from source locations
+                # tid = np.argmin(np.abs(endl[0, 0] - txLoc[:, 0])+np.abs(endl[0, 1] - txLoc[:, 1]))
+                # Interpolate the potentials ar suvey points from pre-computed grids
+                P1_phi1 = interpolate.griddata(DcData[Aind].srcList[0].rxList[0].locs[0][:, 0:2],
+                                               DcData[Aind].dobs,
+                                               (X_1, Y_1), method='linear')
+
+                P2_phi1 = interpolate.griddata(DcData[Aind].srcList[0].rxList[0].locs[0][:, 0:2],
+                                               DcData[Aind].dobs,
+                                               (X_2, Y_2), method='linear')
+
+                # tid = np.argmin(np.abs(endl[1, 0] - txLoc[:, 0])+np.abs(endl[1, 1] - txLoc[:, 1]))
+                P1_phi2 = interpolate.griddata(DcData[Bind].srcList[0].rxList[0].locs[0][:, 0:2],
+                                               DcData[Bind].dobs,
+                                               (X_1, Y_1), method='linear')
+
+                P2_phi2 = interpolate.griddata(DcData[Bind].srcList[0].rxList[0].locs[0][:, 0:2],
+                                               DcData[Bind].dobs,
+                                               (X_2, Y_2), method='linear')
+
+                # Reshape the survey points into colums
+                locRx1 = np.c_[mkvc(X_1), mkvc(Y_1)]
+                locRx2 = np.c_[mkvc(X_2), mkvc(Y_2)]
+
+                Pmid = (locRx1 + locRx2)/2.
+
+                # Number of points
+                nD = locRx1.shape[0]
+
+                # Get distance between each electrodes
+                rC1P1 = np.sqrt(np.sum((npm.repmat(loc_A[:2], nD, 1) - locRx1) ** 2, axis=1))
+                rC2P1 = np.sqrt(np.sum((npm.repmat(loc_B[:2], nD, 1) - locRx1) ** 2, axis=1))
+                rC1P2 = np.sqrt(np.sum((npm.repmat(loc_A[:2], nD, 1) - locRx2) ** 2, axis=1))
+                rC2P2 = np.sqrt(np.sum((npm.repmat(loc_B[:2], nD, 1) - locRx2) ** 2, axis=1))
+
+                # Compute potential difference
+                volt = mkvc((P1_phi1 - P1_phi2) - (P2_phi1 - P2_phi2))
+
+                # Compute apparent resistivity
+                rho = np.abs(volt) * np.pi * 2. / (1/rC1P1 - 1/rC2P1 - 1/rC1P2 + 1/rC2P2)
+                indx = np.isnan(rho) == False
+
+                vIDs = np.linspace(0, np.sum(indx)-1, np.sum(indx))
+                
+                dOut = np.c_[vIDs, Pmid[indx, :], np.zeros(np.sum(indx)), lineID[indx], volt[indx], rho[indx]]
+
+                # Write out a
+                surveyName = 'Gradient_A_' + str(tID[Aind]) + '_B_' + str(tID[Bind])
+                fid = open(out_dir + surveyName + '.pl', 'wb')
+
+                fid.write(('GOCAD PLine 1\n').encode())
+                fid.write(('HEADER {\n').encode())
+                fid.write(('name:' + surveyName + '\n').encode())
+                fid.write(('}\n').encode())
+                fid.write(('PROPERTIES lineID volt AppRes\n').encode())
+                fid.write(('PROP_LEGAL\n').encode())
+                fid.write(('ESIZES 1 1 1\n').encode())
+                dOut = np.vstack(dOut)
+                lines = np.unique(dOut[:, 4])
+                for ll in range(lines.shape[0]):
+
+                    fid.write(('ILINE\n').encode())
+
+                    dsub = dOut[dOut[:, 4] == lines[ll], :]
+                    for rr in range(dsub.shape[0]):
+                        fid.write(('PVRTX ').encode())
+                        np.savetxt(fid, dsub[rr,:].reshape((1,dsub.shape[1])), fmt=['%i', '%e', '%e', '%e','%i', '%e', '%e'], delimiter=' ')
+
+                    for rr in range(dsub.shape[0]-1):
+                        fid.write(('SEG ').encode())
+                        np.savetxt(fid, np.c_[dsub[rr,0],dsub[rr,0]+1].reshape((1,2)), fmt='%i',delimiter=' ')
+
+                fid.write(('END').encode())
+                fid.close()
