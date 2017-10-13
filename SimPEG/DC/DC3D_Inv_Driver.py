@@ -79,16 +79,20 @@ topoXYZ = Utils.ndgrid(mesh.vectorNx, mesh.vectorNy, np.r_[-1.])
 srclocA = np.c_[-1500., 0., 0.] 
 srclocB = np.c_[1500., 0., 0.]
 endl = np.r_[srclocA, srclocB]
+#
+#xr = np.linspace(-1250., 1250., 11)
+#rxlocM = Utils.ndgrid(xr-100., xr, 0.*np.ones(1))
+#rxlocN = Utils.ndgrid(xr+100., xr, 0.*np.ones(1))
+## xc1_p, yc1_p, zc1_p = 
+## xc1_n, yc1_n, zc1_n =  
+#
+#rx = DC.Rx.Dipole(rxlocM, rxlocN)
+#src = DC.Src.Dipole([rx], srclocA, srclocB)
+#survey = DC.Survey([src])
 
-xr = np.linspace(-1250., 1250., 11)
-rxlocM = Utils.ndgrid(xr-100., xr, 0.*np.ones(1))
-rxlocN = Utils.ndgrid(xr+100., xr, 0.*np.ones(1))
-# xc1_p, yc1_p, zc1_p = 
-# xc1_n, yc1_n, zc1_n =  
 
-rx = DC.Rx.Dipole(rxlocM, rxlocN)
-src = DC.Src.Dipole([rx], srclocA, srclocB)
-survey = DC.Survey([src])
+survey = EM.Static.Utils.gen_DCIPsurvey(endl, mesh, 'dipole-dipole', 200, 200, 10)
+
 
 midLocs = survey.srcList[0].rxList[0].locs[0]+ survey.srcList[0].rxList[0].locs[1]
 midLocs /= 2
@@ -122,7 +126,7 @@ survey.dobs = dobs
 dmisfit = DataMisfit.l2_DataMisfit(survey)
 dmisfit.W = wd
 reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
-reg.norms = [0,2,2,2]
+reg.norms = [2,2,2,2]
 reg.mref = mref
 reg.eps_p = 1e-3
 reg.eps_q = 1e-3
@@ -153,7 +157,7 @@ betaest = Directives.BetaEstimate_ByEig(beta0_ratio=1e0)
 # save = Directives.SaveOutputEveryIteration()
 target = Directives.TargetMisfit()
 update_IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=2, maxIRLSiter=10)
-updateWr = Directives.Update_DC_Wr(wrType=wrType, changeMref=changeMref, eps=4e-8)
+updateWr = Directives.Update_DC_Wr(wrType=wrType, changeMref=changeMref, eps=1e-7)
 
 inv = Inversion.BaseInversion(invProb, directiveList=[update_IRLS, updateWr])
 problem.counter = opt.counter = Utils.Counter()

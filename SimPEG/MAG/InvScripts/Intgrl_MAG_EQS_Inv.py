@@ -28,8 +28,7 @@ import os
 
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Triple_Block_lined\\"
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
-work_dir = "C:\\Users\\DominiqueFournier\\Desktop\\Craig\\"
-
+work_dir = "C:\\Users\\DominiqueFournier\\Downloads\\Mages_01\\Mages_01\\"
 out_dir = "SimPEG_AMP_Inv\\"
 input_file = "SimPEG_MAG.inp"
 # %%
@@ -128,79 +127,4 @@ rxLoc = survey.srcField.rxList[0].locs
 
 # Write data out
 PF.Magnetics.writeUBCobs(work_dir + out_dir + 'Amplitude_data.obs', survey, d_amp)
-
-# %% STEP 3: RUN AMPLITUDE INVERSION
-# Now that we have |B| data, we can invert. This is a non-linear inversion,
-# which requires some special care for the sensitivity weights (see Directives)
-
-# Re-set the active cells to entire mesh
-# Create active map to go from reduce space to full
-actvMap = Maps.InjectActiveCells(mesh, active, -100)
-nC = len(active)
-
-# Create identity map
-idenMap = Maps.IdentityMap(nP=nC)
-
-mstart = np.ones(len(active))*1e-4
-
-# Create the forward model operator
-prob = PF.Magnetics.MagneticAmplitude(mesh, chiMap=idenMap,
-                                      actInd=active)
-prob.model = mstart
-
-
-# Pair the survey and problem
-survey.pair(prob)
-
-# Re-set the observations to |B|
-survey.dobs = d_amp
-
-# Create a sparse regularization
-reg = Regularization.Sparse(mesh, indActive=active, mapping=idenMap)
-reg.mref = driver.mref
-reg.norms = driver.lpnorms
-if driver.eps is not None:
-    reg.eps_p = driver.eps[0]
-    reg.eps_q = driver.eps[1]
-
-# Data misfit function
-dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.W = 1/survey.std
-
-# Add directives to the inversion
-opt = Optimization.ProjectedGNCG(maxIter=100, lower=0., upper=1.,
-                                 maxIterLS=20, maxIterCG=10,
-                                 tolCG=1e-3)
-
-invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
-
-# Here is the list of directives
-betaest = Directives.BetaEstimate_ByEig()
-
-# Specify the sparse norms
-IRLS = Directives.Update_IRLS(f_min_change=1e-3,
-                              minGNiter=3, coolingRate=1, chifact_target=0.25,
-                              maxIRLSiter=3)
-
-# Special directive specific to the mag amplitude problem. The sensitivity
-# weights are update between each iteration.
-update_SensWeight = Directives.UpdateSensWeighting(everyIter=True)
-update_Jacobi = Directives.UpdatePreCond(epsilon=1e-3)
-
-saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
-saveModel.fileName = work_dir + out_dir + 'AmpInv'
-
-# Put all together
-inv = Inversion.BaseInversion(invProb,
-                              directiveList=[betaest, IRLS, update_SensWeight, update_Jacobi,
-                                             saveModel])
-
-# Invert
-mrec = inv.run(mstart)
-
-# Outputs
-Mesh.TensorMesh.writeModelUBC(mesh,work_dir + out_dir + "AmpInv_l2l2.sus", actvMap*invProb.l2model)
-Mesh.TensorMesh.writeModelUBC(mesh,work_dir + out_dir + "AmpInv_lplq.sus", actvMap*invProb.model)
-PF.Magnetics.writeUBCobs(work_dir+out_dir + 'Amplitude_Inv.pre', survey, invProb.dpred)
-
-#PF.Magnetics.plot_obs_2D(rxLoc,invProb.dpred,varstr='Amplitude Data')
+PF.Magnetics.writeUBCobs(work_dir + out_dir + 'Predicted_data.obs', survey, invProb.dpred)

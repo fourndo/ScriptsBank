@@ -1,63 +1,58 @@
+from SimPEG import Mesh, Directives, Maps, InvProblem, Optimization, DataMisfit, Inversion, Utils, Regularization
+import SimPEG.PF as PF
+import numpy as np
+import matplotlib.pyplot as plt
 import os
 
-home_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\ownCloud\Research\Modelling\Synthetic\Block_Gaussian_topo'
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Triple_Block_lined\\"
+# work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
+work_dir = "C:\\Users\\DominiqueFournier\\Downloads\\Mages_01\\Mages_01\\"
+out_dir = "SimPEG_FWR\\"
+input_file = "SimPEG_MAG.inp"
+# %%
+# Read in the input file which included all parameters at once
+# (mesh, topo, model, survey, inv param, etc.)
+driver = PF.MagneticsDriver.MagneticsDriver_Inv(work_dir + input_file)
 
-inpfile = 'PYMAG3C_fwr.inp'
+os.system('if not exist ' + work_dir + out_dir + ' mkdir ' + work_dir+out_dir)
 
-dsep = '\\'
+# Access the mesh and survey information
+mesh = driver.mesh
+survey = driver.survey
 
-os.chdir(home_dir)
+# Get the active cells from model
+m0 = driver.m0
 
-#%%
-from SimPEG import np, sp, Utils, mkvc, Maps
-import simpegPF as PF
-import pylab as plt
+print(m0)
+actv = m0 != -100
 
-## New scripts to be added to basecode
-#from fwr_MAG_data import fwr_MAG_data
-#from read_MAGfwr_inp import read_MAGfwr_inp
-
-#%%
-# Read input file
-[mshfile, obsfile, modfile, magfile, topofile] = PF.BaseMag.read_MAGfwr_inp(inpfile)
-
-# Load mesh file
-mesh = Utils.meshutils.readUBCTensorMesh(mshfile)
-
-# Load model file
-model = Utils.meshutils.readUBCTensorModel(modfile,mesh)
-  
-# Load in topofile or create flat surface
-if topofile == 'null':
- 
-    actv = np.ones(mesh.nC)   
-    
-else: 
-    topo = np.genfromtxt(topofile,skip_header=1)
-    actv = PF.Magnetics.getActiveTopo(mesh,topo,'N')
+# Get the layer of cells directyl below topo
+#surf = Utils.actIndFull2layer(mesh, active)
+nC = int(np.sum(actv))  # Number of active cells
 
 
-Utils.writeUBCTensorModel('nullcell.dat',mesh,actv)
-         
-# Load in observation file
-[B,M,dobs] = PF.BaseMag.readUBCmagObs(obsfile)
+# Create identity map
+idenMap = Maps.IdentityMap(nP=nC)
 
-rxLoc = dobs[:,0:3]
-#rxLoc[:,2] += 5 # Temporary change for test
-ndata = rxLoc.shape[0]
+# Create static map
+prob = PF.Magnetics.MagneticIntegral(mesh, chiMap=idenMap, actInd=actv)
 
-# Load GOCAD surf
-tsfile = 'SphereA.ts'
-[vrtx, trgl] = PF.BaseMag.read_GOCAD_ts(tsfile)
+# Pair the survey and problem
+survey.pair(prob)
 
-#%% Run forward modeling
-# Compute forward model using integral equation
-d = PF.Magnetics.Intgrl_Fwr_Data(mesh,B,M,rxLoc,model,actv,'tmi')
+
+# %% STEP 2: COMPUTE AMPLITUDE DATA
+# Now that we have an equialent source layer, we can forward model alh three
+# components of the field and add them up: |B| = ( Bx**2 + Bx**2 + Bx**2 )**0.5
+
+# Won't store the sensitivity and output 'xyz' data.
+prob.forwardOnly = True
+pred_x = prob.Intrgl_Fwr_Op(m=m0[actv], recType='tmi')
 
 # Form data object with coordinates and write to file
-wd =  np.zeros((ndata,1))
+wd = survey.std
 
 # Save forward data to file
-PF.Magnetics.writeUBCobs(home_dir + dsep + 'FWR_data.dat',B,M,rxLoc,d,wd)
+PF.Magnetics.writeUBCobs(work_dir + out_dir + 'Predicted_data.obs', survey, pred_x)
 
 

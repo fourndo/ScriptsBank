@@ -57,6 +57,7 @@ prob.model = mstart
 survey.pair(prob)
 
 
+# RUN THE CARTESIAN FIRST TO GET A GOOD STARTING MODEL
 # Create sensitivity weights from our linear forward operator
 wr = np.sum(prob.F**2., axis=0)**0.5
 wr = (wr/np.max(wr))
@@ -66,15 +67,15 @@ wires = Maps.Wires(('p', nC), ('s', nC), ('t', nC))
 
 # Create a regularization
 reg_p = Regularization.Sparse(mesh, indActive=actv, mapping=wires.p)
-reg_p.cell_weights = wires.p * wr
+reg_p.cell_weights = (wires.p * wr)
 reg_p.norms = [2, 2, 2, 2]
 
 reg_s = Regularization.Sparse(mesh, indActive=actv, mapping=wires.s)
-reg_s.cell_weights = wires.s * wr
+reg_s.cell_weights = (wires.s * wr)
 reg_s.norms = [2, 2, 2, 2]
 
 reg_t = Regularization.Sparse(mesh, indActive=actv, mapping=wires.t)
-reg_t.cell_weights = wires.t * wr
+reg_t.cell_weights = (wires.t * wr)
 reg_t.norms = [2, 2, 2, 2]
 
 reg = reg_p + reg_s + reg_t
@@ -108,7 +109,7 @@ mrec_MVI = inv.run(mstart)
 
 beta = invProb.beta
 
-# %% RUN MVI-S
+# %% RUN MVI-S WITH SPARSITY
 
 # # STEP 3: Finish inversion with spherical formulation
 mstart = PF.Magnetics.xyz2atp(mrec_MVI)
@@ -129,14 +130,14 @@ else:
 
 
 reg_t = Regularization.Sparse(mesh, indActive=actv, mapping=wires.theta)
-reg_t.alpha_s = 0.
+reg_t.alpha_s = 0.  # No reference angle
 reg_t.space = 'spherical'
 reg_t.norms = driver.lpnorms[4:8]
 reg_t.eps_q = 1e-2
 # reg_t.alpha_x, reg_t.alpha_y, reg_t.alpha_z = 0.25, 0.25, 0.25
 
 reg_p = Regularization.Sparse(mesh, indActive=actv, mapping=wires.phi)
-reg_p.alpha_s = 0.
+reg_p.alpha_s = 0.  # No reference angle
 reg_p.space = 'spherical'
 reg_p.norms = driver.lpnorms[8:]
 reg_p.eps_q = 1e-2
@@ -148,8 +149,8 @@ reg.mref = np.zeros(3*nC)
 dmis = DataMisfit.l2_DataMisfit(survey)
 dmis.W = 1./survey.std
 
-Lbound = np.kron(np.asarray([0, -np.inf, -np.inf]),np.ones(nC))
-Ubound = np.kron(np.asarray([10, np.inf, np.inf]),np.ones(nC))
+Lbound = np.kron(np.asarray([0, -np.inf, -np.inf]), np.ones(nC))
+Ubound = np.kron(np.asarray([10, np.inf, np.inf]), np.ones(nC))
 
 
 # Add directives to the inversion
@@ -169,13 +170,11 @@ IRLS = Directives.Update_IRLS(f_min_change=1e-4,
                               coolingRate=3)
 
 invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
-# betaest = Directives.BetaEstimate_ByEig()
-
 
 # Special directive specific to the mag amplitude problem. The sensitivity
 # weights are update between each iteration.
 ProjSpherical = Directives.ProjSpherical()
-update_SensWeight = Directives.UpdateSensWeighting(epsilon=1e-3)
+update_SensWeight = Directives.UpdateSensWeighting()
 update_Jacobi = Directives.UpdatePreCond()
 saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
 saveModel.fileName = work_dir+out_dir + 'MVI_S'
