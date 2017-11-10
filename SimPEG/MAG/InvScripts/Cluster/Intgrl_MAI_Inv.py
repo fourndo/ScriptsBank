@@ -111,7 +111,7 @@ IRLS = Directives.Update_IRLS(f_min_change=1e-3,
 # Special directive specific to the mag amplitude problem. The sensitivity
 # weights are update between each iteration.
 update_SensWeight = Directives.UpdateSensWeighting()
-update_Jacobi = Directives.UpdatePreCond()
+update_Jacobi = Directives.UpdateJacobiPrecond()
 
 saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
 saveModel.fileName = work_dir + out_dir + 'AmpInv'

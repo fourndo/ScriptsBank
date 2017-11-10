@@ -34,8 +34,9 @@ import os
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
 #work_dir = "C:\\Egnyte\\Private\\dominiquef\\Projects\\4559_CuMtn_ZTEM\\Modeling\\MAG\\A1_Fenton\\"
-#work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\Aiborne\\'
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\CraigModel\\MAG\\"
+#work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\Airborne\\'
+# work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\CraigModel\\MAG\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Yukon\\Modeling\\MAG\\"
 out_dir = "SimPEG_Susc_TileInv\\"
 input_file = "SimPEG_MAG.inp"
 
@@ -52,6 +53,21 @@ survey = driver.survey
 actv = np.zeros(mesh.nC, dtype='bool')
 actv[driver.activeCells] = True
 
+nD = int(survey.nD*0.5)
+print("nD ratio:" + str(nD) +'\\' + str(survey.nD) )
+indx = np.random.randint(0, high=survey.nD, size=nD)
+# Create a new downsampled survey
+locXYZ = survey.srcField.rxList[0].locs[indx,:]
+
+dobs = survey.dobs
+std = survey.std
+
+rxLoc = PF.BaseGrav.RxObs(locXYZ)
+srcField = PF.BaseMag.SrcField([rxLoc], param=survey.srcField.param)
+survey = PF.BaseMag.LinearSurvey(srcField)
+survey.dobs = dobs[indx]
+survey.std = std[indx]
+
 rxLoc = survey.srcField.rxList[0].locs
 #tree = cKDTree(np.c_[mesh.gridCC[actv, 0],
 #                     mesh.gridCC[actv, 1],
@@ -62,7 +78,7 @@ rxLoc = survey.srcField.rxList[0].locs
 # Define core mesh properties
 h = np.r_[[np.min(np.r_[mesh.hx.min(), mesh.hy.min(), mesh.hz.min()])]*3]
 
-maxNpoints = 100
+maxNpoints = 1000
 
 tiles = Utils.modelutils.tileSurveyPoints(rxLoc, maxNpoints)
 
@@ -86,7 +102,7 @@ plt.show()
 # LOOP THROUGH TILES
 expf = 1.3
 dx = [mesh.hx.min(), mesh.hy.min()]
-surveyMask = np.ones(driver.survey.nD, dtype='bool')
+surveyMask = np.ones(survey.nD, dtype='bool')
 # Going through all problems:
 # 1- Pair the survey and problem
 # 2- Add up sensitivity weights
@@ -94,7 +110,7 @@ surveyMask = np.ones(driver.survey.nD, dtype='bool')
 wrGlobal = np.zeros(int(actv.sum()))
 probSize = 0
 for tt in range(X1.shape[0]):
-    
+
     print("Tile " + str(tt+1) + " of " + str(X1.shape[0]))
     if tt == 0:
         tree = cKDTree(np.c_[mesh.gridCC[actv, 0],
@@ -117,7 +133,7 @@ for tt in range(X1.shape[0]):
     survey_t.std = survey.std[ind_t]
     survey_t.ind = ind_t
 
-    padDist = np.r_[np.c_[1500, 1500], np.c_[1500, 1500], np.c_[1500, 0]]
+    padDist = np.r_[np.c_[5000, 5000], np.c_[5000, 5000], np.c_[5000, 0]]
     mesh_t = Utils.modelutils.meshBuilder(rxLoc[ind_t, :], h,
                                           padDist, meshGlobal=mesh,
                                           meshType='TREE',
@@ -147,7 +163,7 @@ for tt in range(X1.shape[0]):
 #    SCALE = Utils.sdiag(mesh_t.vol**(0))
     for ii in range(prob.G.shape[0]):
         wrGlobal += ((prob.G[ii, :])*(prob.chiMap.deriv(0)))**2.
-    
+
 #    wrGlobal += np.abs(prob.Jtvec(0, prob.Jvec(0, np.ones(mesh.nC)*1e-4)))
 #    wrGlobal += prob.chiMap.deriv(0).T*wr
 
@@ -186,6 +202,8 @@ if driver.eps is not None:
     reg.eps_p = driver.eps[0]
     reg.eps_q = driver.eps[1]
 
+reg.eps_p = 1e-3
+reg.eps_q = 1e-3
 reg.cell_weights = wrGlobal
 reg.mref = np.zeros(mesh.nC)[actv]
 
@@ -221,7 +239,7 @@ Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + "MAG_Tile_l2.sus",
 
 # Get predicted data for each tile and write full predicted to file
 if getattr(ComboMisfit, 'objfcts', None) is not None:
-    dpred = np.zeros(driver.survey.nD)
+    dpred = np.zeros(survey.nD)
     for ind, dmis in enumerate(ComboMisfit.objfcts):
         dpred[dmis.survey.ind] += dmis.survey.dpred(mrec)
 else:
@@ -230,7 +248,7 @@ else:
     #                          survey, survey.dpred(mrec))
 
 PF.Magnetics.writeUBCobs(work_dir+out_dir + "MAG_Tile_Inv.pre",
-                         driver.survey, dpred)
+                         survey, dpred)
 
 # # %% OUTPUT models for each tile
 # model = Mesh.TensorMesh.readModelUBC(driver.mesh,

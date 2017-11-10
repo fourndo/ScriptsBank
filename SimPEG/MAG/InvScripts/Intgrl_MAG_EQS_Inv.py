@@ -28,9 +28,11 @@ import os
 
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Triple_Block_lined\\"
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
-work_dir = "C:\\Users\\DominiqueFournier\\Downloads\\Mages_01\\Mages_01\\"
+# work_dir = "C:\\Users\\DominiqueFournier\\Downloads\\Mages_01\\Mages_01\\"
+# work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\FORGE\\"
+work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\"
 out_dir = "SimPEG_AMP_Inv\\"
-input_file = "SimPEG_MAG.inp"
+input_file = "MB_100m_input_file.inp"
 # %%
 # Read in the input file which included all parameters at once
 # (mesh, topo, model, survey, inv param, etc.)
@@ -67,9 +69,17 @@ prob.solverOpts['accuracyTol'] = 1e-4
 # Pair the survey and problem
 survey.pair(prob)
 
+wr = np.zeros(prob.F.shape[1])
+for ii in range(survey.nD):
+    wr += (prob.F[ii, :]/survey.std[ii])**2.
+
+wr = (wr/np.max(wr))
+wr = wr**0.5
+
 # Create a regularization function, in this case l2l2
 reg = Regularization.Simple(mesh, indActive=surf)
 reg.mref = np.zeros(nC)
+reg.cell_weights = wr
 
 # Specify how the optimization will proceed, set susceptibility bounds to inf
 opt = Optimization.ProjectedGNCG(maxIter=25, lower=-np.inf,

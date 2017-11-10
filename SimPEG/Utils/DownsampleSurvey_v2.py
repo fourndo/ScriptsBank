@@ -15,13 +15,13 @@ import matplotlib.pyplot as plt
 import csv as reader
 
 # # USER INPUTS # #
-workDir = "C:\\Users\\DominiqueFournier\\Dropbox\\SP"
+workDir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Yukon\\Data\\Alaska_DEM"
 # workDir = "C:\\Users\\DominiqueFournier\\Dropbox\\SP"
-dFile = 'All_loops_plus_coarse.dat'
+dFile = 'ASTGTM2_N62.dat'
 dType = 'XYZ'
-method = ('radius', 400) #('random', 0.1)  #
+method = ('random', 0.2)  #('radius', 100) #
 
-dFileOut = 'All_loops_plus_coarse_DnS_400m.dat'
+dFileOut = 'ASTGTM2_N62_DnSrandom.dat'
 
 # # SCRIPT STARTS HERE # #
 if dType == 'MAG':
@@ -112,10 +112,9 @@ elif dType == 'GRAV':
     PF.Gravity.writeUBCobs(workDir + '\\' + dFileOut, survey_dwnS)
 
 elif dType == 'XYZ':
-
-    # vec = np.zeros(locXYZ.shape[0], dtype='bool')
-    # vec[indx] = True
-    # indx = np.all([vec, locXYZ[:,0] > 479000, locXYZ[:,1] > 6910000,
-    #                locXYZ[:,0] < 670000, locXYZ[:,1] < 7009000], axis=0)
-    survey_swnS = survey[indx, :]  # np.c_[survey[indx, :2],survey[indx, -1]]
-    np.savetxt(workDir + '\\' + dFileOut, survey_swnS)
+    vec = np.zeros(locXYZ.shape[0], dtype='bool')
+    vec[indx] = True
+    indx = np.all([vec, locXYZ[:,0] > 479000, locXYZ[:,1] > 6910000,
+                   locXYZ[:,0] < 670000, locXYZ[:,1] < 7009000], axis=0)
+    survey_swnS = np.c_[survey[indx, :2],survey[indx, -1]]
+    np.savetxt(workDir + '\\' + dFile[:-4] + "_DnS" + method[0] + dFile[-4:], survey_swnS)
