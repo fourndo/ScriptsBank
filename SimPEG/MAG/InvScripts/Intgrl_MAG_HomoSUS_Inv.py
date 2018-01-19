@@ -31,10 +31,10 @@ from pymatsolver import PardisoSolver
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\SingleBlock\\Simpeg\\"
 #work_dir = "C:\\Egnyte\\Private\\dominiquef\\Projects\\4559_CuMtn_ZTEM\\Modeling\\MAG\\A1_Fenton\\"
-#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\TKC\\DIGHEM_TMI\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\FORGE\\"
-work_dir = "C:\\Users\\DominiqueFournier\\Desktop\\Demo\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\Desktop\\Demo\\"
 
 out_dir = "SimPEG_Susc_HomogenInv\\"
 input_file = "SimPEG_MAG.inp"
@@ -50,9 +50,6 @@ mesh = driver.mesh
 survey = driver.survey
 actv = driver.activeCells
 
-
-
-
 # WORK IN PROGRESS
 # NEED TO CREATE A MAPPING FROM UNITSs
 # Load the starting model (with susceptibility)
@@ -65,7 +62,7 @@ geoUnits = np.unique(mgeo).tolist()
 
 
 # Build a dictionary for the units
-medVal = np.asarray([np.median(msus[mgeo==unit]) for unit in geoUnits])
+# medVal = np.asarray([np.median(msus[mgeo==unit]) for unit in geoUnits])
 
 
 actv = msus!=-100
@@ -92,7 +89,7 @@ survey.pair(prob)
 rxLoc = survey.srcField.rxList[0].locs
 wr = np.zeros(nC)
 for ii in range(survey.nD):
-    wr += ((prob.F[ii, :]*prob.mapping.deriv(m0))/survey.std[ii])**2.
+    wr += ((prob.F[ii, :]*prob.chiMap.deriv(m0))/survey.std[ii])**2.
 
 wr = (wr/np.max(wr))
 wr = wr**0.5

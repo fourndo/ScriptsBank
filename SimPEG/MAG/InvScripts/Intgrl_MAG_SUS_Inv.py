@@ -28,11 +28,13 @@ import os
 from pymatsolver import PardisoSolver
 
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\"
-#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Modelling\\Synthetic\\Block_Gaussian_topo\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\SingleBlock\\Simpeg\\"
 #work_dir = "C:\\Egnyte\\Private\\dominiquef\\Projects\\4559_CuMtn_ZTEM\\Modeling\\MAG\\A1_Fenton\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\TKC\\DIGHEM_TMI\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
+
 out_dir = "SimPEG_Susc_Inv\\"
 input_file = "SimPEG_MAG.inp"
 # %%
@@ -46,7 +48,7 @@ os.system('if not exist ' + work_dir + out_dir + ' mkdir ' + work_dir+out_dir)
 mesh = driver.mesh
 survey = driver.survey
 actv = driver.activeCells
-
+m0 = driver.m0  # Starting model
 
 nC = len(actv)
 
@@ -58,16 +60,20 @@ actvMap = Maps.InjectActiveCells(mesh, actv, -100)
 idenMap = Maps.IdentityMap(nP=nC)
 
 # Create the forward model operator
-prob = PF.Magnetics.MagneticIntegral(mesh, chiMap=idenMap, actInd=actv, Solver=PardisoSolver)
+prob = PF.Magnetics.MagneticIntegral(mesh, chiMap=idenMap,
+                                     actInd=actv, memory_saving_mode=True)
 
 # Pair the survey and problem
 survey.pair(prob)
 
 # Create sensitivity weights from our linear forward operator
 rxLoc = survey.srcField.rxList[0].locs
-wr = np.zeros(prob.G.shape[1])
-for ii in range(survey.nD):
-    wr += (prob.G[ii, :]/survey.std[ii])**2.
+
+# Data misfit function
+dmis = DataMisfit.l2_DataMisfit(survey)
+dmis.W = 1./survey.std
+
+wr = prob.getJtJdiag(m0, W=dmis.W)
 
 wr = (wr/np.max(wr))
 wr = wr**0.5
@@ -77,18 +83,16 @@ Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + 'SensWeights.sus',
 # wr = PF.Magnetics.get_dist_wgt(mesh, rxLoc, actv, 3, 1)
 
 # Create a regularization
-reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
+reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap, cell_weights = wr)
 reg.norms = driver.lpnorms
 
 if driver.eps is not None:
     reg.eps_p = driver.eps[0]
     reg.eps_q = driver.eps[1]
 
-reg.cell_weights = wr#driver.cell_weights*mesh.vol**0.5
+#reg.cell_weights = wr#driver.cell_weights*mesh.vol**0.5
 reg.mref = driver.mref
-# Data misfit function
-dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.W = 1./survey.std
+
 
 # Add directives to the inversion
 opt = Optimization.ProjectedGNCG(maxIter=20, lower=0., upper=10.,
@@ -96,29 +100,30 @@ opt = Optimization.ProjectedGNCG(maxIter=20, lower=0., upper=10.,
 invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
 betaest = Directives.BetaEstimate_ByEig()
 
-# Here is where the norms are applied
-# Use pick a treshold parameter empirically based on the distribution of
-#  model parameters
+# Apply Directives to the inversion
 IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=3, maxIRLSiter=10)
 update_Jacobi = Directives.UpdateJacobiPrecond()
-
-# saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
-# saveModel.fileName = work_dir + out_dir + 'ModelSus'
+saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
+saveModel.fileName = work_dir + out_dir + 'ModelSus'
 
 inv = Inversion.BaseInversion(invProb,
-                              directiveList=[betaest, IRLS, update_Jacobi])
+                              directiveList=[betaest, saveModel,
+                                             IRLS, update_Jacobi])
 
 # Run the inversion
-m0 = driver.m0  # Starting model
-# prob.model = m0
 mrec = inv.run(m0)
 
 Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + 'ModelSus_l2.sus',
-                              actvMap*IRLS.l2model)
+                              actvMap*invProb.l2model)
 
 Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + 'ModelSus_lp.sus',
-                              actvMap*mrec)
+                              actvMap*invProb.model)
 
+PF.Magnetics.writeUBCobs(work_dir + out_dir + 'Predicted_l2.pre',
+                         survey, d=survey.dpred(invProb.l2model))
+
+PF.Magnetics.writeUBCobs(work_dir + out_dir + 'Predicted_lp.pre',
+                         survey, d=survey.dpred(invProb.model))
 #%% Estimate JtJ and compare with wr
 # m = m0
 # k = 100

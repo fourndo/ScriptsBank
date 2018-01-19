@@ -28,18 +28,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from scipy.spatial import cKDTree
+from discretize.utils import closestPoints
 import os
+import multiprocessing
 
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
-#work_dir = "C:\\Egnyte\\Private\\dominiquef\\Projects\\4559_CuMtn_ZTEM\\Modeling\\MAG\\A1_Fenton\\"
 #work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\Airborne\\'
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\CraigModel\\MAG\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Yukon\\Modeling\\MAG\\"
-out_dir = "SimPEG_Susc_TileInv\\"
+work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\Airborne\\'
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
+out_dir = "SimPEG_MVI_S_TileInv\\"
 input_file = "SimPEG_MAG.inp"
-pad = 1000
+padLen = 3000
+dwnFact= .25
+maxNpoints = 1000
+numProcessors = 8
+
+#pool = multiprocessing.Pool(numProcessors)
 # %%
 # Read in the input file which included all parameters at once
 # (mesh, topo, model, survey, inv param, etc.)
@@ -52,10 +61,11 @@ mesh = driver.mesh
 survey = driver.survey
 actv = np.zeros(mesh.nC, dtype='bool')
 actv[driver.activeCells] = True
+actvMap = Maps.InjectActiveCells(mesh, actv, 0)
 
-nD = int(survey.nD*1)
+nD = int(survey.nD * dwnFact)
 print("nD ratio:" + str(nD) +'\\' + str(survey.nD) )
-indx = np.random.randint(0, high=survey.nD, size=nD)
+indx = np.unique(np.random.randint(0, high=survey.nD, size=nD))
 # Create a new downsampled survey
 locXYZ = survey.srcField.rxList[0].locs[indx,:]
 
@@ -77,8 +87,6 @@ rxLoc = survey.srcField.rxList[0].locs
 # # TILE THE PROBLEM
 # Define core mesh properties
 h = np.r_[[np.min(np.r_[mesh.hx.min(), mesh.hy.min(), mesh.hz.min()])]*3]
-
-maxNpoints = 500
 
 tiles = Utils.modelutils.tileSurveyPoints(rxLoc, maxNpoints)
 
@@ -107,19 +115,39 @@ surveyMask = np.ones(survey.nD, dtype='bool')
 # 1- Pair the survey and problem
 # 2- Add up sensitivity weights
 # 3- Add to the ComboMisfit
-wrGlobal = np.zeros(3*int(actv.sum()))
+
+nC = int(actv.sum())
+wrGlobal = np.zeros(3*nC)
 probSize = 0
-for tt in range(X1.shape[0]):
 
-    print("Tile " + str(tt+1) + " of " + str(X1.shape[0]))
-    if tt == 0:
-        tree = cKDTree(np.c_[mesh.gridCC[actv, 0],
-                             mesh.gridCC[actv, 1],
-                             mesh.gridCC[actv, 2]])
+# Create first mesh outside the parallel process
+ind_t = np.all([rxLoc[:, 0] >= X1[0], rxLoc[:, 0] <= X2[0],
+                    rxLoc[:, 1] >= Y1[0], rxLoc[:, 1] <= Y2[0],
+                    surveyMask], axis=0)
 
+padDist = np.r_[np.c_[padLen, padLen], np.c_[padLen, padLen], np.c_[padLen, 0]]
+
+meshTree = Utils.modelutils.meshBuilder(rxLoc[ind_t, :], h,
+                                      padDist, meshGlobal=mesh,
+                                      meshType='TREE',
+                                      padCore=np.r_[3, 3, 3],
+                                      gridLoc = 'N')
+
+meshTree.writeUBC(work_dir + out_dir + 'MeshOctree.msh')
+core = meshTree.vol == meshTree.vol.min()
+center = np.percentile(meshTree.gridCC[core,:], 50,
+                       axis=0, interpolation='nearest')
+
+
+#tree = cKDTree(np.c_[mesh.gridCC[actv, 0],
+#                     mesh.gridCC[actv, 1],
+#                     mesh.gridCC[actv, 2]])
+
+def createLocalProb(rxLoc, wrGlobal, lims):
+    
     # Grab the data for current tile
-    ind_t = np.all([rxLoc[:, 0] >= X1[tt], rxLoc[:, 0] <= X2[tt],
-                    rxLoc[:, 1] >= Y1[tt], rxLoc[:, 1] <= Y2[tt],
+    ind_t = np.all([rxLoc[:, 0] >= lims[0], rxLoc[:, 0] <= lims[1],
+                    rxLoc[:, 1] >= lims[2], rxLoc[:, 1] <= lims[3],
                     surveyMask], axis=0)
 
     # Remember selected data in case of tile overlap
@@ -133,42 +161,46 @@ for tt in range(X1.shape[0]):
     survey_t.std = survey.std[ind_t]
     survey_t.ind = ind_t
 
-    padDist = np.r_[np.c_[pad, pad], np.c_[pad, pad], np.c_[pad, 0]]
-    mesh_t = Utils.modelutils.meshBuilder(rxLoc[ind_t, :], h,
-                                          padDist, meshGlobal=mesh,
-                                          meshType='TREE',
-                                          padCore=np.r_[3, 3, 3])
+    mesh_t = meshTree.copy()
+    
+    tileCenter = np.r_[np.mean(lims[0:2]), np.mean(lims[2:]), center[2]]
+        
+    ind = closestPoints(mesh, tileCenter, gridLoc='CC')
+    
+    shift = np.squeeze(mesh.gridCC[ind, :]) - center
 
-    # Extract model from global to local mesh
-#    if driver.topofile is not None:
-#        topo = np.genfromtxt(work_dir + driver.topofile,
-#                             skip_header=1)
-#        actv_t = Utils.surface2ind_topo(mesh_t, topo, 'N')
-#        # actv_t = np.asarray(np.where(mkvc(actv))[0], dtype=int)
-#    else:
+    mesh_t.x0 += shift
+    mesh_t.number()
+
     actv_t = np.ones(mesh_t.nC, dtype='bool')
 
     # Create reduced identity map
     tileMap = Maps.Tile((mesh, actv), (mesh_t, actv_t))
-    tileMap.nCell = 27
+    tileMap.nCell = 40
     tileMap.nBlock = 3
+    
     # Create the forward model operator
-    prob = PF.Magnetics.MagneticVector(mesh_t, chiMap=tileMap, actInd=actv_t)
+    prob = PF.Magnetics.MagneticVector(mesh_t, chiMap=tileMap, actInd=actv_t,
+                                       memory_saving_mode=True)
     survey_t.pair(prob)
 
     # Data misfit function
     dmis = DataMisfit.l2_DataMisfit(survey_t)
     dmis.W = 1./survey_t.std
-#    ncell = Utils.mkvc(np.sum(prob.chiMap.deriv(0) > 0, axis=1))
-#    ncell[ncell>0] = (1./ncell[ncell>0]).copy()
-#    SCALE = Utils.sdiag(mesh_t.vol**(0))
-    for ii in range(prob.G.shape[0]):
-        wrGlobal += ((prob.G[ii, :])*(prob.chiMap.deriv(0)))**2.
 
-#    wrGlobal += np.abs(prob.Jtvec(0, prob.Jvec(0, np.ones(mesh.nC)*1e-4)))
-#    wrGlobal += prob.chiMap.deriv(0).T*wr
+    wrGlobal += prob.getJtJdiag(np.ones(tileMap.P.shape[1]))
 
     # Create combo misfit function
+    return dmis, wrGlobal
+
+for tt in range(X1.shape[0]):
+
+    print("Tile " + str(tt+1) + " of " + str(X1.shape[0]))
+
+    dmis, wrGlobal = createLocalProb(rxLoc, wrGlobal, np.r_[X1[tt], X2[tt], Y1[tt], Y2[tt]])
+
+    # Create combo misfit function
+    
     if tt == 0:
         ComboMisfit = dmis
 
@@ -176,27 +208,33 @@ for tt in range(X1.shape[0]):
         ComboMisfit += dmis
 
     # Add problem size
-    probSize += prob.G.shape[0] * prob.G.shape[1] * 32 / 4
+#    probSize += prob.F.shape[0] * prob.F.shape[1] * 32 / 4
 
-print('Sum of all problems:' + str(probSize*1e-6) + ' Mb')
+#ComboMisfit = ComboMisfit*1
+#print('Sum of all problems:' + str(probSize*1e-6) + ' Mb')
 # Scale global weights for regularization
 
 # Check if global mesh has regions untouched by local problem
 actvGlobal = wrGlobal != 0
-if actvGlobal.sum() < actv.sum():
+actvMeshGlobal = (wrGlobal[:nC]) != 0
+if actvMeshGlobal.sum() < actv.sum():
 
     for ind, dmis in enumerate(ComboMisfit.objfcts):
-        dmis.prob.chiMap.index = actvGlobal
+        dmis.prob.chiMap.index = actvMeshGlobal
 
 wrGlobal = wrGlobal[actvGlobal]**0.5
 wrGlobal = (wrGlobal/np.max(wrGlobal))
 
-# Create a regularization
+#%% Create a regularization
+actv = np.all([actv, actvMap*actvMeshGlobal], axis=0)
 actvMap = Maps.InjectActiveCells(mesh, actv, 0)
-actv = np.all([actv, actvMap*actvGlobal], axis=0)
+actvMapAmp = Maps.InjectActiveCells(mesh, actv, -100)
 
-nC = np.sum(actv)
-actvMap = Maps.InjectActiveCells(mesh, actv, -100)
+nC = int(np.sum(actv))
+
+mstart = np.ones(3*nC)*1e-4
+mref = np.zeros(3*nC)
+
 # Create a block diagonal regularization
 wires = Maps.Wires(('p', nC), ('s', nC), ('t', nC))
 
@@ -204,34 +242,33 @@ wires = Maps.Wires(('p', nC), ('s', nC), ('t', nC))
 reg_p = Regularization.Sparse(mesh, indActive=actv, mapping=wires.p)
 reg_p.cell_weights = (wires.p * wrGlobal)
 reg_p.norms = [2, 2, 2, 2]
+reg_p.mref = mref
 
 reg_s = Regularization.Sparse(mesh, indActive=actv, mapping=wires.s)
 reg_s.cell_weights = (wires.s * wrGlobal)
 reg_s.norms = [2, 2, 2, 2]
+reg_s.mref = mref
 
 reg_t = Regularization.Sparse(mesh, indActive=actv, mapping=wires.t)
 reg_t.cell_weights = (wires.t * wrGlobal)
 reg_t.norms = [2, 2, 2, 2]
+reg_t.mref = mref
 
 reg = reg_p + reg_s + reg_t
 reg.mref = np.zeros(3*nC)
 
-# Data misfit function
-dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.W = 1./survey.std
-
 # Add directives to the inversion
-opt = Optimization.ProjectedGNCG(maxIter=7, lower=-10., upper=10.,
+opt = Optimization.ProjectedGNCG(maxIter=15, lower=-10., upper=10.,
                                  maxIterCG=20, tolCG=1e-3)
 
-invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
+invProb = InvProblem.BaseInvProblem(ComboMisfit, reg, opt)
 betaest = Directives.BetaEstimate_ByEig()
 
 # Here is where the norms are applied
 IRLS = Directives.Update_IRLS(f_min_change=1e-4,
                               minGNiter=3, beta_tol=1e-2)
 
-update_Jacobi = Directives.UpdatePreCond()
+update_Jacobi = Directives.UpdateJacobiPrecond()
 targetMisfit = Directives.TargetMisfit()
 
 saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
@@ -239,9 +276,25 @@ saveModel.fileName = work_dir + out_dir + 'MVI_C'
 inv = Inversion.BaseInversion(invProb,
                               directiveList=[betaest, IRLS, update_Jacobi,
                                               saveModel])
+mrec_MVI = inv.run(mstart)
 
-m0 = np.ones(3*nC)*1e-4    
-mrec_MVI = inv.run(m0)
+x = actvMap * (wires.p * mrec_MVI)
+y = actvMap * (wires.s * mrec_MVI)
+z = actvMap * (wires.t * mrec_MVI)
+
+amp =  (np.sum(np.c_[x, y, z]**2., axis=1))**0.5
+#amp[actv!=True] = -100
+Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_C_amp.sus', amp)
+
+# Get predicted data for each tile and write full predicted to file
+if getattr(ComboMisfit, 'objfcts', None) is not None:
+    dpred = np.zeros(survey.nD)
+    for ind, dmis in enumerate(ComboMisfit.objfcts):
+        dpred[dmis.survey.ind] += dmis.survey.dpred(mrec_MVI)
+else:
+    dpred = ComboMisfit.survey.dpred(mrec_MVI)
+    
+PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MVI_C_pred.pre', survey, dpred)
 
 beta = invProb.beta
 
@@ -249,15 +302,19 @@ beta = invProb.beta
 
 # # STEP 3: Finish inversion with spherical formulation
 mstart = PF.Magnetics.xyz2atp(mrec_MVI)
-prob.coordinate_system = 'spherical'
-prob.model = mstart
+
+for misfit in ComboMisfit.objfcts:
+    misfit.prob.coordinate_system = 'spherical'
+    misfit.prob.model = mstart
 
 # Create a block diagonal regularization
 wires = Maps.Wires(('amp', nC), ('theta', nC), ('phi', nC))
 
 # Create a regularization
-reg_a = Regularization.Sparse(mesh, indActive=actv, mapping=wires.amp)
+reg_a = Regularization.Sparse(mesh, indActive=actv,
+                              mapping=wires.amp, gradientType='total')
 reg_a.norms = driver.lpnorms[:4]
+reg_a.mref = mref
 if driver.eps is not None:
     reg_a.eps_p = driver.eps[0]
     reg_a.eps_q = driver.eps[1]
@@ -265,25 +322,25 @@ else:
     reg_a.eps_p = np.percentile(np.abs(mstart[:nC]), 95)
 
 
-reg_t = Regularization.Sparse(mesh, indActive=actv, mapping=wires.theta)
+reg_t = Regularization.Sparse(mesh, indActive=actv,
+                              mapping=wires.theta, gradientType='total')
 reg_t.alpha_s = 0.  # No reference angle
 reg_t.space = 'spherical'
 reg_t.norms = driver.lpnorms[4:8]
 reg_t.eps_q = 1e-2
+reg_t.mref = mref
 # reg_t.alpha_x, reg_t.alpha_y, reg_t.alpha_z = 0.25, 0.25, 0.25
 
-reg_p = Regularization.Sparse(mesh, indActive=actv, mapping=wires.phi)
+reg_p = Regularization.Sparse(mesh, indActive=actv,
+                              mapping=wires.phi, gradientType='total')
 reg_p.alpha_s = 0.  # No reference angle
 reg_p.space = 'spherical'
 reg_p.norms = driver.lpnorms[8:]
 reg_p.eps_q = 1e-2
+reg_p.mref = mref
 
 reg = reg_a + reg_t + reg_p
-reg.mref = np.zeros(3*nC)
-
-# Data misfit function
-dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.W = 1./survey.std
+reg.mref = mref
 
 Lbound = np.kron(np.asarray([0, -np.inf, -np.inf]), np.ones(nC))
 Ubound = np.kron(np.asarray([10, np.inf, np.inf]), np.ones(nC))
@@ -297,7 +354,7 @@ opt = Optimization.ProjectedGNCG(maxIter=40,
                                  maxIterCG=20, tolCG=1e-3,
                                  stepOffBoundsFact=1e-8)
 
-invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta*10)
+invProb = InvProblem.BaseInvProblem(ComboMisfit, reg, opt, beta=beta)
 #  betaest = Directives.BetaEstimate_ByEig()
 
 # Here is where the norms are applied
@@ -305,13 +362,11 @@ IRLS = Directives.Update_IRLS(f_min_change=1e-4,
                               minGNiter=3, beta_tol=1e-2,
                               coolingRate=3)
 
-invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
-
 # Special directive specific to the mag amplitude problem. The sensitivity
 # weights are update between each iteration.
 ProjSpherical = Directives.ProjSpherical()
 update_SensWeight = Directives.UpdateSensWeighting()
-update_Jacobi = Directives.UpdatePreCond()
+update_Jacobi = Directives.UpdateJacobiPrecond()
 saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
 saveModel.fileName = work_dir+out_dir + 'MVI_S'
 
@@ -321,7 +376,25 @@ inv = Inversion.BaseInversion(invProb,
 
 mrec_MVI_S = inv.run(mstart)
 
+Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_amp.sus',
+                              actvMap * (mrec_MVI_S[:nC]))
 Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_theta.sus',
                               actvMap * (mrec_MVI_S[nC:2*nC]))
 Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_phi.sus',
                               actvMap * (mrec_MVI_S[2*nC:]))
+
+# Get predicted data for each tile and write full predicted to file
+if getattr(ComboMisfit, 'objfcts', None) is not None:
+    dpred = np.zeros(survey.nD)
+    for ind, dmis in enumerate(ComboMisfit.objfcts):
+        dpred[dmis.survey.ind] += dmis.survey.dpred(mrec_MVI_S)
+else:
+    dpred = ComboMisfit.survey.dpred(mrec_MVI_S)
+    
+PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MVI_S_pred.pre', survey, dpred)
+
+##%%
+#JtJdiag = np.zeros_like(invProb.model)
+#for obj in ComboMisfit.objfcts:
+#    f = obj.prob.fields(mstart)
+#    JtJdiag += np.sum((obj.prob.getJ(mstart, f))**2., axis=0)

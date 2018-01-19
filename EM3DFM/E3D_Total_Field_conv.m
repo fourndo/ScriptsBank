@@ -97,7 +97,7 @@ for ii = 1 : size(data,1)
     end
     
     % Convert data and uncertianties to total field
-    data(ii,25:28) = data(ii,25:28) *1e-6 * Hp(ii,end-1);
+    data(ii,25:28) = data(ii,25:28) * 1e-6 * Hp(ii,end-1);
 
     % Add primary to in-phase data only
     data(ii,25) = data(ii,25) + Hp(ii,end-1);

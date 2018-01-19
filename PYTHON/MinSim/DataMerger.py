@@ -317,15 +317,18 @@ elif dtype == 'GTEM':
     os.chdir(work_dir + local_dir[dtype])
 
     files = glob.glob("*Tile*")
-    nlines = 10
-    nstn = 20
+    lineSpace = 100
+    stnSpace = 50
+    extent = [-400, 400]
+    loopCnt = []
     times = []
     vrtxID  = 1
     dOut = []
+    tID = []
     for file in files:
         print('Processing: ' + file)
         obj = read_h3d_pred(file)
-        tID = int(re.search('\d+', file).group())
+        tID += [int(re.search('\d+', file).group())]
 
         if ~np.any(times):
             times = np.unique(obj[:, 3])
@@ -338,15 +341,22 @@ elif dtype == 'GTEM':
         xlim = np.r_[locs[:, 0].min(), locs[:, 0].max()]
         ylim = np.r_[locs[:, 1].min(), locs[:, 1].max()]
 
-        yline = np.linspace(ylim[0], ylim[1], nlines)
-        xstn = np.linspace(xlim[0], xlim[1], nstn)
+        # nlines = int((ylim[1]-ylim[0])/lineSpace)
+        nlines = int((extent[1] - extent[0])/lineSpace + 1)
+        nstn = int((extent[1] - extent[0])/stnSpace + 1)
+
+        center = np.r_[np.mean(xlim), np.mean(ylim)]
+        loopCnt += [center]
+
+        yline = np.linspace(extent[0], extent[1], nlines) + center[1]
+        xstn = np.linspace(extent[0], extent[1], nstn) + center[0]
 
         [Y, X] = np.meshgrid(yline, xstn)
         X, Y = mkvc(X), mkvc(Y)
         nvrtx = X.shape[0]
-        vIDs = np.linspace(vrtxID, vrtxID+nvrtx-1, nvrtx)
-        loopID = np.kron(np.ones(nlines)*tID, np.ones(nstn))
-        lIDs = tID*100 + np.kron(np.r_[range(nlines)]+1, np.ones(nstn))
+        vIDs = np.linspace(0, nvrtx-1, nvrtx)
+        loopID = np.kron(np.ones(nlines)*tID[-1], np.ones(nstn))
+        lIDs = tID[-1]*100 + np.kron(np.r_[range(nlines)]+1, np.ones(nstn))
 
         # Stack all the times, no topography for now
         d = np.c_[vIDs, X, Y, np.zeros(nvrtx), loopID, lIDs]
@@ -356,8 +366,77 @@ elif dtype == 'GTEM':
             dtime = griddata(locs, -obj[tt::ntimes, -1], (X, Y), method='linear')
             d = np.c_[d, dtime]
 
-        dOut += [d]
-        vrtxID += nvrtx
+        dOut = d
+
+        surveyName = 'GTEM_FWR_' + str(tID[-1])
+        fid = open(out_dir + surveyName + '.pl', 'wb')
+
+        fid.write(('GOCAD PLine 1\n').encode())
+        fid.write(('HEADER {\n').encode())
+        fid.write(('name:' + surveyName + '\n').encode())
+        fid.write(('}\n').encode())
+        fid.write(('PROPERTIES LoopID LineID dbdt\n').encode())
+        fid.write(('PROP_LEGAL\n').encode())
+        fid.write(('ESIZES 1 1 ' + str(ntimes)+ '\n').encode())
+        dOut = np.vstack(dOut)
+        lines = np.unique(dOut[:, 5])
+        for ll in range(lines.shape[0]):
+
+            fid.write(('ILINE\n').encode())
+
+            dsub = dOut[dOut[:, 5] == lines[ll], :]
+            for ii in range(dsub.shape[0]):
+                fid.write(('PVRTX ').encode())
+                np.savetxt(fid, dsub[ii,:].reshape((1,dsub.shape[1])), fmt=['%i', '%e', '%e', '%e', '%i', '%i']+['%e']*ntimes,delimiter=' ')
+
+            for ii in range(dsub.shape[0]-1):
+                fid.write(('SEG ').encode())
+                np.savetxt(fid, np.c_[dsub[ii,0],dsub[ii,0]+1].reshape((1,2)), fmt='%i',delimiter=' ')
+
+        fid.write(('END').encode())
+        fid.close()
+
+    # Write transmitter loops to file
+    fid = open(out_dir + 'GroundLoops.pl', 'wb')
+    fid.write(('GOCAD PLine 1\n').encode())
+    fid.write(('HEADER {name:GTEM_Loops}\n').encode())
+    fid.write(('PROPERTIES ID\n').encode())
+    fid.write(('PROPERTY_CLASSES id\n').encode())
+    fid.write(('PROPERTY_CLASS_HEADER id {\n').encode())
+    fid.write(('name:ID\n').encode())
+    fid.write(('}\n').encode())
+
+    loopSize = 250
+    count_vrx = 0
+    count_tx = -1
+    for tid, center in zip(tID, loopCnt):
+
+        fid.write(('ILINE\n').encode())
+
+        count_tx += 1
+        locs = np.r_[np.c_[center[0]-loopSize, center[1]-loopSize, 0],
+                     np.c_[center[0]-loopSize, center[1]+loopSize, 0],
+                     np.c_[center[0]+loopSize, center[1]+loopSize, 0],
+                     np.c_[center[0]+loopSize, center[1]-loopSize, 0]]
+
+        for ii in range(4):
+            count_vrx += 1
+            fid.write(('PVRTX ').encode())
+            np.savetxt(fid, np.r_[count_vrx, locs[ii,:], tid].reshape((1,5)), fmt='%i',delimiter=' ')
+
+        count_vrx -= 3
+
+        for ii in range(3):
+            fid.write(('SEG ').encode())
+            np.savetxt(fid, np.r_[count_vrx+ii,count_vrx+ii+1].reshape((1,2)), fmt='%i',delimiter=' ')
+
+        fid.write(('SEG ').encode())
+        np.savetxt(fid, np.r_[count_vrx+ii+1,count_vrx].reshape((1,2)), fmt='%i',delimiter=' ')
+
+        count_vrx += 4
+
+    fid.write(('END').encode())
+    fid.close()
 
 #
 #
@@ -373,32 +452,6 @@ elif dtype == 'GTEM':
 #        fid.close()
 
     # Write out a
-    fid = open(work_dir + 'GTEM_FWRdata.pl', 'wb')
-
-    fid.write(('GOCAD PLine 1\n').encode())
-    fid.write(('HEADER {\n').encode())
-    fid.write(('name:GTEM_FWRdata\n').encode())
-    fid.write(('}\n').encode())
-    fid.write(('PROPERTIES LoopID LineID dbdt\n').encode())
-    fid.write(('PROP_LEGAL\n').encode())
-    fid.write(('ESIZES 1 1 ' + str(ntimes)+ '\n').encode())
-    dOut = np.vstack(dOut)
-    lines = np.unique(dOut[:, 5])
-    for ll in range(lines.shape[0]):
-
-        fid.write(('ILINE\n').encode())
-
-        dsub = dOut[dOut[:, 5] == lines[ll], :]
-        for ii in range(dsub.shape[0]):
-            fid.write(('PVRTX ').encode())
-            np.savetxt(fid, dsub[ii,:].reshape((1,dsub.shape[1])), fmt=['%i', '%e', '%e', '%e', '%i', '%i']+['%e']*ntimes,delimiter=' ')
-
-        for ii in range(dsub.shape[0]-1):
-            fid.write(('SEG ').encode())
-            np.savetxt(fid, np.c_[dsub[ii,0],dsub[ii,0]+1].reshape((1,2)), fmt='%i',delimiter=' ')
-
-    fid.write(('END').encode())
-    fid.close()
 
 
 elif dtype == 'DC':
@@ -429,18 +482,18 @@ elif dtype == 'DC':
     # Loop through tile pair and calculate potential + apparent resistivity
     ngridx = 9
     ngridy = 23
-    nlines = 10
-    nstn = 20
+    lineSpace = 100
+    stnSpace = 50
 
     count = -1
     for ii in range(ngridx):
         for jj in range(ngridy):
 
             count += 1
-            
+
             if not np.any(tID == count):
                 continue
-            
+
             Aind = np.where(tID == count)[0][0]
 
             # loop through pairs NS and EW
@@ -448,7 +501,7 @@ elif dtype == 'DC':
 
                 if np.all([pp == 0, jj+3 < ngridy]):
                     # Grab the north neighbour
-                    
+
                     if not np.any(tID == (count + 3)):
                         continue
                     Bind = np.where(tID == count + 3)[0][0]
@@ -461,7 +514,7 @@ elif dtype == 'DC':
                     # Grab the north neighbour
                     if not np.any(tID == (count + 3*ngridy)):
                         continue
-                    
+
                     Bind = np.where(tID == count + 3*ngridy)[0][0]
                     xExtent = np.r_[475., 975]
                     yExtent = np.r_[-1000, 1000]
@@ -492,6 +545,9 @@ elif dtype == 'DC':
 
                 if pp == 0:
 
+                    nlines = int((xlim[1]-xlim[0])/lineSpace+1)
+                    nstn = int((ylim[1]-ylim[0])/stnSpace+1)
+
                     ystn = np.linspace(ylim[0], ylim[1], nstn)
                     xline = np.linspace(xlim[0], xlim[1], nlines)
 
@@ -499,6 +555,10 @@ elif dtype == 'DC':
                     [X_2, Y_2] = np.meshgrid(xline + offsets[0], ystn + offsets[1])
 
                 else:
+
+                    nlines = int((ylim[1]-ylim[0])/lineSpace+1)
+                    nstn = int((xlim[1]-xlim[0])/stnSpace+1)
+
                     yline = np.linspace(ylim[0], ylim[1], nlines)
                     xstn = np.linspace(xlim[0], xlim[1], nstn)
 
@@ -553,7 +613,7 @@ elif dtype == 'DC':
                 indx = np.isnan(rho) == False
 
                 vIDs = np.linspace(0, np.sum(indx)-1, np.sum(indx))
-                
+
                 dOut = np.c_[vIDs, Pmid[indx, :], np.zeros(np.sum(indx)), lineID[indx], volt[indx], rho[indx]]
 
                 # Write out a

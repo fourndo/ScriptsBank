@@ -14,10 +14,14 @@ import os
 
 # Define the inducing field parameter
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Modelling\\Synthetic\\Block_Gaussian_topo\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
-# work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\SingleBlock\\Simpeg\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
+
+
+#work_dir = "C:\\Users\\DominiqueFournier\\Desktop\\Magnetics\\"
 out_dir = "SimPEG_MVIS\\"
 input_file = "SimPEG_MAG.inp"
 
@@ -34,8 +38,9 @@ survey = driver.survey
 # Extract active region
 actv = driver.activeCells
 
+nC = len(actv)
 # Set starting mdoel
-mstart = np.ones(3*len(actv))*1e-4
+mstart = np.ones(3*nC)*1e-4
 mref = np.zeros(3*nC)
 
 # Create active map to go from reduce space to full
@@ -44,8 +49,6 @@ nC = int(len(actv))
 
 # Create identity map
 idenMap = Maps.IdentityMap(nP=3*nC)
-
-mstart = np.ones(3*len(actv))*1e-4
 
 # Create the forward model operator
 prob = PF.Magnetics.MagneticVector(mesh, chiMap=idenMap,
@@ -111,6 +114,14 @@ inv = Inversion.BaseInversion(invProb,
 
 mrec_MVI = inv.run(mstart)
 
+x = actvMap * (wires.p * mrec_MVI)
+y = actvMap * (wires.s * mrec_MVI)
+z = actvMap * (wires.t * mrec_MVI)
+
+amp =  (np.sum(np.c_[x, y, z]**2., axis=1))**0.5
+Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_C_amp.sus', amp)
+PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MVI_C_pred.pre', survey, invProb.dpred)
+
 beta = invProb.beta
 
 # %% RUN MVI-S WITH SPARSITY
@@ -131,6 +142,7 @@ if driver.eps is not None:
     reg_a.eps_q = driver.eps[1]
 else:
     reg_a.eps_p = np.percentile(np.abs(mstart[:nC]), 95)
+
 reg_a.mref = mref
 
 reg_t = Regularization.Sparse(mesh, indActive=actv, mapping=wires.theta)
@@ -160,7 +172,7 @@ Ubound = np.kron(np.asarray([10, np.inf, np.inf]), np.ones(nC))
 
 
 # Add directives to the inversion
-opt = Optimization.ProjectedGNCG(maxIter=40,
+opt = Optimization.ProjectedGNCG(maxIter=60,
                                  lower=Lbound,
                                  upper=Ubound,
                                  maxIterLS=10,
@@ -171,7 +183,7 @@ invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta*10)
 #  betaest = Directives.BetaEstimate_ByEig()
 
 # Here is where the norms are applied
-IRLS = Directives.Update_IRLS(f_min_change=1e-4,
+IRLS = Directives.Update_IRLS(f_min_change=1e-4, maxIRLSiter=20,
                               minGNiter=3, beta_tol=1e-2,
                               coolingRate=3)
 
@@ -191,7 +203,11 @@ inv = Inversion.BaseInversion(invProb,
 
 mrec_MVI_S = inv.run(mstart)
 
+Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_amp.sus',
+                              actvMap * (mrec_MVI_S[:nC]))
 Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_theta.sus',
                               actvMap * (mrec_MVI_S[nC:2*nC]))
 Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_phi.sus',
                               actvMap * (mrec_MVI_S[2*nC:]))
+
+PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MVI_S_pred.pre', survey, invProb.dpred)

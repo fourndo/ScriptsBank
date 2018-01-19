@@ -13,7 +13,7 @@ proj = GIFproject;
 proj.setWorkDir(work_dir);
 
 % mesh3D = mesh3D(proj); mesh3D.readFile([proj.workDir dsep mesh3Dfile]);
-data3DObj = FEMxyz.readDobs(proj,[work_dir dsep data3D]);
+data3DObj = E3Dinversion.readDobs(proj,[work_dir dsep data3D]);
 
 % Read in topo
 topo = TOPOdata(proj);
@@ -31,7 +31,7 @@ data1D = data3DObj.convertXYZtoSounding();
 %%
 % Create 1D mesh
 msh1D = mesh1D(proj); 
-dz = [ones(1,10) 1.3.^[1:8] ones(1,20)*10 10*1.3.^[1:8] ones(1,10)*100 0];
+dz = [ones(1,10) 1.3.^[1:8] ones(1,20)*10 10*1.3.^[1:8] ones(1,2)*100 0];
 msh1D.setdz(dz);
 msh1D.setz0(max(topo.getioData(:,'Z')));
 % Create a 1D model and write to file
@@ -45,12 +45,21 @@ inv = EM1DFMinversion(proj);
 inv.setDobs(data1D);
 inv.setMesh(msh1D);
 inv.setTopo(topo);
-inv.setInterpNstn(5);
+inv.setInterpNstn(9);
+inv.setInterpMaxDist(120);
+
+
+inv.setInputOptions('invType',2);
+inv.setInputOptions('maxniters',3);
+inv.setInputOptions('maxLCiters',3);
+inv.setInputOptions('iatype',1);
 
 % A mesh 3D has been generated -> write to file
+inv.convertMesh1Dto3D;
 msh3D = inv.getMesh();
 msh3D.writeFile([proj.workDir dsep 'Mesh3D.msh'])
 
+inv.setSnd2ijk;
 % Write input files
 % EM1DFMinversion.writeInp(inv)
 
@@ -59,7 +68,7 @@ msh3D.writeFile([proj.workDir dsep 'Mesh3D.msh'])
 
 % Run inversion
 % EM1DFMinversion.runInversion(inv,true);
-inv.setConductivityModel(ones(inv.mesh.fetchNc,1)*1e-3);
+inv.setModelCond(ones(inv.mesh.fetchNc,1)*1e-3);
 
 inv.runInversionLC;
 

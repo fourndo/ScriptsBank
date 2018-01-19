@@ -28,17 +28,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from scipy.spatial import cKDTree
+from discretize.utils import closestPoints
 import os
 
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
-#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
 #work_dir = "C:\\Egnyte\\Private\\dominiquef\\Projects\\4559_CuMtn_ZTEM\\Modeling\\MAG\\A1_Fenton\\"
 #work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\Airborne\\'
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\CraigModel\\MAG\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Yukon\\Modeling\\MAG\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Yukon\\Modeling\\MAG\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
+
 out_dir = "SimPEG_Susc_TileInv\\"
 input_file = "SimPEG_MAG.inp"
+padLen = 2000
+dwnFact= 0.5
+maxNpoints = 100
+numProcessors = 8
 
 # %%
 # Read in the input file which included all parameters at once
@@ -52,33 +59,30 @@ mesh = driver.mesh
 survey = driver.survey
 actv = np.zeros(mesh.nC, dtype='bool')
 actv[driver.activeCells] = True
+m0 = driver.m0  # Starting model
 
-nD = int(survey.nD*0.5)
-print("nD ratio:" + str(nD) +'\\' + str(survey.nD) )
-indx = np.random.randint(0, high=survey.nD, size=nD)
-# Create a new downsampled survey
-locXYZ = survey.srcField.rxList[0].locs[indx,:]
+nD = int(survey.nD*dwnFact)
 
-dobs = survey.dobs
-std = survey.std
-
-rxLoc = PF.BaseGrav.RxObs(locXYZ)
-srcField = PF.BaseMag.SrcField([rxLoc], param=survey.srcField.param)
-survey = PF.BaseMag.LinearSurvey(srcField)
-survey.dobs = dobs[indx]
-survey.std = std[indx]
+#print("nD ratio:" + str(nD) +'\\' + str(survey.nD) )
+#indx = np.unique(np.random.randint(0, high=survey.nD, size=nD))
+## Create a new downsampled survey
+#locXYZ = survey.srcField.rxList[0].locs[indx,:]
+#
+#dobs = survey.dobs
+#std = survey.std
+#
+#rxLoc = PF.BaseGrav.RxObs(locXYZ)
+#srcField = PF.BaseMag.SrcField([rxLoc], param=survey.srcField.param)
+#survey = PF.BaseMag.LinearSurvey(srcField)
+#survey.dobs = dobs[indx]
+#survey.std = std[indx]
 
 rxLoc = survey.srcField.rxList[0].locs
-#tree = cKDTree(np.c_[mesh.gridCC[actv, 0],
-#                     mesh.gridCC[actv, 1],
-#                     mesh.gridCC[actv, 2]])
-
 
 # # TILE THE PROBLEM
 # Define core mesh properties
 h = np.r_[[np.min(np.r_[mesh.hx.min(), mesh.hy.min(), mesh.hz.min()])]*3]
 
-maxNpoints = 1000
 
 tiles = Utils.modelutils.tileSurveyPoints(rxLoc, maxNpoints)
 
@@ -109,17 +113,31 @@ surveyMask = np.ones(survey.nD, dtype='bool')
 # 3- Add to the ComboMisfit
 wrGlobal = np.zeros(int(actv.sum()))
 probSize = 0
-for tt in range(X1.shape[0]):
+# Create first mesh outside the parallel process
+ind_t = np.all([rxLoc[:, 0] >= X1[0], rxLoc[:, 0] <= X2[0],
+                    rxLoc[:, 1] >= Y1[0], rxLoc[:, 1] <= Y2[0],
+                    surveyMask], axis=0)
 
-    print("Tile " + str(tt+1) + " of " + str(X1.shape[0]))
-    if tt == 0:
-        tree = cKDTree(np.c_[mesh.gridCC[actv, 0],
-                             mesh.gridCC[actv, 1],
-                             mesh.gridCC[actv, 2]])
+padDist = np.r_[np.c_[padLen, padLen], np.c_[padLen, padLen], np.c_[padLen, 0]]
 
+meshTree = Utils.modelutils.meshBuilder(rxLoc[ind_t, :], h,
+                                      padDist, meshGlobal=mesh,
+                                      meshType='TREE',
+                                      padCore=np.r_[3, 3, 3])
+core = meshTree.vol == meshTree.vol.min()
+center = np.percentile(meshTree.gridCC[core,:], 50,
+                       axis=0, interpolation='nearest')
+
+
+#tree = cKDTree(np.c_[mesh.gridCC[actv, 0],
+#                     mesh.gridCC[actv, 1],
+#                     mesh.gridCC[actv, 2]])
+
+def createLocalProb(rxLoc, wrGlobal, lims):
+    
     # Grab the data for current tile
-    ind_t = np.all([rxLoc[:, 0] >= X1[tt], rxLoc[:, 0] <= X2[tt],
-                    rxLoc[:, 1] >= Y1[tt], rxLoc[:, 1] <= Y2[tt],
+    ind_t = np.all([rxLoc[:, 0] >= lims[0], rxLoc[:, 0] <= lims[1],
+                    rxLoc[:, 1] >= lims[2], rxLoc[:, 1] <= lims[3],
                     surveyMask], axis=0)
 
     # Remember selected data in case of tile overlap
@@ -133,24 +151,23 @@ for tt in range(X1.shape[0]):
     survey_t.std = survey.std[ind_t]
     survey_t.ind = ind_t
 
-    padDist = np.r_[np.c_[5000, 5000], np.c_[5000, 5000], np.c_[5000, 0]]
-    mesh_t = Utils.modelutils.meshBuilder(rxLoc[ind_t, :], h,
-                                          padDist, meshGlobal=mesh,
-                                          meshType='TREE',
-                                          padCore=np.r_[3, 3, 3])
+    mesh_t = meshTree.copy()
+    
+    tileCenter = np.r_[np.mean(lims[0:2]), np.mean(lims[2:]), center[2]]
+        
+    ind = closestPoints(mesh, tileCenter, gridLoc='CC')
+    
+    shift = np.squeeze(mesh.gridCC[ind, :]) - center
 
-    # Extract model from global to local mesh
-#    if driver.topofile is not None:
-#        topo = np.genfromtxt(work_dir + driver.topofile,
-#                             skip_header=1)
-#        actv_t = Utils.surface2ind_topo(mesh_t, topo, 'N')
-#        # actv_t = np.asarray(np.where(mkvc(actv))[0], dtype=int)
-#    else:
+    mesh_t.x0 += shift
+    mesh_t.number()
+
     actv_t = np.ones(mesh_t.nC, dtype='bool')
 
     # Create reduced identity map
     tileMap = Maps.Tile((mesh, actv), (mesh_t, actv_t))
     tileMap.nCell = 27
+
     # Create the forward model operator
     prob = PF.Magnetics.MagneticIntegral(mesh_t, chiMap=tileMap, actInd=actv_t)
     survey_t.pair(prob)
@@ -158,24 +175,27 @@ for tt in range(X1.shape[0]):
     # Data misfit function
     dmis = DataMisfit.l2_DataMisfit(survey_t)
     dmis.W = 1./survey_t.std
-#    ncell = Utils.mkvc(np.sum(prob.chiMap.deriv(0) > 0, axis=1))
-#    ncell[ncell>0] = (1./ncell[ncell>0]).copy()
-#    SCALE = Utils.sdiag(mesh_t.vol**(0))
-    for ii in range(prob.G.shape[0]):
-        wrGlobal += ((prob.G[ii, :])*(prob.chiMap.deriv(0)))**2.
+
+    wrGlobal += prob.getJtJdiag(None, W=dmis.W)
+
 
 #    wrGlobal += np.abs(prob.Jtvec(0, prob.Jvec(0, np.ones(mesh.nC)*1e-4)))
 #    wrGlobal += prob.chiMap.deriv(0).T*wr
 
     # Create combo misfit function
+    return dmis, wrGlobal
+
+for tt in range(X1.shape[0]):
+
+    print("Tile " + str(tt+1) + " of " + str(X1.shape[0]))
+
+    dmis, wrGlobal = createLocalProb(rxLoc, wrGlobal, np.r_[X1[tt], X2[tt], Y1[tt], Y2[tt]])
+    
     if tt == 0:
         ComboMisfit = dmis
 
     else:
         ComboMisfit += dmis
-
-    # Add problem size
-    probSize += prob.G.shape[0] * prob.G.shape[1] * 32 / 4
 
 print('Sum of all problems:' + str(probSize*1e-6) + ' Mb')
 # Scale global weights for regularization
@@ -190,7 +210,7 @@ if actvGlobal.sum() < actv.sum():
 wrGlobal = wrGlobal[actvGlobal]**0.5
 wrGlobal = (wrGlobal/np.max(wrGlobal))
 
-# Create a regularization
+#%% Create a regularization
 actvMap = Maps.InjectActiveCells(mesh, actv, 0)
 actv = np.all([actv, actvMap*actvGlobal], axis=0)
 actvMap = Maps.InjectActiveCells(mesh, actv, -100)
@@ -221,12 +241,12 @@ IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=3,
 
 IRLS.target = driver.survey.nD
 update_Jacobi = Directives.UpdateJacobiPrecond()
-
+saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap, fileName=work_dir + out_dir + "MAG_Tile")
 inv = Inversion.BaseInversion(invProb,
-                              directiveList=[betaest, IRLS, update_Jacobi])
+                              directiveList=[betaest, saveModel,
+                                             IRLS, update_Jacobi])
 
 # Run the inversion
-m0 = np.ones(mesh.nC)[actv]*1e-4  # Starting model
 mrec = inv.run(m0)
 
 # Outputs
@@ -234,7 +254,7 @@ Mesh.TensorMesh.writeUBC(mesh, work_dir + out_dir + "MAG_Tile.msh")
 Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + "MAG_Tile_lp.sus",
                               actvMap*invProb.model)
 Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + "MAG_Tile_l2.sus",
-                              actvMap*IRLS.l2model)
+                              actvMap*invProb.l2model)
 
 
 # Get predicted data for each tile and write full predicted to file

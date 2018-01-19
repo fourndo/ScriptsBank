@@ -1,0 +1,196 @@
+
+Parallelized with OpenMP.  # of threads:  8
+
+ DCIP3D - Version 5.0 :  DCINV3D
+
+ Developed by University of British Columbia 
+ Geophysical Inversion Facility  (UBC-GIF)
+
+ (C) Copyright 1992 - 2014, UBC-GIF,
+ Department of Earth and Ocean Sciences, UBC
+ http://gif.eos.ubc.ca/
+
+ Distributed by:
+
+ Mira Geoscience Ltd.
+
+DCINV3D started on: 12/01/2017  12:41:56
+
+No bounds used.
+Running with the following parameters:
+
+             Input file: dcinv3d.inp
+    max # of iterations:      25
+                chifact:  1.00000E+00
+      Observations file: Survey_Synthetic.dat
+              Mesh file: MeshDC.msh
+        Topography file: null
+          Initial Model: VALUE 1e-3
+        Reference Model: VALUE 1e-3
+
+    Wavelet compression: daub2
+      Wavelet threshold: relative accuracy = 0.0200
+
+      3D weighting file: null
+
+----------------------------------------
+ input file specifies length scales:
+             Le, Ln, Lz:   50.0      50.0      50.0    
+ corresponding alpha values:
+     alpha (s, e, n, z):  4.000E-04  1.00      1.00      1.00    
+----------------------------------------
+
+
+  # of source locations:      14
+              # of data:      95
+    # of cells in model:   52416
+    # of cells in  mesh:   52416
+
+
+
+
+   Iteration:      1
+
+ 
+    At the relative  accuracy of:   2.000E-02
+    Estimated relative threshold:   3.272E-03
+    Predicted compression  ratio:   2.144E+01
+
+   Sensitivity compression ratio:   1.834E+01
+ 
+    Initial misfit:   4.76557E+03
+     CG   accuracy:   5.99352E-05
+     CG iterations:    20
+      tradeoff par:   1.33652E-01
+       step length:   1.00000E+00
+   achieved misfit:   1.65313E+03
+   model obj  func:   6.89442E+03
+   total obj  func:   2.57458E+03
+
+   line search:
+     0.0000E+00  4.7656E+03
+     1.0000E+00  2.5746E+03
+ 
+beta cpu time:   0:00:03.87
+
+
+   Iteration:      2
+
+ 
+    At the relative  accuracy of:   2.000E-02
+    Estimated relative threshold:   3.467E-03
+    Predicted compression  ratio:   2.143E+01
+
+   Sensitivity compression ratio:   1.876E+01
+     CG   accuracy:   6.84492E-05
+     CG iterations:    22
+      tradeoff par:   6.68261E-02
+       step length:   1.00000E+00
+   achieved misfit:   8.94339E+02
+   model obj  func:   1.38058E+04
+   total obj  func:   1.81693E+03
+
+   line search:
+     0.0000E+00  2.1139E+03
+     1.0000E+00  1.8169E+03
+ 
+beta cpu time:   0:00:03.94
+
+
+   Iteration:      3
+
+ 
+    At the relative  accuracy of:   2.000E-02
+    Estimated relative threshold:   3.523E-03
+    Predicted compression  ratio:   2.157E+01
+
+   Sensitivity compression ratio:   1.891E+01
+     CG   accuracy:   5.72933E-05
+     CG iterations:    28
+      tradeoff par:   3.34130E-02
+       step length:   1.00000E+00
+   achieved misfit:   4.31830E+02
+   model obj  func:   2.25518E+04
+   total obj  func:   1.18535E+03
+
+   line search:
+     0.0000E+00  1.3556E+03
+     1.0000E+00  1.1854E+03
+ 
+beta cpu time:   0:00:04.06
+
+
+   Iteration:      4
+
+ 
+    At the relative  accuracy of:   2.000E-02
+    Estimated relative threshold:   3.607E-03
+    Predicted compression  ratio:   2.150E+01
+
+   Sensitivity compression ratio:   1.910E+01
+     CG   accuracy:   7.24525E-07
+     CG iterations:    53
+      tradeoff par:   2.22754E-02
+       step length:   1.00000E+00
+   achieved misfit:   2.53797E+02
+   model obj  func:   2.81643E+04
+   total obj  func:   8.81168E+02
+
+   line search:
+     0.0000E+00  9.3418E+02
+     1.0000E+00  8.8117E+02
+ 
+beta cpu time:   0:00:04.60
+
+
+   Iteration:      5
+
+ 
+    At the relative  accuracy of:   2.000E-02
+    Estimated relative threshold:   3.584E-03
+    Predicted compression  ratio:   2.153E+01
+
+   Sensitivity compression ratio:   1.924E+01
+     CG   accuracy:   7.50329E-07
+     CG iterations:    70
+      tradeoff par:   1.48502E-02
+       step length:   1.00000E+00
+   achieved misfit:   1.57197E+02
+   model obj  func:   3.31306E+04
+   total obj  func:   6.49194E+02
+
+   line search:
+     0.0000E+00  6.7204E+02
+     1.0000E+00  6.4919E+02
+ 
+beta cpu time:   0:00:05.06
+
+
+   Iteration:      6
+
+ 
+    At the relative  accuracy of:   2.000E-02
+    Estimated relative threshold:   3.544E-03
+    Predicted compression  ratio:   2.146E+01
+
+   Sensitivity compression ratio:   1.917E+01
+     CG   accuracy:   9.24490E-07
+     CG iterations:    90
+      tradeoff par:   9.69628E-03
+       step length:   1.00000E+00
+   achieved misfit:   9.94950E+01
+   model obj  func:   3.77354E+04
+   total obj  func:   4.65388E+02
+
+   line search:
+     0.0000E+00  4.7844E+02
+     1.0000E+00  4.6539E+02
+ 
+beta cpu time:   0:00:05.34
+
+   Program is terminated at convergence.
+
+   Best fitting model produced.
+
+total cpu time:   0:00:27.03
+DCINV3D ended on: 12/01/2017  12:42:23

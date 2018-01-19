@@ -6,14 +6,13 @@ import pylab as plt
 import os
 import numpy as np
 
-#work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\SingleBlock\\GRAV'
-#work_dir = 'C:\\Users\\DominiqueFournier\\Downloads'
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\GRAV"
+#work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\SingleBlock\\GRAV\\'
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Block_Gaussian_topo\\GRAV\\"
+
 inpfile = 'SimPEG_GRAV.inp'
-out_dir = "SimPEG_PF_Inv\\"
+out_dir = "SimPEG_GRAV_Inv\\"
 dsep = '\\'
 dsep = os.path.sep
-plt.close('all')
 
 os.system('mkdir ' + work_dir + dsep + out_dir)
 
@@ -23,24 +22,24 @@ driver = PF.GravityDriver.GravityDriver_Inv(work_dir + dsep + inpfile)
 mesh = driver.mesh
 survey = driver.survey
 
-nD = int(survey.dobs.shape[0]*0.1)
-print("nD ratio:" + str(nD) +'\\' + str(survey.dobs.shape[0]) )
-indx = np.random.randint(0, high=survey.dobs.shape[0], size=nD)
-# Create a new downsampled survey
-locXYZ = survey.srcField.rxList[0].locs[indx,:]
-
-dobs = survey.dobs
-std = survey.std
-
-rxLoc = PF.BaseGrav.RxObs(locXYZ)
-srcField = PF.BaseMag.SrcField([rxLoc], param=survey.srcField.param)
-survey = PF.BaseMag.LinearSurvey(srcField)
-survey.dobs = dobs[indx]
-survey.std = std[indx]
+#nD = int(survey.dobs.shape[0]*0.1)
+#print("nD ratio:" + str(nD) +'\\' + str(survey.dobs.shape[0]) )
+#indx = np.random.randint(0, high=survey.dobs.shape[0], size=nD)
+## Create a new downsampled survey
+#locXYZ = survey.srcField.rxList[0].locs[indx,:]
+#
+#dobs = survey.dobs
+#std = survey.std
+#
+#rxLoc = PF.BaseGrav.RxObs(locXYZ)
+#srcField = PF.BaseMag.SrcField([rxLoc], param=survey.srcField.param)
+#survey = PF.BaseMag.LinearSurvey(srcField)
+#survey.dobs = dobs[indx]
+#survey.std = std[indx]
 #
 #rxLoc = survey.srcField.rxList[0].locs
 #d = survey.dobs
-#wd = survey.std
+wd = survey.std
 
 ndata = survey.srcField.rxList[0].locs.shape[0]
 
@@ -67,10 +66,13 @@ prob.solverOpts['accuracyTol'] = 1e-4
 
 survey.pair(prob)
 
+dmis = DataMisfit.l2_DataMisfit(survey)
+dmis.W = 1./wd
+
 # Write out the predicted file and generate the forward operator
 pred = prob.fields(mstart)
 
-PF.Gravity.writeUBCobs(work_dir + dsep + 'Pred0.dat',survey,pred)
+PF.Gravity.writeUBCobs(work_dir + dsep + out_dir + '\\Pred0.dat',survey,pred)
 
 # Load weighting  file
 if driver.wgtfile is None:
@@ -78,8 +80,12 @@ if driver.wgtfile is None:
     # wr = wr**2.
 
     # Make depth weighting
-    wr = np.sum(prob.F**2., axis=0)**0.5
+    wr = np.zeros(nC)
+    for ii in range(survey.nD):
+        wr += ((prob.F[ii, :]*prob.rhoMap.deriv(mstart)/wd[ii]))**2.
+    
     wr = (wr/np.max(wr))
+    wr = wr**0.5
     # wr_out = actvMap * wr
 
 else:
@@ -93,21 +99,24 @@ reg.mref = driver.mref[dynamic]
 reg.cell_weights = wr
 reg.norms = driver.lpnorms
 if driver.eps is not None:
-    reg_a.eps_p = driver.eps[0]
-    reg_a.eps_q = driver.eps[1]
+    reg.eps_p = driver.eps[0]
+    reg.eps_q = driver.eps[1]
 
 
-opt = Optimization.ProjectedGNCG(maxIter=100, lower=driver.bounds[0],upper=driver.bounds[1], maxIterLS = 20, maxIterCG= 10, tolCG = 1e-3)
-dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.W = 1./wd
+opt = Optimization.ProjectedGNCG(maxIter=30,
+                                 lower=driver.bounds[0],upper=driver.bounds[1],
+                                 maxIterLS = 20, maxIterCG= 10, tolCG = 1e-3)
+
 invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
 
 betaest = Directives.BetaEstimate_ByEig()
-IRLS = Directives.Update_IRLS(f_min_change=1e-4, minGNiter=3)
-update_Jacobi = Directives.UpdatePreCond()
+IRLS = Directives.Update_IRLS(f_min_change=1e-4, minGNiter=2)
+update_Jacobi = Directives.UpdateJacobiPrecond()
 saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
 saveModel.fileName = work_dir + dsep + out_dir + 'GRAV'
-inv = Inversion.BaseInversion(invProb, directiveList=[betaest, IRLS,
+
+saveDict = Directives.SaveOutputDictEveryIteration()
+inv = Inversion.BaseInversion(invProb, directiveList=[betaest, IRLS, saveDict,
                                                       update_Jacobi, saveModel])
 # Run inversion
 mrec = inv.run(mstart)
@@ -115,15 +124,20 @@ mrec = inv.run(mstart)
 # Plot predicted
 pred = prob.fields(mrec)
 
-survey.dobs = pred
 # PF.Gravity.plot_obs_2D(survey, 'Observed Data')
-print("Final misfit:" + str(np.sum(((d-pred)/wd)**2.)))
+print("Final misfit:" + str(np.sum(((survey.dobs-pred)/wd)**2.)))
 
 m_out = actvMap*staticCells*invProb.l2model
 
 # Write result
-Mesh.TensorMesh.writeModelUBC(mesh, work_dir + dsep + out_dir + 'SimPEG_inv_l2l2.den',m_out)
+Mesh.TensorMesh.writeModelUBC(mesh, work_dir + dsep + out_dir + 'SimPEG_inv_l2l2.den', m_out)
 
 m_out = actvMap*staticCells*mrec
 # Write result
-Mesh.TensorMesh.writeModelUBC(mesh, work_dir + dsep + out_dir + 'SimPEG_inv_lplq.den',m_out)
+Mesh.TensorMesh.writeModelUBC(mesh, work_dir + dsep + out_dir + 'SimPEG_inv_lplq.den', m_out)
+
+PF.Gravity.writeUBCobs(work_dir + out_dir + dsep + 'Predicted_l2.pre',
+                         survey, d=survey.dpred(invProb.l2model))
+
+PF.Gravity.writeUBCobs(work_dir + out_dir + dsep + 'Predicted_lp.pre',
+                         survey, d=survey.dpred(invProb.model))

@@ -30,9 +30,10 @@ import numpy as np
 import os
 
 # Define the inducing field parameter
-#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Modelling\\Synthetic\\Block_Gaussian_topo\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Nut_Cracker\\"
-out_dir = "SimPEG_PF_Inv\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Nut_Cracker\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
+out_dir = "SimPEG_MVI_C_Inv\\"
 input_file = "SimPEG_MAG.inp"
 
 CMI = False
@@ -110,7 +111,7 @@ betaest = Directives.BetaEstimate_ByEig()
 
 betaCool = Directives.BetaSchedule(coolingFactor=2., coolingRate=1)
 
-update_Jacobi = Directives.UpdatePreCond()
+update_Jacobi = Directives.UpdateJacobiPrecond()
 targetMisfit = Directives.TargetMisfit()
 
 saveModel = Directives.SaveUBCModelEveryIteration(mapping = actvMap)

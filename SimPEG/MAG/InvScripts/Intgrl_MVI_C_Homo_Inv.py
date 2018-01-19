@@ -33,13 +33,13 @@ from pymatsolver import PardisoSolver
 #work_dir = "C:\\Egnyte\\Private\\dominiquef\\Projects\\4559_CuMtn_ZTEM\\Modeling\\MAG\\A1_Fenton\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\TKC\\DIGHEM_TMI\\"
-#work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\FORGE\\"
+work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\FORGE\\SyntheticModel\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\Desktop\\Demo\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Yukon\\Modeling\\MAG\\"
+# work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Yukon\\Modeling\\MAG\\"
 
 out_dir = "SimPEG_MVI_C_HomogenInv\\"
 input_file = "SimPEG_MAG.inp"
-dwnSamplingFact = 1.
+dwnSamplingFact = 0.1
 # %%
 # Read in the input file which included all parameters at once
 # (mesh, topo, model, survey, inv param, etc.)
@@ -52,20 +52,20 @@ mesh = driver.mesh
 survey = driver.survey
 actv = driver.activeCells
 
-nD = int(survey.nD*dwnSamplingFact)
-print("nD ratio:" + str(nD) + '\\' + str(survey.nD))
-indx = np.random.randint(0, high=survey.nD, size=nD)
-# Create a new downsampled survey
-locXYZ = survey.srcField.rxList[0].locs[indx, :]
-
-dobs = survey.dobs
-std = survey.std
-
-rxLoc = PF.BaseGrav.RxObs(locXYZ)
-srcField = PF.BaseMag.SrcField([rxLoc], param=survey.srcField.param)
-survey = PF.BaseMag.LinearSurvey(srcField)
-survey.dobs = dobs[indx]
-survey.std = std[indx]
+#nD = int(survey.nD*dwnSamplingFact)
+#print("nD ratio:" + str(nD) + '\\' + str(survey.nD))
+#indx = np.random.randint(0, high=survey.nD, size=nD)
+## Create a new downsampled survey
+#locXYZ = survey.srcField.rxList[0].locs[indx, :]
+#
+#dobs = survey.dobs
+#std = survey.std
+#
+#rxLoc = PF.BaseGrav.RxObs(locXYZ)
+#srcField = PF.BaseMag.SrcField([rxLoc], param=survey.srcField.param)
+#survey = PF.BaseMag.LinearSurvey(srcField)
+#survey.dobs = dobs[indx]
+#survey.std = std[indx]
 
 
 # WORK IN PROGRESS
@@ -102,13 +102,17 @@ prob = PF.Magnetics.MagneticVector(mesh, chiMap=homogMap, actInd=actv)
 # Pair the survey and problem
 survey.pair(prob)
 
+# Data misfit function
+dmis = DataMisfit.l2_DataMisfit(survey)
+dmis.W = 1./survey.std
+
 # Create sensitivity weights from our linear forward operator
 rxLoc = survey.srcField.rxList[0].locs
-wr = np.zeros(3*nC)
+#wr = np.zeros(3*nC)
 m0 = np.ones(3*nC)*1e-6
-for ii in range(survey.nD):
-    wr += ((prob.F[ii, :]*prob.mapping.deriv(m0))/survey.std[ii])**2.
-
+#for ii in range(survey.nD):
+#    wr += ((prob.F[ii, :]*prob.mapping.deriv(m0))/survey.std[ii])**2.
+wr = prob.getJtJdiag(m0, W = dmis.W)
 wr = (wr/np.max(wr))
 wr = wr**0.5
 
@@ -138,9 +142,7 @@ reg_t.norms = [2, 2, 2, 2]
 reg = reg_p + reg_s + reg_t
 reg.mref = np.zeros(3*nC)
 
-# Data misfit function
-dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.W = 1./survey.std
+
 
 # Add directives to the inversion
 opt = Optimization.ProjectedGNCG(maxIter=10, lower=-10., upper=10.,
@@ -159,8 +161,7 @@ targetMisfit = Directives.TargetMisfit()
 saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
 saveModel.fileName = work_dir + out_dir + 'MVI_C'
 inv = Inversion.BaseInversion(invProb,
-                              directiveList=[IRLS, update_Jacobi,
-                                             saveModel])
+                              directiveList=[IRLS, update_Jacobi])
 
 mrec_MVI = inv.run(m0)
 

@@ -1,0 +1,278 @@
+
+Parallelized with OpenMP.  # of threads:  8
+
+DCIP2D - Version 5  (BETA) 20110811:  DCINV2D
+
+Developed by University of British Columbia 
+Geophysical Inversion Facility  (UBC-GIF)
+
+(C) Copyright 1992 - 2011, UBC-GIF,
+Department of Earth and Ocean Sciences, UBC
+http://www.eos.ubc.ca/research/ubcgif/
+
+Distributed by:
+Mira Geoscience Ltd.
+
+
+ DCINV2D started on:12/05/2017  10:06:35
+
+
+Reading input file: .\dcinv2d.inp
+
+----------------------------------------------
+MESH FILE dcinv2d.msh
+OBS LOC_X Survey_Synthetic_2D.dc
+NITER 50
+CHIFACT 1
+TOPO DEFAULT
+INIT_MOD DEFAULT
+REF_MOD DEFAULT
+ALPHA VALUE 0.001 1 0.25
+WEIGHT dcinv2d.wt
+STORE_ALL_MODELS TRUE
+USE_MREF TRUE
+INVMODE CG
+CG_PARAM 10 0.0001
+BOUNDS NONE
+----------------------------------------------
+
+      maximum # of iterations:  50
+data were read from: Survey_Synthetic_2D.dc
+       # of current locations:   14
+                    # of data:   95
+                      chifact: 1.00000E+00
+                target misfit: 9.50000E+01
+
+mesh was read from: dcinv2d.msh
+                      # of cells:   88 x   73
+                total # of cells:  6424
+               # of active cells:  6424
+
+   # of unique data locations:   14
+# of wave values:  13
+  2.5000E-04  4.9901E-04  9.9606E-04  1.9882E-03  3.9685E-03  7.9213E-03  1.5811E-02  3.1560E-02  6.2996E-02  1.2574E-01  2.5099E-01  5.0099E-01  1.0000E+00
+
+reference conductivity model is best fitting halfspace:   1.13075E-03 (S/m)
+initial model is set to the reference model.
+
+using alpha (a_s, a_x, a_z): ( 1.00000E-03, 1.0000E+00, 2.5000E-01)
+corresponding length scales (Lx, Lz): ( 3.16228E+01, 1.58114E+01)
+
+
+using Huber and Ekblom parameters:
+                   c =  1.00000+100
+   rho_s rho_x rho_z =  2.00000E+00 2.00000E+00 2.00000E+00
+   eps_s eps_x eps_z =  0.00000E+00 0.00000E+00 0.00000E+00
+
+reference model will be used in the derivative terms.
+weights were read from: dcinv2d.wt
+CG  max iterations:  10,   tolerance: 1.00E-04
+no bounds used.
+
+init cpu time:   0:00:00.04
+
+ 
+   initial misfit =  4.38969E+03
+ init. model norm =  0.00000E+00
+     norm comp Ws =  0.00000E+00
+     norm comp Wx =  0.00000E+00
+     norm comp Wz =  0.00000E+00
+
+
+Iteration    1
+
+  beta vs. misfit:
+     beta         misfit
+  4.05347E+02  1.35196E+03
+  8.10694E+02  2.00309E+03
+  9.52481E+02  2.17547E+03
+  9.69114E+02  2.19401E+03
+  9.69866E+02  2.19484E+03
+  2.42467E+03  3.09308E+03
+
+      chosen beta =  9.69871E+02
+    target misfit =  2.19484E+03
+  achieved misfit =  2.19484E+03
+       model norm =  7.13628E-01
+    misfit change =  5.00000E-01
+model norm change =  0.00000E+00
+
+     norm comp Ws =  4.32773E-02
+     norm comp Wx =  3.81223E-01
+     norm comp Wz =  2.89128E-01
+
+iter cpu time:   0:00:02.22
+
+
+Iteration    2
+
+  beta vs. misfit:
+     beta         misfit
+  2.42468E+02  9.21845E+02
+  4.84935E+02  1.28906E+03
+
+      chosen beta =  3.47682E+02
+    target misfit =  1.09742E+03
+  achieved misfit =  1.08957E+03
+       model norm =  1.68749E+00
+    misfit change =  5.03575E-01
+model norm change =  1.36467E+00
+
+     norm comp Ws =  1.27763E-01
+     norm comp Wx =  6.75712E-01
+     norm comp Wz =  8.84019E-01
+
+iter cpu time:   0:00:01.33
+
+
+Iteration    3
+
+  beta vs. misfit:
+     beta         misfit
+  8.69205E+01  3.81306E+02
+  1.73841E+02  5.91297E+02
+
+      chosen beta =  1.52735E+02
+    target misfit =  5.44787E+02
+  achieved misfit =  5.47013E+02
+       model norm =  3.47284E+00
+    misfit change =  4.97958E-01
+model norm change =  1.05799E+00
+
+     norm comp Ws =  3.43757E-01
+     norm comp Wx =  9.81434E-01
+     norm comp Wz =  2.14765E+00
+
+iter cpu time:   0:00:01.36
+
+
+Iteration    4
+
+  beta vs. misfit:
+     beta         misfit
+  3.81839E+01  1.54620E+02
+  7.63677E+01  2.44959E+02
+  9.01634E+01  2.72670E+02
+  9.05921E+01  2.73511E+02
+
+      chosen beta =  9.05896E+01
+    target misfit =  2.73506E+02
+  achieved misfit =  2.73506E+02
+       model norm =  5.23811E+00
+    misfit change =  5.00000E-01
+model norm change =  5.08306E-01
+
+     norm comp Ws =  8.52676E-01
+     norm comp Wx =  1.19192E+00
+     norm comp Wz =  3.19351E+00
+
+iter cpu time:   0:00:01.83
+
+
+Iteration    5
+
+  beta vs. misfit:
+     beta         misfit
+  2.26474E+01  8.05247E+01
+  4.52948E+01  1.26729E+02
+  5.08838E+01  1.36092E+02
+  5.12877E+01  1.36743E+02
+  5.12939E+01  1.36753E+02
+  1.28235E+02  3.36620E+02
+
+      chosen beta =  5.12939E+01
+    target misfit =  1.36753E+02
+  achieved misfit =  1.36753E+02
+       model norm =  6.95291E+00
+    misfit change =  5.00000E-01
+model norm change =  3.27370E-01
+
+     norm comp Ws =  1.39571E+00
+     norm comp Wx =  1.46797E+00
+     norm comp Wz =  4.08923E+00
+
+iter cpu time:   0:00:02.09
+
+
+Iteration    6
+
+  beta vs. misfit:
+     beta         misfit
+  2.47536E+01  6.69775E+01
+  3.56330E+01  8.16295E+01
+  4.01546E+01  8.86636E+01
+  4.71152E+01  1.16379E+02
+
+      chosen beta =  4.18170E+01
+    target misfit =  9.50000E+01
+  achieved misfit =  9.27850E+01
+       model norm =  7.59828E+00
+    misfit change =  3.21514E-01
+model norm change =  9.28193E-02
+
+     norm comp Ws =  1.90413E+00
+     norm comp Wx =  1.44612E+00
+     norm comp Wz =  4.24802E+00
+
+iter cpu time:   0:00:01.66
+
+
+Iteration    7
+
+  beta vs. misfit:
+     beta         misfit
+  8.76748E-01  2.50062E+01
+  3.50580E+01  7.91182E+01
+  4.28153E+01  1.02126E+02
+  4.38374E+01  1.04519E+02
+
+      chosen beta =  4.04576E+01
+    target misfit =  9.50000E+01
+  achieved misfit =  9.54497E+01
+       model norm =  7.38597E+00
+    misfit change = -2.87182E-02
+model norm change = -2.79412E-02
+
+     norm comp Ws =  1.79791E+00
+     norm comp Wx =  1.43387E+00
+     norm comp Wz =  4.15419E+00
+
+iter cpu time:   0:00:02.14
+
+
+Target misfit achieved.  Minimizing model norm.
+
+
+Iteration    8
+
+  beta vs. misfit:
+     beta         misfit
+  4.00773E+01  9.15359E+01
+  4.02670E+01  9.20210E+01
+  4.14295E+01  9.49425E+01
+  4.14523E+01  9.49984E+01
+  1.03631E+02  2.00303E+02
+
+      chosen beta =  4.14531E+01
+    target misfit =  9.50000E+01
+  achieved misfit =  9.50005E+01
+       model norm =  7.32410E+00
+    misfit change =  4.70570E-03
+model norm change = -8.37679E-03
+
+     norm comp Ws =  1.81806E+00
+     norm comp Wx =  1.38311E+00
+     norm comp Wz =  4.12294E+00
+
+iter cpu time:   0:00:02.05
+
+
+   Exit at convergence.
+
+
+ Iterations performed:    8
+
+total cpu time:   0:00:14.77
+
+ DCINV2D ended on:12/05/2017  10:06:49
+

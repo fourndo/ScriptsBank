@@ -14,7 +14,7 @@ proj.setWorkDir(work_dir);
 
 % mesh3D = mesh3D(proj); mesh3D.readFile([proj.workDir dsep mesh3Dfile]);
 data3D = 'E3DinvWrite.obs';
-data3DObj = FEMxyz.readDobs(proj,[work_dir dsep data3D]);
+data3DObj = E3Dinversion.readDobs(proj,[work_dir dsep data3D]);
 
 % Read in topo
 topo = TOPOdata(proj);
@@ -69,20 +69,20 @@ inv.readOut();
 invMod = inv.readModel([proj.workDir dsep 'em1dfm_con.mod']);
 
 % Map the 1D models to 3D mesh
-mod3D = GIFmodel(inv); mod3D.setMesh(inv.mesh);
-inv.setConductivityModel(mod3D, invMod, inv.data2ijk);
+mod3D = inv.insert1Dto3Dmodel(invMod);%GIFmodel(inv); mod3D.setMesh(inv.mesh);
+inv.setConductivityModel(mod3D);
 
 % Write out the projected 3D conductivity
 inv.getConductivityModel.writeFile([proj.workDir dsep 'Inv3Dmodel.con']);
 
-% Setup interpolation matrix
-inv.setInterpolationMatrix( 3, 200, 1, 1);
-
-% Interpolate from soundings to full mesh
-m3D = inv.interp1D_to_3D(inv.getItem{end}.getValue);
-
-% Write to file
-mod3D.setValue(m3D);
-mod3D.writeFile([proj.workDir dsep 'Inv1DInterp3D.con']);
+% % Setup interpolation matrix
+% inv.setInterpolationMatrix(1, 1);
+% 
+% % Interpolate from soundings to full mesh
+% m3D = inv.interpModel1D(inv.getItem{end}.getValue);
+% 
+% % Write to file
+% mod3D.setValue(m3D);
+% mod3D.writeFile([proj.workDir dsep 'Inv1DInterp3D.con']);
 
 % 

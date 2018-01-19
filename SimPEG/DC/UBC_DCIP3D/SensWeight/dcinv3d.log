@@ -1,0 +1,127 @@
+
+Parallelized with OpenMP.  # of threads:  8
+
+ DCIP3D - Version 5.0 :  DCINV3D
+
+ Developed by University of British Columbia 
+ Geophysical Inversion Facility  (UBC-GIF)
+
+ (C) Copyright 1992 - 2014, UBC-GIF,
+ Department of Earth and Ocean Sciences, UBC
+ http://gif.eos.ubc.ca/
+
+ Distributed by:
+
+ Mira Geoscience Ltd.
+
+DCINV3D started on: 10/30/2017  14:48:31
+
+No bounds used.
+Running with the following parameters:
+
+             Input file: dcinv3d.inp
+    max # of iterations:      25
+                chifact:  1.00000E+00
+      Observations file: Survey_Synthetic.dat
+              Mesh file: MeshDC.msh
+        Topography file: null
+          Initial Model: VALUE 1e-3
+        Reference Model: VALUE 1e-3
+
+    Wavelet compression: daub2
+      Wavelet threshold: relative accuracy = 0.0200
+
+      3D weighting file: wmat.dat
+
+----------------------------------------
+ input file specifies length scales:
+             Le, Ln, Lz:   50.0      50.0      50.0    
+ corresponding alpha values:
+     alpha (s, e, n, z):  4.000E-04  1.00      1.00      1.00    
+----------------------------------------
+
+
+  # of source locations:      14
+              # of data:      95
+    # of cells in model:   52416
+    # of cells in  mesh:   52416
+
+
+
+
+   Iteration:      1
+
+ 
+    At the relative  accuracy of:   2.000E-02
+    Estimated relative threshold:   3.272E-03
+    Predicted compression  ratio:   2.144E+01
+
+   Sensitivity compression ratio:   1.834E+01
+ 
+    Initial misfit:   4.76557E+03
+     CG   accuracy:   1.53983E-02
+     CG iterations:   100
+      tradeoff par:   2.26021E-01
+       step length:   1.00000E+00
+   achieved misfit:   5.22344E+02
+   model obj  func:   2.82870E+03
+   total obj  func:   1.16169E+03
+
+   line search:
+     0.0000E+00  4.7656E+03
+     1.0000E+00  1.1617E+03
+ 
+beta cpu time:   0:00:11.71
+
+
+   Iteration:      2
+
+ 
+    At the relative  accuracy of:   2.000E-02
+    Estimated relative threshold:   3.395E-03
+    Predicted compression  ratio:   2.136E+01
+
+   Sensitivity compression ratio:   1.844E+01
+     CG   accuracy:   5.03174E-02
+     CG iterations:   100
+      tradeoff par:   1.13011E-01
+       step length:   1.00000E+00
+   achieved misfit:   2.00228E+02
+   model obj  func:   4.31024E+03
+   total obj  func:   6.87331E+02
+
+   line search:
+     0.0000E+00  8.4202E+02
+     1.0000E+00  6.8733E+02
+ 
+beta cpu time:   0:00:11.60
+
+
+   Iteration:      3
+
+ 
+    At the relative  accuracy of:   2.000E-02
+    Estimated relative threshold:   3.437E-03
+    Predicted compression  ratio:   2.138E+01
+
+   Sensitivity compression ratio:   1.843E+01
+     CG   accuracy:   3.16904E-02
+     CG iterations:   100
+      tradeoff par:   6.59251E-02
+       step length:   1.00000E+00
+   achieved misfit:   9.82023E+01
+   model obj  func:   5.32081E+03
+   total obj  func:   4.48977E+02
+
+   line search:
+     0.0000E+00  4.8438E+02
+     1.0000E+00  4.4898E+02
+ 
+beta cpu time:   0:00:11.80
+
+   Program is terminated at convergence.
+
+   Best fitting model produced.
+
+total cpu time:   0:00:35.41
+DCINV3D ended on: 10/30/2017  14:49:07

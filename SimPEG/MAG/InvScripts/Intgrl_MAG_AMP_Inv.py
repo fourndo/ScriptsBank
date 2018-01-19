@@ -29,6 +29,7 @@ import os
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Triple_Block_lined\\"
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
 work_dir = "C:\\Users\\DominiqueFournier\\Desktop\\Craig\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Block_Gaussian_topo\\"
 
 out_dir = "SimPEG_AMP_Inv\\"
 input_file = "SimPEG_MAG.inp"

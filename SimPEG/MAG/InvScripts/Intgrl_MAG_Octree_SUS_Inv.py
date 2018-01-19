@@ -25,14 +25,14 @@ import SimPEG.PF as PF
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from pymatsolver import PardisoSolver
 
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\SingleBlock\\Simpeg\\"
 #work_dir = "C:\\Egnyte\\Private\\dominiquef\\Projects\\4559_CuMtn_ZTEM\\Modeling\\MAG\\A1_Fenton\\"
-# work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\TKC\\DIGHEM_TMI\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
 out_dir = "SimPEG_Octree_Susc_Inv\\"
 input_file = "SimPEG_MAG.inp"
 # %%
@@ -64,9 +64,10 @@ if isinstance(meshInput, Mesh.TensorMesh):
     padDist = np.r_[np.c_[padx, padx], np.c_[pady, pady], np.c_[padz, padz]]
     
     
-    mesh = Utils.modelutils.meshBuilder(xyzLocs, h, padDist,
-                                        padCore=np.r_[1, 1, 4], meshGlobal=None,
-                                        meshType='TREE')
+    mesh = Utils.modelutils.meshBuilder(xyzLocs, h, padDist, 
+                                        meshGlobal=None,
+                                        meshType='TREE',padCore=np.r_[3, 3, 3],
+                                        gridLoc = 'CC')
 else:
     mesh = Mesh.TreeMesh.readUBC(driver.basePath + driver.mshfile)
 
@@ -95,9 +96,9 @@ survey.pair(prob)
 
 # Create sensitivity weights from our linear forward operator
 rxLoc = survey.srcField.rxList[0].locs
-wr = np.zeros(prob.G.shape[1])
+wr = np.zeros(prob.F.shape[1])
 for ii in range(survey.nD):
-    wr += (prob.G[ii, :]/survey.std[ii])**2.
+    wr += (prob.F[ii, :]/survey.std[ii])**2.
 
 wr = (wr/np.max(wr))
 wr = wr**0.5
@@ -123,7 +124,8 @@ dmis.W = 1./survey.std
 
 # Add directives to the inversion
 opt = Optimization.ProjectedGNCG(maxIter=20, lower=0., upper=10.,
-                                 maxIterLS=20, maxIterCG=10, tolCG=1e-4)
+                                 maxIterLS=20, maxIterCG=10,
+                                 tolCG=1e-4, tolG=1e-2)
 invProb = InvProblem.BaseInvProblem(dmis, reg, opt, bfgs=False)
 betaest = Directives.BetaEstimate_ByEig()
 
@@ -140,11 +142,16 @@ inv = Inversion.BaseInversion(invProb,
                               directiveList=[betaest, IRLS, update_Jacobi])
 
 # Run the inversion
-m0 = np.ones(nC)*1e-4  # Starting model
+m0 = np.ones(nC)*1e-3  # Starting model
 # prob.model = m0
 mrec = inv.run(m0)
 
 Mesh.TreeMesh.writeUBC(mesh, work_dir + out_dir + 'OctreeTest.msh',
-                       models={work_dir + out_dir + 'Model_l2.sus': actvMap*IRLS.l2model})
+                       models={work_dir + out_dir + 'Model_l2.sus': actvMap*invProb.l2model})
 Mesh.TreeMesh.writeUBC(mesh, work_dir + out_dir + 'OctreeTest.msh',
                        models={work_dir + out_dir + 'Model_lp.sus': actvMap*mrec})
+PF.Magnetics.writeUBCobs(work_dir + out_dir + 'Predicted_l2.pre',
+                         survey, d=survey.dpred(invProb.l2model))
+
+PF.Magnetics.writeUBCobs(work_dir + out_dir + 'Predicted_lp.pre',
+                         survey, d=survey.dpred(invProb.model))

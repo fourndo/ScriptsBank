@@ -16,17 +16,17 @@ while count < length(x) && normr > 1e-6
     x=x+alpha.*p;
      
     r=r+alpha*Ap;      
-    rnew=PC*r'*r;
+    rnew=r'*r;
     p=-r+rnew/rold.*p;
     rold=rnew;
 
    
     
     normr = norm(r);
-    
-    figure(100);
-    semilogy (count,normr,'*');
-    hold on
+%     
+%     figure(100);
+%     semilogy (count,normr,'*');
+%     hold on
     
     
     

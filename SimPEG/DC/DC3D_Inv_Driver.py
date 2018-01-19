@@ -19,18 +19,19 @@ from SimPEG.EM.Static import DC, IP
 from pymatsolver import PardisoSolver
 
 
-wrType = 'distanceW'
+wrType = 'noW'
+arrayType = 'dipole-dipole'
 changeMref = False
-mref_val = 2e-2
+mref_val = 5e-3
 
 # Create the mesh
-csx, csy, csz = 100., 100., 100. 
+csx, csy, csz = 100., 100., 100.
 ncx, ncy, ncz, npad = 32, 32, 30, 10
-hx = [(csx,npad,-1.3), (csx,ncx), (csx,npad,1.3)]
-hy = [(csy,npad,-1.3), (csy,ncy), (csy,npad,1.3)]
+hx = [(csx, npad, -1.3), (csx, ncx), (csx, npad, 1.3)]
+hy = [(csy, npad, -1.3), (csy, ncy), (csy, npad, 1.3)]
 # hz = [(csz,npad,-1.4), (csz,12), (50,6),(50,6),(csz,12), (csz,npad,1.4)]
-hz = [(csz,npad,-1.3), (csz,12), (50, 6)]
-mesh = Mesh.TensorMesh([hx,hy,hz], 'CCN')
+hz = [(csz, npad, -1.3), (csz, 12), (50, 6)]
+mesh = Mesh.TensorMesh([hx, hy, hz], 'CCN')
 
 # Createa model
 #blkind1 = Utils.ModelBuilder.getIndicesBlock([-900., -900., -250.], [-400., -400., -650.], mesh.gridCC)
@@ -48,8 +49,8 @@ mesh = Mesh.TensorMesh([hx,hy,hz], 'CCN')
 
 blkind1 = Utils.ModelBuilder.getIndicesBlock([-900., -250., -250.], [-400., 250., -750.], mesh.gridCC)
 blkind2 = Utils.ModelBuilder.getIndicesBlock([400., -250., -250.], [900., 250., -750.], mesh.gridCC)
-airind = mesh.gridCC[:,2]>0.
-overburden = mesh.gridCC[:,2]>-100
+airind = mesh.gridCC[:, 2] > 0.
+overburden = mesh.gridCC[:, 2] > -100
 
 background = 0.01
 sigma = np.ones(mesh.nC)*background
@@ -67,8 +68,8 @@ topoXYZ = Utils.ndgrid(mesh.vectorNx, mesh.vectorNy, np.r_[-1.])
 #midLocs = (rxlocM+rxlocN)/2
 #
 #xc1_p, yc1_p, zc1_p = -1500., 0., 0.
-#xc1_n, yc1_n, zc1_n = 1500., 0., 0. 
-#srclocA = np.r_[xc1_p, yc1_p, zc1_p] 
+#xc1_n, yc1_n, zc1_n = 1500., 0., 0.
+#srclocA = np.r_[xc1_p, yc1_p, zc1_p]
 #srclocB = np.r_[xc1_n, yc1_n, zc1_n]
 #
 ## Create a survey and forward data
@@ -76,22 +77,21 @@ topoXYZ = Utils.ndgrid(mesh.vectorNx, mesh.vectorNy, np.r_[-1.])
 #src = DC.Src.Dipole([rx], srclocA, srclocB)
 #survey = DC.Survey([src])
 
-srclocA = np.c_[-1500., 0., 0.] 
+srclocA = np.c_[-1500., 0., 0.]
 srclocB = np.c_[1500., 0., 0.]
 endl = np.r_[srclocA, srclocB]
 #
 #xr = np.linspace(-1250., 1250., 11)
 #rxlocM = Utils.ndgrid(xr-100., xr, 0.*np.ones(1))
 #rxlocN = Utils.ndgrid(xr+100., xr, 0.*np.ones(1))
-## xc1_p, yc1_p, zc1_p = 
-## xc1_n, yc1_n, zc1_n =  
+## xc1_p, yc1_p, zc1_p =
+## xc1_n, yc1_n, zc1_n =
 #
 #rx = DC.Rx.Dipole(rxlocM, rxlocN)
 #src = DC.Src.Dipole([rx], srclocA, srclocB)
 #survey = DC.Survey([src])
 
-
-survey = EM.Static.Utils.gen_DCIPsurvey(endl, mesh, 'dipole-dipole', 200, 200, 10)
+survey = EM.Static.Utils.gen_DCIPsurvey(endl, arrayType, 100, 100, 10)
 
 
 midLocs = survey.srcList[0].rxList[0].locs[0]+ survey.srcList[0].rxList[0].locs[1]
@@ -101,7 +101,7 @@ idenMap = Maps.IdentityMap(nP=mesh.nC)
 expmap = Maps.ExpMap(mesh)
 logmap = Maps.LogMap(mesh)
 
-m0 = np.log(np.ones_like(sigma)*mref_val) 
+m0 = np.log(np.ones_like(sigma)*mref_val)
 mref = np.log(np.ones_like(sigma)*mref_val)
 
 problem = DC.Problem3D_N(mesh, sigmaMap=expmap, storeJ=True)
@@ -126,7 +126,7 @@ survey.dobs = dobs
 dmisfit = DataMisfit.l2_DataMisfit(survey)
 dmisfit.W = wd
 reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
-reg.norms = [2,2,2,2]
+reg.norms = [2, 2, 2, 2]
 reg.mref = mref
 reg.eps_p = 1e-3
 reg.eps_q = 1e-3
@@ -136,12 +136,12 @@ reg.eps_q = 1e-3
 if wrType == 'depthW':
     wr = depth
     beta = 1e+4
-    
+
 elif wrType == 'noW':
     wr = depth**0.
     beta = 1e+4
-elif wrType == 'distanceW':
-    beta = 1e+5
+elif wrType == 'sensitivityW':
+    beta = 1e+4
     wr = np.sum((problem.getJ(m0, problem.fields(m0)))**2.,axis=0)**0.5
     wr = wr/wr.max()
 
@@ -156,10 +156,16 @@ beta = Directives.BetaSchedule(coolingFactor=2, coolingRate=2)
 betaest = Directives.BetaEstimate_ByEig(beta0_ratio=1e0)
 # save = Directives.SaveOutputEveryIteration()
 target = Directives.TargetMisfit()
-update_IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=2, maxIRLSiter=10)
-updateWr = Directives.Update_DC_Wr(wrType=wrType, changeMref=changeMref, eps=1e-7)
 
-inv = Inversion.BaseInversion(invProb, directiveList=[update_IRLS, updateWr])
+update_IRLS = Directives.Update_IRLS(f_min_change=1e-2, minGNiter=2,
+                                     maxIRLSiter=10,
+                                     coolingFactor=2., coolingRate=1)
+updateSensW = Directives.UpdateSensitivityWeights()
+update_Jacobi = Directives.UpdatePreconditioner()
+
+inv = Inversion.BaseInversion(invProb, directiveList=[betaest, update_IRLS, updateSensW, update_Jacobi])
+#inv = Inversion.BaseInversion(invProb, directiveList=[betaest, beta, target])
+
 problem.counter = opt.counter = Utils.Counter()
 opt.LSshorten = 0.5
 opt.remember('xc')
@@ -250,17 +256,17 @@ if changeMref:
 
 else:
     figName = 'DC_Grad_' + wrType + '_' + str(mref_val) + 'Ref_HIST.png'
-    
+
 
 
 lim_val = [-3.5, -0.5]
 
 plt.figure()
 ax = plt.subplot()
-#ind = np.abs(expmap*(invProb.l2model - reg.mref)) < lim_val 
+#ind = np.abs(expmap*(invProb.l2model - reg.mref)) < lim_val
 #temp = plt.hist((invProb.l2model - reg.mref)[ind],200)
 
-#ind = np.abs(np.log10(expmap*(mopt))) < lim_val 
+#ind = np.abs(np.log10(expmap*(mopt))) < lim_val
 mout = np.log10(expmap*(mopt))
 temp = plt.hist(mout, 200)
 plt.plot(np.log10(np.r_[background, background]), np.r_[0,5000])
@@ -281,7 +287,7 @@ pctVal = np.percentile(Japprox,np.asarray(range(20))*5)
 threshold = pctVal[2]
 step = mopt - m0
 
-indx = Japprox > threshold 
+indx = Japprox > threshold
 
 P = sp.spdiags(indx*1.,0, mesh.nC, mesh.nC)
 mtest = mopt.copy()

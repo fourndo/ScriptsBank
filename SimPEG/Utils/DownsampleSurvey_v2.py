@@ -15,13 +15,15 @@ import matplotlib.pyplot as plt
 import csv as reader
 
 # # USER INPUTS # #
-workDir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Yukon\\Data\\Alaska_DEM"
+# workDir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Yukon\\Data\\Alaska_DEM"
 # workDir = "C:\\Users\\DominiqueFournier\\Dropbox\\SP"
-dFile = 'ASTGTM2_N62.dat'
-dType = 'XYZ'
-method = ('random', 0.2)  #('radius', 100) #
+workDir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\FORGE\\SyntheticModel"
 
-dFileOut = 'ASTGTM2_N62_DnSrandom.dat'
+dFile = 'Fake_OBS_file_for_SynthModel.obs'
+dType = 'MAG'
+method = ('radius', 100) #('random', 0.2)  #
+
+dFileOut = 'Fake_OBS_file_for_SynthModel_100m.obs'
 
 # # SCRIPT STARTS HERE # #
 if dType == 'MAG':
