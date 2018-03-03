@@ -100,6 +100,7 @@ wr = np.zeros(prob.F.shape[1])
 for ii in range(survey.nD):
     wr += (prob.F[ii, :]/survey.std[ii])**2.
 
+wr /= mesh.vol[actv]
 wr = (wr/np.max(wr))
 wr = wr**0.5
 
@@ -109,7 +110,7 @@ Mesh.TreeMesh.writeUBC(mesh, work_dir + out_dir + 'OctreeTest.msh',
 # wr = PF.Magnetics.get_dist_wgt(mesh, rxLoc, actv, 3, 1)
 
 # Create a regularization
-reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
+reg = Regularization.Tikhonov(mesh, indActive=actv, mapping=idenMap)
 # reg.norms = driver.lpnorms
 # # reg.alpha_s = 2.5e-3
 # if driver.eps is not None:
@@ -132,14 +133,15 @@ betaest = Directives.BetaEstimate_ByEig()
 # Here is where the norms are applied
 # Use pick a treshold parameter empirically based on the distribution of
 #  model parameters
-IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=3, maxIRLSiter=10)
+#IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=3, maxIRLSiter=10)
 update_Jacobi = Directives.UpdateJacobiPrecond()
-
+BetaSchedule = Directives.BetaSchedule(coolingRate=1, coolingFactor=2.)
+TargetMisfit = Directives.TargetMisfit()
 #saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
 #saveModel.fileName = work_dir + out_dir + 'ModelSus'
 
 inv = Inversion.BaseInversion(invProb,
-                              directiveList=[betaest, IRLS, update_Jacobi])
+                              directiveList=[betaest, BetaSchedule,TargetMisfit, update_Jacobi])
 
 # Run the inversion
 m0 = np.ones(nC)*1e-3  # Starting model

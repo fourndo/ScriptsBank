@@ -16,12 +16,12 @@ import csv as reader
 
 # # USER INPUTS # #
 workDir = "C:\\Users\\DominiqueFournier\\Dropbox\\SP"
-# workDir = "C:\\Users\\DominiqueFournier\\Dropbox\\SP"
-dFile = 'All_loops_plus_coarse.dat'
+workDir = "C:\\Users\\DominiqueFournier\\Desktop\\SunLi_Paper_Review"
+dFile = 'DataImag.xyz'
 dType = 'XYZ'
-method = ('radius', 400) #('random', 0.1)  #
+method = ('radius', 50) #('random', 0.1)  #
 
-dFileOut = 'All_loops_plus_coarse_DnS_400m.dat'
+dFileOut = 'DataImag_50m.dat'
 
 # # SCRIPT STARTS HERE # #
 if dType == 'MAG':

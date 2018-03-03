@@ -16,7 +16,7 @@ import os
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Modelling\\Synthetic\\Block_Gaussian_topo\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\SingleBlock\\Simpeg\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\SingleBlock\\Simpeg\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
 
@@ -39,12 +39,16 @@ survey = driver.survey
 actv = driver.activeCells
 #
 nC = len(actv)
+
+beta = 3.055069E+06
+mstart = PF.MagneticsDriver.readVectorUBC(mesh, work_dir+'mviinv_005.fld')
+
 ## Set starting mdoel
 #mstart = np.ones(3*nC)*1e-4
-#mref = np.zeros(3*nC)
+mref = np.zeros(3*nC)
 #
 ## Create active map to go from reduce space to full
-#actvMap = Maps.InjectActiveCells(mesh, actv, 0)
+actvMap = Maps.InjectActiveCells(mesh, actv, 0)
 
 #
 ## Create identity map
@@ -53,12 +57,12 @@ idenMap = Maps.IdentityMap(nP=3*nC)
 # Create the forward model operator
 prob = PF.Magnetics.MagneticVector(mesh, chiMap=idenMap,
                                      actInd=actv)
-#
-## Explicitely set starting model
-#prob.model = mstart
-#
-## Pair the survey and problem
-#survey.pair(prob)
+
+# Explicitely set starting model
+prob.model = mstart
+
+# Pair the survey and problem
+survey.pair(prob)
 #
 #
 ## RUN THE CARTESIAN FIRST TO GET A GOOD STARTING MODEL
@@ -122,13 +126,12 @@ prob = PF.Magnetics.MagneticVector(mesh, chiMap=idenMap,
 #Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_C_amp.sus', amp)
 #PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MVI_C_pred.pre', survey, invProb.dpred)
 
-mstart = PF.MagneticsDriver.readVectorUBC()
 #beta = invProb.beta
-beta = 5e+7
+
 # %% RUN MVI-S WITH SPARSITY
 
 # # STEP 3: Finish inversion with spherical formulation
-#mstart = Utils.matutils.xyz2atp(mrec_MVI.reshape((nC,3),order='F'))
+mstart = Utils.matutils.xyz2atp(mstart.reshape((nC,3),order='F'))
 prob.coordinate_system = 'spherical'
 prob.model = mstart
 
@@ -186,7 +189,7 @@ invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta*10)
 # Here is where the norms are applied
 IRLS = Directives.Update_IRLS(f_min_change=1e-4, maxIRLSiter=20,
                               minGNiter=1, beta_tol=1e-2,
-                              coolingRate=1, coolEps_q=False)
+                              coolingRate=1, coolEps_q=False, coolEps_p=False)
 
 invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
 
