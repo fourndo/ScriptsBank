@@ -11,12 +11,13 @@ from SimPEG import DataMisfit, Inversion, Regularization, Utils
 import SimPEG.PF as PF
 import numpy as np
 import os
+import time
 
 # Define the inducing field parameter
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Modelling\\Synthetic\\Block_Gaussian_topo\\"
-#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\SingleBlock\\Simpeg\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\SingleBlock\\Simpeg\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
 
@@ -40,25 +41,25 @@ actv = driver.activeCells
 #
 nC = len(actv)
 ## Set starting mdoel
-#mstart = np.ones(3*nC)*1e-4
-#mref = np.zeros(3*nC)
-#
-## Create active map to go from reduce space to full
-#actvMap = Maps.InjectActiveCells(mesh, actv, 0)
+mstart = np.ones(3*nC)*1e-4
+mref = np.zeros(3*nC)
 
-#
+# Create active map to go from reduce space to full
+actvMap = Maps.InjectActiveCells(mesh, actv, 0)
+
+
 ## Create identity map
 idenMap = Maps.IdentityMap(nP=3*nC)
 
 # Create the forward model operator
 prob = PF.Magnetics.MagneticVector(mesh, chiMap=idenMap,
                                      actInd=actv)
-#
-## Explicitely set starting model
-#prob.model = mstart
-#
-## Pair the survey and problem
-#survey.pair(prob)
+
+# Explicitely set starting model
+prob.model = mstart
+
+# Pair the survey and problem
+survey.pair(prob)
 #
 #
 ## RUN THE CARTESIAN FIRST TO GET A GOOD STARTING MODEL
@@ -100,8 +101,8 @@ prob = PF.Magnetics.MagneticVector(mesh, chiMap=idenMap,
 #betaest = Directives.BetaEstimate_ByEig()
 #
 ## Here is where the norms are applied
-#IRLS = Directives.Update_IRLS(f_min_change=1e-4,
-#                              minGNiter=3, beta_tol=1e-2)
+#IRLS = Directives.Update_IRLS(f_min_change=1e-3,
+#                              minGNiter=1)
 #
 #update_Jacobi = Directives.UpdateJacobiPrecond()
 #targetMisfit = Directives.TargetMisfit()
@@ -122,16 +123,19 @@ prob = PF.Magnetics.MagneticVector(mesh, chiMap=idenMap,
 #Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_C_amp.sus', amp)
 #PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MVI_C_pred.pre', survey, invProb.dpred)
 
-mstart = PF.MagneticsDriver.readVectorUBC()
+mstart = PF.Magnetics.readVectorModel(mesh, work_dir + 'mviinv_019.fld')
+mstart = Utils.matutils.xyz2atp(mstart.reshape((nC,3),order='F'))
 #beta = invProb.beta
-beta = 5e+7
+beta = 3.415026E+06
 # %% RUN MVI-S WITH SPARSITY
 
 # # STEP 3: Finish inversion with spherical formulation
 #mstart = Utils.matutils.xyz2atp(mrec_MVI.reshape((nC,3),order='F'))
+print(mstart.shape)
 prob.coordinate_system = 'spherical'
 prob.model = mstart
 
+dd = prob.fields(mstart)
 # Create a block diagonal regularization
 wires = Maps.Wires(('amp', nC), ('theta', nC), ('phi', nC))
 
@@ -142,7 +146,8 @@ if driver.eps is not None:
     reg_a.eps_p = driver.eps[0]
     reg_a.eps_q = driver.eps[1]
 else:
-    reg_a.eps_p = np.percentile(np.abs(mstart[:nC]), 98)
+    reg_a.eps_p = 8.333924514477879e-4
+    reg_a.eps_q = 8.333924514477879e-4
 
 reg_a.mref = mref
 
@@ -180,13 +185,14 @@ opt = Optimization.ProjectedGNCG(maxIter=60,
                                  maxIterCG=20, tolCG=1e-3,
                                  stepOffBoundsFact=1e-8)
 
-invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta*10)
+#invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta*2)
 #  betaest = Directives.BetaEstimate_ByEig()
 
 # Here is where the norms are applied
-IRLS = Directives.Update_IRLS(f_min_change=1e-4, maxIRLSiter=20,
-                              minGNiter=1, beta_tol=1e-2,
-                              coolingRate=1, coolEps_q=False)
+IRLS = Directives.Update_IRLS(f_min_change=1e-4, maxIRLSiter=6,
+                              minGNiter=1, beta_tol = 0.5, prctile=100,
+                              coolingRate=1, coolEps_q=True,
+                              betaSearch=False)
 
 invProb = InvProblem.BaseInvProblem(dmis, reg, opt, beta=beta)
 
@@ -199,16 +205,37 @@ saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
 saveModel.fileName = work_dir+out_dir + 'MVI_S'
 
 inv = Inversion.BaseInversion(invProb,
-                              directiveList=[ProjSpherical, IRLS, update_SensWeight,
+                              directiveList=[ProjSpherical, IRLS,
+                                             update_SensWeight,
                                              update_Jacobi, saveModel])
 
+tstart = time.time()
 mrec_MVI_S = inv.run(mstart)
-
+#%%
+print('Total runtime: ' + str(time.time()-tstart))
 Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_amp.sus',
                               actvMap * (mrec_MVI_S[:nC]))
 Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_theta.sus',
                               actvMap * (mrec_MVI_S[nC:2*nC]))
 Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_phi.sus',
                               actvMap * (mrec_MVI_S[2*nC:]))
+
+Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_l2_amp.sus',
+                              actvMap * (invProb.l2model[:nC]))
+Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_l2_theta.sus',
+                              actvMap * (invProb.l2model[nC:2*nC]))
+Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_l2_phi.sus',
+                              actvMap * (invProb.l2model[2*nC:]))
+
+vec_xyz = Utils.matutils.atp2xyz(invProb.l2model.reshape((nC, 3), order='F'))
+
+vec_x = actvMap * vec_xyz[:nC]
+vec_y = actvMap * vec_xyz[nC:2*nC]
+vec_z = actvMap * vec_xyz[2*nC:]
+
+vec = np.c_[vec_x, vec_y, vec_z]
+                
+PF.MagneticsDriver.writeVectorUBC(mesh, 
+                                  work_dir+out_dir + 'MVI_S_l2_VEC.fld', vec)
 
 PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MVI_S_pred.pre', survey, invProb.dpred)

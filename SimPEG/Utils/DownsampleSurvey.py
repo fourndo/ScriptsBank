@@ -15,13 +15,12 @@ import matplotlib.pyplot as plt
 import csv as reader
 
 # # USER INPUTS # #
-workDir = "C:\\Users\\DominiqueFournier\\Dropbox\\SP"
-workDir = "C:\\Users\\DominiqueFournier\\Desktop\\SunLi_Paper_Review"
-dFile = 'DataImag.xyz'
+workDir = "C:\\Users\\DominiqueFournier\\Desktop\\MVI_v3_Demo\\"
+dFile = 'SRTM1_NAD27_Z11N.dat'
 dType = 'XYZ'
-method = ('radius', 50) #('random', 0.1)  #
+method = ('random', 0.2)  #('radius', 50) #
 
-dFileOut = 'DataImag_50m.dat'
+dFileOut = 'SRTM1_NAD27_Z11N_50m.dat'
 
 # # SCRIPT STARTS HERE # #
 if dType == 'MAG':

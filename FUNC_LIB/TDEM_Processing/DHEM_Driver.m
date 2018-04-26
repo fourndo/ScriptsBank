@@ -3,25 +3,27 @@
 clear all
 close all
 
+
 root_dir = pwd;
 addpath functions
-addpath 'C:\Users\dominiquef.MIRAGEOSCIENCE\Dropbox\Master\FUNC_LIB'
+addpath 'C:\Users\DominiqueFournier\Documents\GIT\ScriptsBank\FUNC_LIB'
 
 % Project path
-fwr_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Hudbay_Lalor\Modeling\Forward\SQUID';
+basePath = 'C:\Users\DominiqueFournier\Google Drive\Research\Hudbay_Lalor';
+fwr_dir = [basePath '\Modeling\Forward\SQUID'];
 timefile = 'times_out.txt';
 FWRfile = 'recv_h3dtd.txt';
-predfile = 'dpred_10.txt';
+predfile = 'Modeling\Inversion\Inv20_avgdata\dpred_10.txt';
 
 % work_dir = 'C:\LC\Private\dominiquef\Projects\3796_AGIC_Research\PEM_test';
-work_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Hudbay_Lalor\Processing';
+work_dir = [basePath '\Processing'];
 
-result_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Hudbay_Lalor\Modeling\Inversion\Inv20_avgdata';
+result_dir = [basePath  '\Modeling\Inversion\Inv20_avgdata'];
 
 % data_dir = 'C:\LC\Private\dominiquef\Projects\3796_AGIC_Research\PEM_test\PEM_raw';
-data_dir = 'C:\Users\dominiquef.MIRAGEOSCIENCE\Google Drive\Hudbay_Lalor\Data\Crone_data\Phase2';
+data_dir = [basePath  '\Data\Crone_data\Phase2'];
 
-meshfile = 'C:\Projects\UBC_Lalor_DHEM\Modeling\Inversion\Inv3_fine_noredata\DHEM_mesh_fine.msh';
+meshfile = [basePath  '\Inversion\Inv3_fine_noredata\DHEM_mesh_fine.msh'];
 
 % Extract information from PEM files
 DHEM_raw = Read_PEM(data_dir);
@@ -526,14 +528,14 @@ ntc_out = length(tc);
 % dobs = read_H3D_obs([work_dir '\DHEM_obs_v2.dat']);
 dpre = load([fwr_dir '\' FWRfile]);
 % tc = load([work_dir '\times_out.txt']);
-
-plot_hole = randi(length(unique(dHid)),1,3);
+close all
+plot_hole = [1]%randi(length(unique(dHid)),1,5);
 
 for ii = 1 : length(plot_hole)
         
         
-    for jj = 1 : 5 : length(time_out);
-    set(figure(jj), 'Position', [00 00 1800 1800]);
+    for jj = 1 : length(time_out);
+    set(figure(jj), 'Position', [50 50 500 800]);
     t_obs = dobs(:,4) == time_out(jj);
     
     
@@ -555,7 +557,7 @@ for ii = 1 : length(plot_hole)
         grab2 = dHid_flt'==holeid;
     
         
-        subplot(1,3,ii)
+%         subplot(1,3,ii)
 
 %         dobs_1 = dobs( dobs(:,4) == t_channel(jj) & grab1 , : );
         obs_DH = dobs_flt( dobs_flt(:,4) == time_out(jj) & grab2 , : );
@@ -571,15 +573,15 @@ for ii = 1 : length(plot_hole)
         
 %         dpre_t = dpre( dpre(:,4) == dpre(jj,4), :);
 
-        plot( obs_dBx , obs_DH(:,3) , 'r','LineWidth',2) ; hold on     
-        plot( obs_dBy , obs_DH(:,3) , 'g','LineWidth',2) ; hold on        
-        plot( obs_dBz , obs_DH(:,3) ,  'b','LineWidth',2) ; hold on
+        plot( obs_dBx , obs_DH(:,3) - 257 , 'r:','LineWidth',1) ; hold on     
+        plot( obs_dBy , obs_DH(:,3) - 257 , 'g:','LineWidth',1) ; hold on        
+        plot( obs_dBz , obs_DH(:,3) - 257 ,  'b:','LineWidth',1) ; hold on
         
-        plot( pre_dBx , obs_DH(:,3) , 'ro:','LineWidth',2) ; hold on     
-        plot( pre_dBy , obs_DH(:,3) , 'go:','LineWidth',2) ; hold on        
-        plot( pre_dBz , obs_DH(:,3) , 'bo:','LineWidth',2) ; hold on
+        plot( -pre_dBx , obs_DH(:,3) - 257 , 'r','LineWidth',2) ; hold on     
+        plot( -pre_dBy , obs_DH(:,3) - 257 , 'g','LineWidth',2) ; hold on        
+        plot( -pre_dBz , obs_DH(:,3) - 257 , 'b','LineWidth',2) ; hold on
         grid on
-        
+        ylim([-1000,25]);
 %         plot( obs_DH(:,19) , obs_DH(:,3) , 'g:','LineWidth',2) ; hold on
 %         plot( obs_DH(:,21) , obs_DH(:,3) ,  'b:','LineWidth',2) ; hold on
 %         plot( obs_DH(:,17) , obs_DH(:,3) ,  'r:','LineWidth',2) ; hold on
@@ -588,7 +590,7 @@ for ii = 1 : length(plot_hole)
 %         plot( (dpre_t(grab,12)), dpre_t(grab,3)  , ':g') ; hold on
 %         plot( (dpre_t(grab,13)), dpre_t(grab,3)  , ':b') ; hold on
 
-        subplot(1,3,ii)
+%         subplot(1,3,ii)
         title(['\bf Hole:' DHEM_raw.name{plot_hole(ii)}])
         xlabel('\bfAmplitude (T/s)')
         ylabel('\bfDepth (m)')

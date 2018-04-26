@@ -23,18 +23,18 @@ tx = zeros(ntrx,6);
 count = 0;
 for oo = 1 : ntrx
 
-    while isempty(strfind(line,'TRX_LOOP'))==1
-          line=fgets(rfid);
-          
-          
-    end
-    
-    while isempty(str2num(line))==1
-              line=fgets(rfid);
-              
-    end
-    
-    tx(oo,:) = str2num(line);
+%     while isempty(strfind(line,'TRX_LOOP'))==1
+%           line=fgets(rfid);
+%           
+%           
+%     end
+%     
+%     while isempty(str2num(line))==1
+%               line=fgets(rfid);
+%               
+%     end
+%     
+%     tx(oo,:) = str2num(line);
 
     while isempty(strfind(line,'N_RECV'))==1
           line=fgets(rfid);

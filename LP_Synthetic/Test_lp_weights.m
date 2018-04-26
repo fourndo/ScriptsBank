@@ -154,9 +154,9 @@ set(figure, 'Position', [50 0 775 400]);
 
 axes('Position',[.60 .20 .35 .75])
 
-x=-1:1e-5:1;
+x=-10:1e-5:10;
 
-epsl = 1e-2;
+epsl = 1;
 
 for pp = 1 : length(p)
     
@@ -164,8 +164,8 @@ for pp = 1 : length(p)
     
     dphi_dm = (x).*r;
 %     scale = 1./(max(sqrt(r)));
-
-    scale = epsl^((1-p(pp)/2));
+    eta = 2*max(x)*epsl;
+    scale = (eta)^((1-p(pp)/2));
     dphi_dm = dphi_dm * scale;
     
 %     dphi_dm = (x*(1e-2).^(1-p(pp)/2))./(x.^(2) + 1e-2.^2).^(1-p(pp)/2);
@@ -176,20 +176,24 @@ for pp = 1 : length(p)
 
      plot(x, dphi_dm,'k','LineWidth',p(pp)+0.25);hold on
      
-     if p(pp) == 2 || p(pp)==1.5
+     if p(pp) == 2 || p(pp)==1.5 || p(pp)==1
          
-              text(0.22,(0.22*(1e-2).^(1-p(pp)/2)) ./ (0.22.^(2) + (1e-2).^2).^(1 - p(pp)/2),['p =' num2str(p(pp))],...
+              text(0.7*max(x),(0.7*max(x)*(eta).^(1-p(pp)/2)) ./ ((0.7*max(x)).^(2) + (epsl).^2).^(1 - p(pp)/2),['p =' num2str(p(pp))],...
         'BackgroundColor','w','EdgeColor','k')
          
-     else
+     elseif p(pp)==0
          
-     text(0.02,(0.02*(1e-2).^(1-p(pp)/2)) ./ (0.02.^(2) + (1e-2).^2).^(1 - p(pp)/2),['p =' num2str(p(pp))],...
+     text(0.1*max(x),(0.1*max(x)*(eta).^(1-p(pp)/2)) ./ ((0.1*max(x)).^(2) + (epsl).^2).^(1 - p(pp)/2),['p =' num2str(p(pp))],...
         'BackgroundColor','w','EdgeColor','k')
     
+     else
+    
+      text(0.7*max(x),(0.7*max(x)*(eta).^(1-p(pp)/2)) ./ ((0.7*max(x)).^(2) + (epsl).^2).^(1 - p(pp)/2),['p =' num2str(p(pp))],...
+        'BackgroundColor','w','EdgeColor','k')
      end
 end
-text(sqrt(epsl),sqrt(epsl),['$\sqrt{\epsilon}$'],'BackgroundColor','w','EdgeColor','k','interpreter', 'latex','FontSize',14,'HorizontalAlignment','left','VerticalAlignment','bottom')
-plot(sqrt(epsl),sqrt(epsl),'ko')
+text(sqrt(eta),sqrt(eta),['$\sqrt{\eta}$'],'BackgroundColor','w','EdgeColor','k','interpreter', 'latex','FontSize',14,'HorizontalAlignment','left','VerticalAlignment','bottom')
+plot(sqrt(eta),sqrt(eta),'ko')
 % subplot(2,1,2)
 % for ee = 1 : length(eps)
 %     
@@ -200,8 +204,8 @@ plot(sqrt(epsl),sqrt(epsl),'ko')
 % %     plot(eps(ee),eps(ee) ./ (2* eps(ee).^2),'b*');
 % 
 % end
-xlim([-0.01 0.25])
-ylim([-0.1 0.6])
+xlim([0 max(x)])
+ylim([0 max(x)])
 grid on
 yy = get(gca,'Ylim');
 plot([10^(-2) 10^(-2)],yy,'r-.')

@@ -16,9 +16,9 @@ import os
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Modelling\\Synthetic\\Block_Gaussian_topo\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\SingleBlock\\Simpeg\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\SingleBlock\\Simpeg\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\"
-#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
 
 
 #work_dir = "C:\\Users\\DominiqueFournier\\Desktop\\Magnetics\\"
@@ -40,7 +40,7 @@ actv = driver.activeCells
 #
 nC = len(actv)
 
-beta = 3.055069E+06
+beta = 5.630718E+07
 mstart = PF.MagneticsDriver.readVectorUBC(mesh, work_dir+'mviinv_005.fld')
 
 ## Set starting mdoel

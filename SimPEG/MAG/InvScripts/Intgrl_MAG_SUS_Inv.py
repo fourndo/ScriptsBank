@@ -101,7 +101,7 @@ invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
 betaest = Directives.BetaEstimate_ByEig()
 
 # Apply Directives to the inversion
-IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=3, maxIRLSiter=10)
+IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=1, maxIRLSiter=10)
 update_Jacobi = Directives.UpdateJacobiPrecond()
 saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
 saveModel.fileName = work_dir + out_dir + 'ModelSus'
