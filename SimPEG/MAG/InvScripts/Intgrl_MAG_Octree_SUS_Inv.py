@@ -27,10 +27,10 @@ import matplotlib.pyplot as plt
 import os
 
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\"
-#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\SingleBlock\\Simpeg\\"
 #work_dir = "C:\\Egnyte\\Private\\dominiquef\\Projects\\4559_CuMtn_ZTEM\\Modeling\\MAG\\A1_Fenton\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\TKC\\DIGHEM_TMI\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
 out_dir = "SimPEG_Octree_Susc_Inv\\"
@@ -52,8 +52,8 @@ xyzLocs = survey.srcField.rxList[0].locs.copy()
 if driver.topofile is not None:
     topo = np.genfromtxt(driver.basePath + driver.topofile,
                          skip_header=1)
-    topo = topo[::100,:]
-    xyzLocs = np.r_[xyzLocs, topo[::100, :]]
+    #topo = topo[::100,:]
+    xyzLocs = np.r_[xyzLocs, topo]
 
 if isinstance(meshInput, Mesh.TensorMesh):
     # Define an octree mesh based on the provided tensor
@@ -79,7 +79,7 @@ else:
 
 nC = int(np.sum(actv))
 
-Mesh.TreeMesh.writeUBC(mesh, work_dir + out_dir + 'OctreeTest.msh',
+Mesh.TreeMesh.writeUBC(mesh, work_dir + out_dir + 'OctreeMesh.msh',
                        models={work_dir + out_dir + 'ActiveOctree.dat': actv})
 
 # Create active map to go from reduce set to full
@@ -116,7 +116,7 @@ reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
 #     reg.eps_p = driver.eps[0]
 #     reg.eps_q = driver.eps[1]
 
-reg.cell_weights = wr#driver.cell_weights*mesh.vol**0.5
+reg.cell_weights = wr  #driver.cell_weights*mesh.vol**0.5
 reg.mref = np.zeros(nC)
 # Data misfit function
 dmis = DataMisfit.l2_DataMisfit(survey)
