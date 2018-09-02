@@ -34,21 +34,22 @@ import multiprocessing
 
 if __name__ == '__main__':
 
-    #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\"
-    #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
-    #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
-    #work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\Airborne\\'
-    # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\CraigModel\\MAG\\"
-    #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Yukon\\Modeling\\MAG\\"
+    # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\"
+    # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
+    # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
     # work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\Airborne\\'
-    #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
-    work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
+    # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\CraigModel\\MAG\\"
+    # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Yukon\\Modeling\\MAG\\"
+    # work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\Airborne\\'
+    # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
+    # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
+    work_dir = "C:\\Users\\DominiqueFournier\\Downloads\\Ruapehu\\"
     out_dir = "SimPEG_MVI_S_TileInv\\"
     input_file = "SimPEG_MAG.inp"
     meshType = 'TreeMesh'
     padLen = 3000
     dwnFact = .25
-    maxNpoints = 100
+    maxNpoints = 200
     numProcessors = 8
 
     # %%
@@ -60,6 +61,7 @@ if __name__ == '__main__':
 
     # Access the mesh and survey information
     meshInput = driver.mesh
+#    meshInput = Mesh.TreeMesh.readUBC(work_dir+"OctreeMesh.msh")
     survey = driver.survey
     xyzLocs = survey.srcField.rxList[0].locs.copy()
 
@@ -73,29 +75,29 @@ if __name__ == '__main__':
         topo = meshInput.gridCC[indTop, :]
         topo[:, 2] += meshInput.hz.min()/2. + 1e-8
 
-    if meshType == 'TreeMesh':
-        if isinstance(meshInput, Mesh.TensorMesh):
-            # Define an octree mesh based on the provided tensor
-            h = np.r_[meshInput.hx.min(), meshInput.hy.min(), meshInput.hz.min()]
-            coreX, coreY, coreZ = meshInput.hx == h[0], meshInput.hy == h[1], meshInput.hz == h[2]
-            padx, pady, padz = meshInput.hx[~coreX].sum(), meshInput.hy[~coreY].sum(), meshInput.hz[~coreZ].sum()
+    # Define an octree mesh based on the provided tensor
+    h = np.r_[meshInput.hx.min(), meshInput.hy.min(), meshInput.hz.min()]
+    coreX, coreY, coreZ = meshInput.hx == h[0], meshInput.hy == h[1], meshInput.hz == h[2]
+    padx, pady, padz = meshInput.hx[~coreX].sum(), meshInput.hy[~coreY].sum(), meshInput.hz[~coreZ].sum()
 
-            padDist = np.r_[np.c_[padx, padx], np.c_[pady, pady], np.c_[padz, padz]]
+    padDist = np.r_[np.c_[padx, padx], np.c_[pady, pady], np.c_[padz, padz]]
+    
+    if meshType == 'TreeMesh' and isinstance(meshInput, Mesh.TensorMesh):
 
-            print("Creating TreeMesh. Please standby...")
-            mesh = Utils.modelutils.meshBuilder(topo, h, padDist,
-                                                meshGlobal=meshInput,
-                                                meshType='TREE',
-                                                gridLoc='CC')
+        print("Creating TreeMesh. Please standby...")
+        mesh = Utils.modelutils.meshBuilder(topo, h, padDist,
+                                            meshGlobal=meshInput,
+                                            meshType='TREE',
+                                            verticalAlignment='center')
 
-            mesh = Utils.modelutils.refineTree(mesh, topo, dtype='surface',
-                                               nCpad=[0, 10, 5], finalize=False)
+        mesh = Utils.modelutils.refineTree(mesh, topo, dtype='surface',
+                                           nCpad=[0, 10, 5], finalize=False)
 
-            mesh = Utils.modelutils.refineTree(mesh, xyzLocs, dtype='surface',
-                                               nCpad=[10, 0, 0], finalize=True)
+        mesh = Utils.modelutils.refineTree(mesh, xyzLocs, dtype='surface',
+                                           nCpad=[10, 0, 0], finalize=True)
 
-        else:
-            mesh = Mesh.TreeMesh.readUBC(driver.basePath + driver.mshfile)
+#        else:
+#            mesh = Mesh.TreeMesh.readUBC(driver.basePath + driver.mshfile)
     else:
         mesh = meshInput
     actv = Utils.surface2ind_topo(mesh, topo)
@@ -115,17 +117,17 @@ if __name__ == '__main__':
 
 
     # Plot data and tiles
-    fig, ax1 = plt.figure(), plt.subplot()
-    PF.Magnetics.plot_obs_2D(xyzLocs, survey.dobs, ax=ax1)
-    for ii in range(X1.shape[0]):
-        ax1.add_patch(Rectangle((X1[ii], Y1[ii]),
-                                X2[ii]-X1[ii],
-                                Y2[ii]-Y1[ii],
-                                facecolor='none', edgecolor='k'))
-    ax1.set_xlim([X1.min()-20, X2.max()+20])
-    ax1.set_ylim([Y1.min()-20, Y2.max()+20])
-    ax1.set_aspect('equal')
-    plt.show()
+#    fig, ax1 = plt.figure(), plt.subplot()
+#    PF.Magnetics.plot_obs_2D(xyzLocs, survey.dobs, ax=ax1)
+#    for ii in range(X1.shape[0]):
+#        ax1.add_patch(Rectangle((X1[ii], Y1[ii]),
+#                                X2[ii]-X1[ii],
+#                                Y2[ii]-Y1[ii],
+#                                facecolor='none', edgecolor='k'))
+#    ax1.set_xlim([X1.min()-20, X2.max()+20])
+#    ax1.set_ylim([Y1.min()-20, Y2.max()+20])
+#    ax1.set_aspect('equal')
+#    plt.show()
 
     # LOOP THROUGH TILES
     # expf = 1.3
@@ -148,6 +150,9 @@ if __name__ == '__main__':
                         rxLoc[:, 1] >= lims[2], rxLoc[:, 1] <= lims[3],
                         surveyMask], axis=0)
 
+    
+        ind_topo = np.all([topo[:, 0] >= lims[0]-1000, topo[:, 0] <= lims[1]+1000,
+                        topo[:, 1] >= lims[2]-1000, topo[:, 1] <= lims[3]+1000], axis=0)
         # Remember selected data in case of tile overlap
         surveyMask[ind_t] = False
 
@@ -163,13 +168,13 @@ if __name__ == '__main__':
         mesh_t = Utils.modelutils.meshBuilder(rxLoc[ind_t, :], h, padDist,
                                             meshGlobal=meshInput,
                                             meshType='TREE',
-                                            gridLoc='CC')
+                                            verticalAlignment='center')
 
-        mesh_t = Utils.modelutils.refineTree(mesh_t, topo, dtype='surface',
-                                           nCpad=[0, 10, 2], finalize=False)
+        mesh_t = Utils.modelutils.refineTree(mesh_t, topo[ind_topo,:], dtype='surface',
+                                           nCpad=[0, 3, 2], finalize=False)
 
         mesh_t = Utils.modelutils.refineTree(mesh_t, rxLoc[ind_t, :], dtype='surface',
-                                           nCpad=[10, 0, 0], finalize=False)
+                                           nCpad=[10, 5, 5], finalize=False)
 
         center = np.mean(rxLoc[ind_t, :], axis=0)
         tileCenter = np.r_[np.mean(lims[0:2]), np.mean(lims[2:]), center[2]]
@@ -181,7 +186,8 @@ if __name__ == '__main__':
         mesh_t.x0 += shift
         mesh_t.finalize()
 
-        actv_t = Utils.surface2ind_topo(mesh_t, topo)
+        print(mesh_t.nC)
+        actv_t = Utils.surface2ind_topo(mesh_t, topo[ind_topo,:])
 
         # Create reduced identity map
         tileMap = Maps.Tile((mesh, actv), (mesh_t, actv_t))
@@ -208,6 +214,8 @@ if __name__ == '__main__':
 
         dmis, wrGlobal = createLocalProb(xyzLocs, wrGlobal, np.r_[X1[tt], X2[tt], Y1[tt], Y2[tt]])
 
+        Mesh.TreeMesh.writeUBC(dmis.prob.mesh, work_dir + out_dir + 'OctreeMesh_Tile'+str(tt)+'.msh',
+                               models={work_dir + out_dir + 'ActiveOctree'+str(tt)+'e.dat': dmis.prob.actInd})
         # Create combo misfit function
 
         if tt == 0:
@@ -267,7 +275,7 @@ if __name__ == '__main__':
     reg.mref = mref
 
     # Add directives to the inversion
-    opt = Optimization.ProjectedGNCG(maxIter=7, lower=-10., upper=10.,
+    opt = Optimization.ProjectedGNCG(maxIter=15, lower=-10., upper=10.,
                                      maxIterCG=20, tolCG=1e-3)
 
     invProb = InvProblem.BaseInvProblem(ComboMisfit, reg, opt)
@@ -373,7 +381,7 @@ if __name__ == '__main__':
     #  betaest = Directives.BetaEstimate_ByEig()
 
     # Here is where the norms are applied
-    IRLS = Directives.Update_IRLS(f_min_change=1e-4, maxIRLSiter=20,
+    IRLS = Directives.Update_IRLS(f_min_change=1e-4, maxIRLSiter=40,
                                   minGNiter=1, beta_tol = 0.5, prctile=100,
                                   coolingRate=1, coolEps_q=True,
                                   betaSearch=True)
@@ -403,6 +411,29 @@ if __name__ == '__main__':
 
     PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MVI_S_pred.pre', survey, dpred)
 
+##% Export tensor model if inputMesh is tensor
+    if isinstance(meshInput, Mesh.TensorMesh):
+        
+        tree = cKDTree(mesh.gridCC)
+        
+        dd, ind = tree.query(meshInput.gridCC)
+        
+        # Model out
+        
+        vec_xyz = Utils.matutils.atp2xyz(mrec_MVI_S.reshape((nC, 3), order='F')).reshape((nC, 3), order='F')
+        vec_x = actvMap * vec_xyz[:,0]
+        vec_y = actvMap * vec_xyz[:,1]
+        vec_z = actvMap * vec_xyz[:,2]
+        
+        vec_xyzTensor = np.zeros((meshInput.nC,3))
+        vec_xyzTensor = np.c_[vec_x[ind], vec_y[ind], vec_z[ind]]
+        
+        PF.MagneticsDriver.writeVectorUBC(meshInput, work_dir+out_dir + 'MVI_S_Tensor.fld', vec_xyzTensor)
+        
+        amp = np.sum(vec_xyzTensor**2., axis=1)**0.5
+        meshInput.writeModelUBC(work_dir+out_dir + 'MVI_S_Tensor.amp', amp)
+        
+    
     ##%%
     #JtJdiag = np.zeros_like(invProb.model)
     #for obj in ComboMisfit.objfcts:

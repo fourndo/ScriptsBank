@@ -49,25 +49,41 @@ actv = driver.activeCells
 
 xyzLocs = survey.srcField.rxList[0].locs.copy()
 
+topo = None
 if driver.topofile is not None:
     topo = np.genfromtxt(driver.basePath + driver.topofile,
                          skip_header=1)
-    #topo = topo[::100,:]
-    xyzLocs = np.r_[xyzLocs, topo]
+#    xyzLocs = np.r_[xyzLocs, topo]
 
 if isinstance(meshInput, Mesh.TensorMesh):
     # Define an octree mesh based on the provided tensor
     h = np.r_[meshInput.hx.min(), meshInput.hy.min(), meshInput.hz.min()]
-    coreX, coreY, coreZ = meshInput.hx == h[0], meshInput.hy == h[1], meshInput.hz == h[2]
-    padx, pady, padz = meshInput.hx[~coreX].sum(), meshInput.hy[~coreY].sum(), meshInput.hz[~coreZ].sum()
+    coreX = meshInput.hx == h[0]
+    coreY = meshInput.hy == h[1]
+    coreZ = meshInput.hz == h[2]
+
+    padx = meshInput.hx[~coreX].sum()
+    pady = meshInput.hy[~coreY].sum()
+    padz = meshInput.hz[~coreZ].sum()
 
     padDist = np.r_[np.c_[padx, padx], np.c_[pady, pady], np.c_[padz, padz]]
 
+    print("Creating TreeMesh. Please standby...")
+    mesh = Utils.modelutils.meshBuilder(topo, h, padDist,
+                                        meshGlobal=meshInput,
+                                        meshType='TREE',
+                                        verticalAlignment='top')
 
-    mesh = Utils.modelutils.meshBuilder(xyzLocs, h, padDist,
-                                        meshGlobal=None,
-                                        meshType='TREE',padCore=np.r_[3, 3, 3],
-                                        gridLoc = 'CC')
+    mesh = Utils.modelutils.refineTree(mesh, topo, dtype='surface',
+                                       nCpad=[0, 2, 2], finalize=False)
+
+    mesh = Utils.modelutils.refineTree(mesh, xyzLocs, dtype='surface',
+                                       nCpad=[10, 5, 0], finalize=True)
+
+    # mesh = Utils.modelutils.refineTree(mesh, xyzLocs, dtype='surface',
+    #                                   nCpad=[0, 10, 0], finalize=True)
+
+
 else:
     mesh = Mesh.TreeMesh.readUBC(driver.basePath + driver.mshfile)
 
@@ -83,7 +99,7 @@ Mesh.TreeMesh.writeUBC(mesh, work_dir + out_dir + 'OctreeMesh.msh',
                        models={work_dir + out_dir + 'ActiveOctree.dat': actv})
 
 # Create active map to go from reduce set to full
-actvMap = Maps.InjectActiveCells(mesh, actv, 0)
+actvMap = Maps.InjectActiveCells(mesh, actv, -1e-8)
 
 # Creat reduced identity map
 idenMap = Maps.IdentityMap(nP=nC)

@@ -15,12 +15,12 @@ import matplotlib.pyplot as plt
 import csv as reader
 
 # # USER INPUTS # #
-workDir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\Airborne\\"
-dFile = "VTEM_FLT20m_IGRF53260nT.dat"
-dType = 'MAG'
-method = ('radius', 40)#('random', 0.2)  # #
+workDir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\GeoToolkit\\Notebooks\\"
+dFile = "TKCtopo.dat"
+dType = 'XYZ'
+method = ('random', 0.2)  #('radius', 50)# #
 
-dFileOut = 'VTEM_FLT40m_IGRF53260nT.dat'
+dFileOut = 'TKCtopoDwnS.dat'
 
 # # SCRIPT STARTS HERE # #
 if dType == 'MAG':

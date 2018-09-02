@@ -15,13 +15,13 @@ import time
 
 if __name__ == '__main__':
     # Define the inducing field parameter
-#    work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
+    # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
 #    work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
-    #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
+    work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
     #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\SingleBlock\\Simpeg\\"
     #work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\"
-    #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
-    work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\Airborne"
+#    work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
+    # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\Airborne"
     meshType = 'TreeMesh'
     #work_dir = "C:\\Users\\DominiqueFournier\\Desktop\\Magnetics\\"
     out_dir = "SimPEG_MVIS\\"
@@ -61,7 +61,7 @@ if __name__ == '__main__':
             mesh = Utils.modelutils.meshBuilder(topo, h, padDist,
                                                 meshGlobal=meshInput,
                                                 meshType='TREE',
-                                                gridLoc = 'CC')
+                                                verticalAlignment = 'center')
 
             mesh = Utils.modelutils.refineTree(mesh, topo, dtype='surface',
                                                nCpad=[0, 10, 2], finalize=False)
@@ -83,7 +83,7 @@ if __name__ == '__main__':
         Mesh.TreeMesh.writeUBC(mesh, work_dir + out_dir + 'OctreeMesh.msh',
                                models={work_dir + out_dir + 'ActiveOctree.dat': actv})
     else:
-        mesh.writeModelUBC(mesh, work_dir + out_dir + 'ActiveOctree.dat', actv)
+        mesh.writeModelUBC(work_dir + out_dir + 'ActiveTensor.dat', actv)
     #
     nC = int(actv.sum())
     ## Set starting mdoel
@@ -110,7 +110,9 @@ if __name__ == '__main__':
 
     # RUN THE CARTESIAN FIRST TO GET A GOOD STARTING MODEL
     # Create sensitivity weights from our linear forward operator
-    wr = np.sum(prob.F**2., axis=0)**0.5
+    print('Calculating gtgdiag')
+    dpre0 = prob.fields(mstart)
+    wr = prob.getJtJdiag(mstart)**0.5
     wr = (wr/np.max(wr))
 
     # Create a block diagonal regularization
@@ -171,7 +173,7 @@ if __name__ == '__main__':
         Mesh.TreeMesh.writeUBC(mesh, work_dir + out_dir + 'OctreeMesh.msh',
                            models={work_dir + out_dir + 'MVI_C_amp.sus': amp})
     else:
-        mesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_C_amp.sus', amp)
+        mesh.writeModelUBC(work_dir+out_dir + 'MVI_C_amp.sus', amp)
 
     PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MVI_C_pred.pre', survey, invProb.dpred)
 
