@@ -15,19 +15,19 @@ import matplotlib.pyplot as plt
 import csv as reader
 
 # # USER INPUTS # #
-workDir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\GeoToolkit\\Notebooks\\"
-dFile = "TKCtopo.dat"
-dType = 'XYZ'
-method = ('random', 0.2)  #('radius', 50)# #
+workDir = "C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Kevitsa\\Kevitsa\\Modeling\\MAG\\Airborne"
+dFile = "VTEM_FLT40m_IGRF53550nT.dat"
+dType = 'MAG'
+method = ('radius', 75)#('random', 0.2)  # #
 
-dFileOut = 'TKCtopoDwnS.dat'
+dFileOut = 'VTEM_FLT75m_IGRF53550nT.dat'
 
 # # SCRIPT STARTS HERE # #
 if dType == 'MAG':
-    survey = PF.Magnetics.readMagneticsObservations(workDir + '\\' + dFile)
+    survey, _ = Utils.io_utils.readUBCmagneticsObservations(workDir + '\\' + dFile)
     locXYZ = survey.srcField.rxList[0].locs
 elif dType == 'GRAV':
-    survey = PF.Gravity.readUBCgravObs(workDir + '\\' + dFile)
+    survey = Utils.io_utils.readUBCgravityObservations(workDir + '\\' + dFile)
     locXYZ = survey.srcField.rxList[0].locs
 elif dType == 'XYZ':
     survey = np.loadtxt(workDir + "\\" + dFile, skiprows=1)
@@ -98,7 +98,7 @@ if dType == 'MAG':
     survey_dwnS.dobs = survey.dobs[indx]
     survey_dwnS.std = survey.std[indx]
 
-    PF.Magnetics.writeUBCobs(workDir + '\\' + dFileOut, survey_dwnS)
+    Utils.io_utils.writeUBCmagneticsObservations(workDir + '\\' + dFileOut, survey_dwnS, survey_dwnS.dobs)
 
 elif dType == 'GRAV':
 
@@ -108,7 +108,7 @@ elif dType == 'GRAV':
     survey_dwnS.dobs = survey.dobs[indx]
     survey_dwnS.std = survey.std[indx]
 
-    PF.Gravity.writeUBCobs(workDir + '\\' + dFileOut, survey_dwnS)
+    Utils.io_utils.writeUBCgravityObservations(workDir + '\\' + dFileOut, survey_dwnS)
 
 elif dType == 'XYZ':
 

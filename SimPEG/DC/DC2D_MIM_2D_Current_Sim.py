@@ -49,7 +49,7 @@ model = Mesh.TensorMesh.readModelUBC(mesh,home_dir + '\\MtIsa_20m.con')
 #model = Mesh.TensorMesh.readModelUBC(mesh,home_dir + '\TwoSpheres.con')
 
 #model = model**0 * 1e-2
-indmin = model>1.25   
+indmin = model>1.25
 model[indmin] = 10
 
 model2 = model*1.
@@ -179,7 +179,7 @@ hz = np.r_[padx[::-1], np.ones(ncz)*dx]
 x0 = gin[0][0] - np.sum(padx) * np.cos(azm)
 y0 = gin[0][1] - np.sum(padx) * np.sin(azm)
 
-# Create mesh one cell below the 3D mesh to avoid the source 
+# Create mesh one cell below the 3D mesh to avoid the source
 mesh2d = Mesh.TensorMesh([hx, hz], x0=(x0,mesh.vectorNz[-2] - np.sum(hz) ))
 
 
@@ -206,23 +206,23 @@ m2D2 = np.reshape(F(xyz2d),[mesh2d.nCx,mesh2d.nCy]).T
 #%% Forward model data
 #fig, axs = plt.subplots(2,1, figsize = (6,4))
 
-fig = plt.figure(figsize=(7,7))  
-ax1 = fig.add_subplot(2,1,2, aspect='equal')  
+fig = plt.figure(figsize=(7,7))
+ax1 = fig.add_subplot(2,1,2, aspect='equal')
 ax2 = fig.add_subplot(2,1,1, aspect='equal')
 
 pos =  ax1.get_position()
 ax1.set_position([pos.x0, pos.y0,  pos.width, pos.height])
 #==============================================================================
 # if pp == 1:
-#     pos =  ax.get_position() 
+#     pos =  ax.get_position()
 #     ax.set_position([pos.x0, pos.y0+.05,  pos.width, pos.height])
 #==============================================================================
-        
+
 #plt.tight_layout(pad=0.5)
 
-#pos =  axs.get_position() 
+#pos =  axs.get_position()
 #axs.set_position([pos.x0 , pos.y0+0.2,  pos.width, pos.height])
-    
+
 #im1 = axs.pcolormesh([],[],[], alpha=0.75,extent = (xx[0],xx[-1],yy[-1],yy[0]),interpolation='nearest',vmin=-1e-2, vmax=1e-2)
 #im2 = axs.pcolormesh([],[],[],alpha=0.2,extent = (xx[0],xx[-1],yy[-1],yy[0]),interpolation='nearest',cmap='gray')
 #im1 = axs.pcolormesh(xx,zz,np.zeros((mesh2d.nCy,mesh2d.nCx)), alpha=0.75,vmin=-1e-2, vmax=1e-2)
@@ -237,118 +237,118 @@ im8 = ax2.scatter([],[], c='r', s=200)
 im9 = ax2.scatter([],[], c='r', s=200)
 
 pos =  ax1.get_position()
-cbarax = fig.add_axes([pos.x0+0.2, pos.y0-.04,  pos.width*0.5, pos.height*0.05])  ## the parameters are the specified position you set 
+cbarax = fig.add_axes([pos.x0+0.2, pos.y0-.04,  pos.width*0.5, pos.height*0.05])  ## the parameters are the specified position you set
 cb = plt.colorbar(im2, cax=cbarax, orientation="horizontal", ax = ax1, ticks=np.linspace(-2,1, 3))
 cb.set_label("Conductivity log(S/m)",size=10)
-            
+
 problem = DC.ProblemDC_CC(mesh)
 tinf = np.squeeze(Rx[-1][-1,:3]) + np.array([dl_x,dl_y,0])*10*a
 def animate(ii):
-    
-    
+
+
     removeStream()
-    
+
     global ax1, ax2, fig
 
-    
+
     for pp in range(2):
-        
+
         if pp == 0:
-            
+
             Msig = Msig1
-            
+
         else:
-            
+
             Msig = Msig2
-            
+
         A = Div*Msig*Grad
-    
+
         # Change one corner to deal with nullspace
         A[0,0] = 1
         A = sp.csc_matrix(A)
-                
-        
+
+
         if not re.match(stype,'pdp'):
-            
+
             inds = Utils.closestPoints(mesh, np.asarray(Tx[ii]).T )
             RHS = mesh.getInterpolationMat(np.asarray(Tx[ii]).T, 'CC').T*( [-1,1] / mesh.vol[inds] )
-        
+
         else:
-        
+
             # Create an "inifinity" pole
             tx =  np.squeeze(Tx[ii][:,0:1])
             #tinf = tx + np.array([dl_x,dl_y,0])*dl_len
             inds = Utils.closestPoints(mesh, np.c_[tx,tinf].T)
             RHS = mesh.getInterpolationMat(np.c_[tx,tinf].T, 'CC').T*( [-1,1] / mesh.vol[inds] )
-        
-        
+
+
         if re.match(slvr,'BiCGStab'):
-        
+
             if re.match(pcdr,'Jacobi'):
                 dA = A.diagonal()
                 P = sp.spdiags(1/dA,0,A.shape[0],A.shape[0])
-        
+
                 # Iterative Solve
                 Ainvb = sp.linalg.bicgstab(P*A,P*RHS, tol=1e-5)
-        
-        
+
+
             phi = mkvc(Ainvb[0])
-        
+
         elif re.match(slvr,'LU'):
             #Direct Solve
             phi = Ainv.solve(RHS)
-        
-        
+
+
         j = -Msig*Grad*phi
         j_CC = mesh.aveF2CCV*j
-        
+
         # Compute charge density solving div*grad*phi
         Q = -mesh.faceDiv*mesh.cellGrad*phi
-        
+
         jx_CC = j_CC[0:mesh.nC]
         jy_CC = j_CC[(2*mesh.nC):]
-        
+
         #%% Grab only the core for presentation
-        F = interpolation.NearestNDInterpolator(mesh.gridCC,jx_CC)   
+        F = interpolation.NearestNDInterpolator(mesh.gridCC,jx_CC)
         jx_CC_sub =  np.reshape(F(xyz2d),[mesh2d.nCx,mesh2d.nCy]).T
-        
-        F = interpolation.NearestNDInterpolator(mesh.gridCC,jy_CC)   
+
+        F = interpolation.NearestNDInterpolator(mesh.gridCC,jy_CC)
         jy_CC_sub =  np.reshape(F(xyz2d),[mesh2d.nCx,mesh2d.nCy]).T
-        
-        F = interpolation.NearestNDInterpolator(mesh.gridCC,Q) 
+
+        F = interpolation.NearestNDInterpolator(mesh.gridCC,Q)
         Q_sub = np.reshape(F(xyz2d),[mesh2d.nCx,mesh2d.nCy]).T
-        
+
         J_rho = np.sqrt(jx_CC_sub**2 + jy_CC_sub**2)
         #lw = np.log10(J_rho/J_rho.min())
-        
+
         # Normalize the charge density from -1 to 1
         Q_sub[Q_sub<0] = Q_sub[Q_sub<0]/np.abs(np.min(Q_sub[Q_sub<0]))
-        Q_sub[Q_sub>0] = Q_sub[Q_sub>0]/np.abs(np.max(Q_sub[Q_sub>0]))    
-        
-        #axs.imshow(Q_sub,alpha=0.75,extent = (xx[0],xx[-1],yy[-1],yy[0]),interpolation='nearest',vmin=-1e-2, vmax=1e-2)    
-        #axs.imshow(np.log10(model_sub.reshape(mesh2d.nCy,mesh2d.nCx)),alpha=0.2,extent = (xx[0],xx[-1],yy[-1],yy[0]),interpolation='nearest',cmap='gray')     
+        Q_sub[Q_sub>0] = Q_sub[Q_sub>0]/np.abs(np.max(Q_sub[Q_sub>0]))
+
+        #axs.imshow(Q_sub,alpha=0.75,extent = (xx[0],xx[-1],yy[-1],yy[0]),interpolation='nearest',vmin=-1e-2, vmax=1e-2)
+        #axs.imshow(np.log10(model_sub.reshape(mesh2d.nCy,mesh2d.nCx)),alpha=0.2,extent = (xx[0],xx[-1],yy[-1],yy[0]),interpolation='nearest',cmap='gray')
         #global im1
         #im1 = axs.pcolormesh(mesh2d.vectorCCx,mesh2d.vectorCCy,Q_sub, alpha=0.75,vmin=-1e-4, vmax=1e-4)
 
 
         if pp == 0:
-    
-            ax1 = fig.add_subplot(2,1,2, aspect='equal')  
+
+            ax1 = fig.add_subplot(2,1,2, aspect='equal')
 
 
             im2 = ax1.pcolormesh(mesh2d.vectorCCx,mesh2d.vectorCCy,np.log10(m2D), vmin=-2,vmax=1)
             #ax1.pcolormesh(mesh2d.vectorCCx,mesh2d.vectorCCy,Q_sub, alpha=0.25, vmin=-1,vmax = 1, cmap = 'bwr')
-    
+
 
             im3 = ax1.streamplot(xx, zz, jx_CC_sub/J_rho.max(), jy_CC_sub/J_rho.max(),color='w',density=0.5, linewidth = 2)
-            
+
 
             im4 = ax1.scatter(Tx[ii][0,0],Tx[ii][2,0], c='r', s=100, marker='v' )
-            
+
 
             im5 = ax1.scatter(Tx[ii][0,1],Tx[ii][2,1], c='b', s=100, marker='v' )
-                
-    
+
+
             plt.ylim(zz[0],zz[-1]+3*dx)
             plt.xlim(xx[0]-dx,xx[-1]+dx)
             plt.gca().set_aspect('equal', adjustable='box')
@@ -359,12 +359,12 @@ def animate(ii):
             ax1.set_yticks(map(int, z))
             ax1.set_yticklabels(map(str, map(int, z)),size=12)
             ax1.xaxis.tick_top()
-            
 
 
-            
+
+
         else:
-            
+
             ax2 = fig.add_subplot(2,1,1, aspect='equal')
             im6 = ax2.pcolormesh(mesh2d.vectorCCx,mesh2d.vectorCCy,np.log10(m2D2), vmin=-2,vmax=1)
             #ax2.pcolormesh(mesh2d.vectorCCx,mesh2d.vectorCCy,Q_sub, alpha=0.25, vmin=-1,vmax = 1, cmap = 'bwr')
@@ -372,14 +372,14 @@ def animate(ii):
     #             cbar = fig.colorbar(im6, orientation="horizontal",ticks=np.linspace(-1,1, 3))
     #             cbar.set_label("Normalized Charge Density",size=10)
     #==============================================================================
-            
-            
+
+
             im7 = ax2.streamplot(xx, zz, jx_CC_sub/J_rho.max(), jy_CC_sub/J_rho.max(),color='w',density=0.5, linewidth = 2)
-            
+
             im8 = ax2.scatter(Tx[ii][0,0],Tx[ii][2,0], c='r', s=100, marker='v' )
-            
+
             im9 = ax2.scatter(Tx[ii][0,1],Tx[ii][2,1], c='b', s=100, marker='v' )
-                
+
             plt.ylim(zz[0],zz[-1]+3*dx)
             plt.xlim(xx[0]-dx,xx[-1]+dx)
             plt.gca().set_aspect('equal', adjustable='box')
@@ -389,20 +389,20 @@ def animate(ii):
             z = np.linspace(zmin,zmax, 5)
             ax2.set_yticks(map(int, z))
             ax2.set_yticklabels(map(str, map(int, z)),size=12)
-            
+
             ax2.set_xticklabels([])
-    
+
 
 #==============================================================================
-#     pos =  ax2.get_position() 
-#     cbarax = fig.add_axes([pos.x0+0.2, pos.y0-.04,  pos.width*0.5, pos.height*0.05])  ## the parameters are the specified position you set 
+#     pos =  ax2.get_position()
+#     cbarax = fig.add_axes([pos.x0+0.2, pos.y0-.04,  pos.width*0.5, pos.height*0.05])  ## the parameters are the specified position you set
 #     cb = plt.colorbar(im2, cax=cbarax, orientation="horizontal", ax = ax2, ticks=np.linspace(-2,1, 3))
 #     cb.set_label("Conductivity log(S/m)",size=10)
 #==============================================================================
 #==============================================================================
 
 #==============================================================================
-            
+
     #axs.set_title("Conductivity (S/m) and Current")
     #plt.show()
     #im1.set_array(Q_sub)
@@ -413,28 +413,28 @@ def animate(ii):
 #%% Create widget
 def removeStream():
     global ax1, ax2, fig
-    #im1.remove()    
-    
+    #im1.remove()
+
     fig.delaxes(ax1)
     fig.delaxes(ax2)
     plt.draw()
-    
+
     #cbarax.patches = []
 #==============================================================================
 #     global im6
-#     im6.remove()  
-#     
-#     
+#     im6.remove()
+#
+#
 # #==============================================================================
 # #     cbar.remove()
 # #==============================================================================
 #     global im7
 #     im7.lines.remove()
 #     ax2.patches = []
-#     
+#
 #     global im8
 #     im8.remove()
-#     
+#
 #     global im9
 #     im9.remove()
 #==============================================================================
@@ -443,7 +443,7 @@ def removeStream():
 
 
 #, linewidth=lw.T
-#%%   
+#%%
 #interact(viewInv,msh = mesh2d, iteration = IntSlider(min=0, max=len(txii)-1 ,step=1, value=0))
 # set embed_frames=True to embed base64-encoded frames directly in the HTML
 anim = animation.FuncAnimation(fig, animate,

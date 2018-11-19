@@ -42,8 +42,8 @@ if __name__ == '__main__':
     # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Yukon\\Modeling\\MAG\\"
     # work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\Airborne\\'
     # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
-    # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
-    work_dir = "C:\\Users\\DominiqueFournier\\Downloads\\Ruapehu\\"
+    work_dir = "C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Synthetic\\Nut_Cracker\\"
+#    work_dir = "C:\\Users\\DominiqueFournier\\Downloads\\Ruapehu\\"
     out_dir = "SimPEG_MVI_S_TileInv\\"
     input_file = "SimPEG_MAG.inp"
     meshType = 'TreeMesh'
@@ -195,7 +195,7 @@ if __name__ == '__main__':
         tileMap.nBlock = 3
 
         # Create the forward model operator
-        prob = PF.Magnetics.MagneticVector(mesh_t, chiMap=tileMap, actInd=actv_t,
+        prob = PF.Magnetics.MagneticIntegral(mesh_t, chiMap=tileMap, actInd=actv_t,modelType='vector',
                                            memory_saving_mode=True, parallelized=True)
         survey_t.pair(prob)
 
@@ -285,10 +285,10 @@ if __name__ == '__main__':
     IRLS = Directives.Update_IRLS(f_min_change=1e-3,
                                   minGNiter=1)
 
-    update_Jacobi = Directives.UpdateJacobiPrecond()
+    update_Jacobi = Directives.UpdatePreconditioner()
     targetMisfit = Directives.TargetMisfit()
 
-    saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
+    saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap, vector=True)
     saveModel.fileName = work_dir + out_dir + 'MVI_C'
     inv = Inversion.BaseInversion(invProb,
                                   directiveList=[betaest, IRLS, update_Jacobi,
@@ -318,7 +318,7 @@ if __name__ == '__main__':
     else:
         dpred = ComboMisfit.survey.dpred(mrec_MVI)
 
-    PF.Magnetics.writeUBCobs(
+    Utils.io_utils.writeUBCmagneticsObservations(
       work_dir+out_dir + 'MVI_C_pred.pre', survey, dpred
     )
 
@@ -390,8 +390,8 @@ if __name__ == '__main__':
     # weights are update between each iteration.
     ProjSpherical = Directives.ProjSpherical()
     update_SensWeight = Directives.UpdateSensWeighting()
-    update_Jacobi = Directives.UpdateJacobiPrecond()
-    saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
+    update_Jacobi = Directives.UpdatePreconditioner()
+    saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap, vector=True)
     saveModel.fileName = work_dir+out_dir + 'MVI_S'
 
     inv = Inversion.BaseInversion(invProb,
@@ -409,7 +409,7 @@ if __name__ == '__main__':
     else:
         dpred = ComboMisfit.survey.dpred(mrec_MVI_S)
 
-    PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MVI_S_pred.pre', survey, dpred)
+    Utils.io_utils.writeUBCmagneticsObservations(work_dir+out_dir + 'MVI_S_pred.pre', survey, dpred)
 
 ##% Export tensor model if inputMesh is tensor
     if isinstance(meshInput, Mesh.TensorMesh):

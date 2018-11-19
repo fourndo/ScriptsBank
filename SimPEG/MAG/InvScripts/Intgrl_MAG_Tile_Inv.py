@@ -33,19 +33,25 @@ import os
 
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
+# work_dir = "C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Synthetic\\Nut_Cracker\\"
 #work_dir = "C:\\Egnyte\\Private\\dominiquef\\Projects\\4559_CuMtn_ZTEM\\Modeling\\MAG\\A1_Fenton\\"
-#work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\Airborne\\'
+# work_dir = 'C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Kevitsa\\Kevitsa\\Modeling\\MAG\\Airborne\\'
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\CraigModel\\MAG\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Yukon\\Modeling\\MAG\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\TKC\\DIGHEM_TMI\\"
 
 out_dir = "SimPEG_Susc_TileInv\\"
 input_file = "SimPEG_MAG.inp"
 padLen = 2000
-dwnFact= 0.5
-maxNpoints = 100
-numProcessors = 8
+maxRAM = 0.1
+maxNpoints = 500
+n_cpu = 8
+
+octreeObs = [5, 5, 3, 3, 3]  # Octree levels below observation points
+octreeTopo = [0, 1]
+
+meshType = 'TREE'
 
 # %%
 # Read in the input file which included all parameters at once
@@ -55,44 +61,110 @@ driver = PF.MagneticsDriver.MagneticsDriver_Inv(work_dir + input_file)
 os.system('if not exist ' + work_dir + out_dir + ' mkdir ' + work_dir+out_dir)
 
 # Access the mesh and survey information
-mesh = driver.mesh
+meshInput = driver.mesh
 survey = driver.survey
-actv = np.zeros(mesh.nC, dtype='bool')
-actv[driver.activeCells] = True
-m0 = driver.m0  # Starting model
-
-nD = int(survey.nD*dwnFact)
-
-#print("nD ratio:" + str(nD) +'\\' + str(survey.nD) )
-#indx = np.unique(np.random.randint(0, high=survey.nD, size=nD))
-## Create a new downsampled survey
-#locXYZ = survey.srcField.rxList[0].locs[indx,:]
-#
-#dobs = survey.dobs
-#std = survey.std
-#
-#rxLoc = PF.BaseGrav.RxObs(locXYZ)
-#srcField = PF.BaseMag.SrcField([rxLoc], param=survey.srcField.param)
-#survey = PF.BaseMag.LinearSurvey(srcField)
-#survey.dobs = dobs[indx]
-#survey.std = std[indx]
-
+topo = driver.topo
 rxLoc = survey.srcField.rxList[0].locs
 
 # # TILE THE PROBLEM
 # Define core mesh properties
-h = np.r_[[np.min(np.r_[mesh.hx.min(), mesh.hy.min(), mesh.hz.min()])]*3]
+h = np.r_[meshInput.hx.min(), meshInput.hy.min(), meshInput.hz.min()]
+
+# LOOP THROUGH TILES
+surveyMask = np.ones(survey.nD, dtype='bool')
+# Going through all problems:
+# 1- Pair the survey and problem
+# 2- Add up sensitivity weights
+# 3- Add to the ComboMisfit
+
+# Create first mesh outside the parallel process
+padDist = np.r_[np.c_[padLen, padLen], np.c_[padLen, padLen], np.c_[padLen, 0]]
+
+if meshType != meshInput._meshType:
+    print("Creating Global Octree")
+    mesh = Utils.modelutils.meshBuilder(
+            rxLoc, h, padDist, meshType='TREE', meshGlobal=meshInput,
+            verticalAlignment='center'
+        )
+
+    if topo is not None:
+        mesh = Utils.modelutils.refineTree(
+            mesh, topo, dtype='surface',
+            nCpad=octreeTopo, finalize=False
+        )
+
+    mesh = Utils.modelutils.refineTree(
+        mesh, rxLoc, dtype='surface',
+        nCpad=octreeObs, finalize=True
+    )
+
+    if topo is not None:
+        actv = Utils.surface2ind_topo(mesh, topo)
+    else:
+        actv = np.zeros(mesh.nC, dtype='bool')
+        print(meshInput.vectorNz[-1])
+        actv[mesh.gridCC[:, 2] < meshInput.vectorNz[-1]] = True
+
+    m0 = np.ones(actv.sum()) * 1e-4
+
+    print("Writing global Octree to file" + work_dir + out_dir + 'OctreeMeshGlobal.msh')
+    Mesh.TreeMesh.writeUBC(
+          mesh, work_dir + out_dir + 'OctreeMeshGlobal.msh',
+          models={work_dir + out_dir + 'ActiveGlobal.act': actv}
+        )
 
 
-tiles = Utils.modelutils.tileSurveyPoints(rxLoc, maxNpoints)
+else:
+    mesh = meshInput
+    actv = np.zeros(mesh.nC, dtype='bool')
+    actv[driver.activeCells] = True
+    m0 = driver.m0  # Starting model
 
-X1, Y1 = tiles[0][:,0], tiles[0][:, 1]
-X2, Y2 = tiles[1][:,0], tiles[1][:, 1]
 
+wrGlobal = np.zeros(int(actv.sum()))
+
+# Loop over different tile size and break problem until memory usage is preserved
+usedRAM = np.inf
+count = 0
+while usedRAM > maxRAM:
+    print("Tiling:" + str(count))
+    count += 1
+    tiles = Utils.modelutils.tileSurveyPoints(rxLoc, np.ceil(rxLoc.shape[0]/count))
+
+    X1, Y1 = tiles[0][:, 0], tiles[0][:, 1]
+    X2, Y2 = tiles[1][:, 0], tiles[1][:, 1]
+
+    ind_t = np.all([rxLoc[:, 0] >= tiles[0][0, 0], rxLoc[:, 0] <= tiles[1][0, 0],
+                    rxLoc[:, 1] >= tiles[0][0, 1], rxLoc[:, 1] <= tiles[1][0, 1],
+                    surveyMask], axis=0)
+
+    meshLocal = Utils.modelutils.meshBuilder(
+        rxLoc, h, padDist, meshType='TREE', meshGlobal=meshInput,
+        verticalAlignment='center'
+    )
+
+    if topo is not None:
+        meshLocal = Utils.modelutils.refineTree(
+            meshLocal, topo, dtype='surface',
+            nCpad=octreeTopo, finalize=False
+        )
+
+    meshLocal = Utils.modelutils.refineTree(
+        meshLocal, rxLoc[ind_t, :], dtype='surface',
+        nCpad=octreeObs, finalize=True
+    )
+
+    nD, nC = ind_t.sum()*1., meshLocal.nC*1.
+
+    nChunks = n_cpu # Number of chunks
+    cSa, cSb = int(nD/nChunks), int(nC/nChunks) # Chunk sizes
+    usedRAM = nD * nC * 8. * 1e-9
+
+    print(nD, nC, usedRAM)
 
 # Plot data and tiles
 fig, ax1 = plt.figure(), plt.subplot()
-PF.Magnetics.plot_obs_2D(rxLoc, survey.dobs, ax=ax1)
+Utils.PlotUtils.plot2Ddata(rxLoc, survey.dobs, ax=ax1)
 for ii in range(X1.shape[0]):
     ax1.add_patch(Rectangle((X1[ii], Y1[ii]),
                             X2[ii]-X1[ii],
@@ -103,38 +175,9 @@ ax1.set_ylim([Y1.min()-20, Y2.max()+20])
 ax1.set_aspect('equal')
 plt.show()
 
-# LOOP THROUGH TILES
-expf = 1.3
-dx = [mesh.hx.min(), mesh.hy.min()]
-surveyMask = np.ones(survey.nD, dtype='bool')
-# Going through all problems:
-# 1- Pair the survey and problem
-# 2- Add up sensitivity weights
-# 3- Add to the ComboMisfit
-wrGlobal = np.zeros(int(actv.sum()))
-probSize = 0
-# Create first mesh outside the parallel process
-ind_t = np.all([rxLoc[:, 0] >= X1[0], rxLoc[:, 0] <= X2[0],
-                    rxLoc[:, 1] >= Y1[0], rxLoc[:, 1] <= Y2[0],
-                    surveyMask], axis=0)
 
-padDist = np.r_[np.c_[padLen, padLen], np.c_[padLen, padLen], np.c_[padLen, 0]]
+def createLocalProb(rxLoc, wrGlobal, lims, ind):
 
-meshTree = Utils.modelutils.meshBuilder(rxLoc[ind_t, :], h,
-                                      padDist, meshGlobal=mesh,
-                                      meshType='TREE',
-                                      padCore=np.r_[3, 3, 3])
-core = meshTree.vol == meshTree.vol.min()
-center = np.percentile(meshTree.gridCC[core,:], 50,
-                       axis=0, interpolation='nearest')
-
-
-#tree = cKDTree(np.c_[mesh.gridCC[actv, 0],
-#                     mesh.gridCC[actv, 1],
-#                     mesh.gridCC[actv, 2]])
-
-def createLocalProb(rxLoc, wrGlobal, lims):
-    
     # Grab the data for current tile
     ind_t = np.all([rxLoc[:, 0] >= lims[0], rxLoc[:, 0] <= lims[1],
                     rxLoc[:, 1] >= lims[2], rxLoc[:, 1] <= lims[3],
@@ -151,53 +194,66 @@ def createLocalProb(rxLoc, wrGlobal, lims):
     survey_t.std = survey.std[ind_t]
     survey_t.ind = ind_t
 
-    mesh_t = meshTree.copy()
-    
-    tileCenter = np.r_[np.mean(lims[0:2]), np.mean(lims[2:]), center[2]]
-        
-    ind = closestPoints(mesh, tileCenter, gridLoc='CC')
-    
-    shift = np.squeeze(mesh.gridCC[ind, :]) - center
+    meshLocal = Utils.modelutils.meshBuilder(
+        rxLoc, h, padDist, meshType='TREE', meshGlobal=meshInput,
+        verticalAlignment='center'
+    )
 
-    mesh_t.x0 += shift
-    mesh_t.number()
+    if topo is not None:
+        meshLocal = Utils.modelutils.refineTree(
+            meshLocal, topo, dtype='surface',
+            nCpad=octreeTopo, finalize=False
+        )
 
-    actv_t = np.ones(mesh_t.nC, dtype='bool')
+    # Refine the mesh around loc
+    meshLocal = Utils.modelutils.refineTree(
+        meshLocal, rxLoc[ind_t, :], dtype='surface',
+        nCpad=octreeObs, finalize=True
+    )
 
+    actv_t = np.ones(meshLocal.nC, dtype='bool')
+
+    Mesh.TreeMesh.writeUBC(
+          meshLocal, work_dir + out_dir + 'OctreeMesh' + str(tt) + '.msh',
+          models={work_dir + out_dir + 'Active' + str(tt) + '.act': actv_t}
+        )
+
+    print(meshLocal.nC)
     # Create reduced identity map
-    tileMap = Maps.Tile((mesh, actv), (mesh_t, actv_t))
-    tileMap.nCell = 27
+    tileMap = Maps.Tile((mesh, actv), (meshLocal, actv_t))
 
     # Create the forward model operator
-    prob = PF.Magnetics.MagneticIntegral(mesh_t, chiMap=tileMap, actInd=actv_t)
+    prob = PF.Magnetics.MagneticIntegral(
+        meshLocal, chiMap=tileMap, actInd=actv_t, parallelized=True,
+        Jpath=work_dir + out_dir + "Tile" + str(ind) + ".zarr")
+
     survey_t.pair(prob)
 
     # Data misfit function
     dmis = DataMisfit.l2_DataMisfit(survey_t)
     dmis.W = 1./survey_t.std
 
-    wrGlobal += prob.getJtJdiag(None, W=dmis.W)
+    wrGlobal += prob.getJtJdiag(np.ones(tileMap.P.shape[1]), W=dmis.W)
 
-
-#    wrGlobal += np.abs(prob.Jtvec(0, prob.Jvec(0, np.ones(mesh.nC)*1e-4)))
-#    wrGlobal += prob.chiMap.deriv(0).T*wr
+    del meshLocal
 
     # Create combo misfit function
     return dmis, wrGlobal
+
 
 for tt in range(X1.shape[0]):
 
     print("Tile " + str(tt+1) + " of " + str(X1.shape[0]))
 
-    dmis, wrGlobal = createLocalProb(rxLoc, wrGlobal, np.r_[X1[tt], X2[tt], Y1[tt], Y2[tt]])
-    
+    dmis, wrGlobal = createLocalProb(rxLoc, wrGlobal, np.r_[X1[tt], X2[tt], Y1[tt], Y2[tt]], tt)
+
     if tt == 0:
         ComboMisfit = dmis
 
     else:
         ComboMisfit += dmis
 
-print('Sum of all problems:' + str(probSize*1e-6) + ' Mb')
+# print('Sum of all problems:' + str(probSize*1e-6) + ' Mb')
 # Scale global weights for regularization
 
 # Check if global mesh has regions untouched by local problem
@@ -216,7 +272,7 @@ actv = np.all([actv, actvMap*actvGlobal], axis=0)
 actvMap = Maps.InjectActiveCells(mesh, actv, -100)
 idenMap = Maps.IdentityMap(nP=int(np.sum(actv)))
 reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
-reg.norms = driver.lpnorms
+reg.norms = np.c_[driver.lpnorms].T
 
 if driver.eps is not None:
     reg.eps_p = driver.eps[0]
@@ -228,7 +284,7 @@ reg.cell_weights = wrGlobal
 reg.mref = np.zeros(mesh.nC)[actv]
 
 # Add directives to the inversion
-opt = Optimization.ProjectedGNCG(maxIter=40, lower=0., upper=10.,
+opt = Optimization.ProjectedGNCG(maxIter=1, lower=0., upper=10.,
                                  maxIterLS=20, maxIterCG=10, tolCG=1e-4)
 invProb = InvProblem.BaseInvProblem(ComboMisfit, reg, opt)
 betaest = Directives.BetaEstimate_ByEig()
@@ -240,7 +296,7 @@ IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=3,
                               maxIRLSiter=10)
 
 IRLS.target = driver.survey.nD
-update_Jacobi = Directives.UpdateJacobiPrecond()
+update_Jacobi = Directives.UpdatePreconditioner()
 saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap, fileName=work_dir + out_dir + "MAG_Tile")
 inv = Inversion.BaseInversion(invProb,
                               directiveList=[betaest, saveModel,
@@ -249,12 +305,29 @@ inv = Inversion.BaseInversion(invProb,
 # Run the inversion
 mrec = inv.run(m0)
 
+
+#for ind, dmis in enumerate(ComboMisfit.objfcts):
+#
+#    Mesh.TreeMesh.writeUBC(dmis.prob.mesh, work_dir + out_dir +  "Tile" + str(ind) + ".msh",
+#                           models={work_dir + out_dir + "Tile" + str(ind) + ".sus": dmis.prob.chiMap * mrec})
+    # Mesh.TensorMesh.writeUBC(prob.mesh,
+    #                          work_dir + out_dir + "Tile" + str(ind) + ".msh")
+    # Mesh.TensorMesh.writeModelUBC(prob.mesh,
+    #                               work_dir + out_dir + "Tile" + str(ind) + ".sus", prob.mapping() * mrec)
+
+
 # Outputs
-Mesh.TensorMesh.writeUBC(mesh, work_dir + out_dir + "MAG_Tile.msh")
-Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + "MAG_Tile_lp.sus",
-                              actvMap*invProb.model)
-Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + "MAG_Tile_l2.sus",
-                              actvMap*invProb.l2model)
+if mesh._meshType == 'TENSOR':
+    Mesh.TensorMesh.writeUBC(mesh, work_dir + out_dir + "MAG_Tile.msh")
+    Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + "MAG_Tile_lp.sus",
+                                  actvMap*invProb.model)
+    Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + "MAG_Tile_l2.sus",
+                                  actvMap*invProb.l2model)
+else:
+    Mesh.TreeMesh.writeUBC(mesh, work_dir + out_dir + 'MAG_Tile.msh',
+                           models={work_dir + out_dir + 'Model_l2.sus': actvMap*invProb.l2model})
+    Mesh.TreeMesh.writeUBC(mesh, work_dir + out_dir + 'MAG_Tile.msh',
+                           models={work_dir + out_dir + 'Model_lp.sus': actvMap*mrec})
 
 
 # Get predicted data for each tile and write full predicted to file
@@ -267,15 +340,14 @@ else:
     # PF.Magnetics.writeUBCobs(work_dir+out_dir + "Tile" + str(ind) + ".pre",
     #                          survey, survey.dpred(mrec))
 
-PF.Magnetics.writeUBCobs(work_dir+out_dir + "MAG_Tile_Inv.pre",
-                         survey, dpred)
+Utils.io_utils.writeUBCmagneticsObservations(
+    work_dir+out_dir + "Predicted_lp.pre", survey, dpred
+    )
+Utils.io_utils.writeUBCmagneticsObservations(
+    work_dir + out_dir + 'Predicted_l2.pre', survey,
+    survey.dpred(invProb.l2model)
+    )
 
 # # %% OUTPUT models for each tile
 # model = Mesh.TensorMesh.readModelUBC(driver.mesh,
 #                                      work_dir + '\Effec_sus_20mGrid.sus')
-# for ind, prob in enumerate(problems):
-#     Mesh.TensorMesh.writeUBC(prob.mesh,
-#                              work_dir + out_dir + "Tile" + str(ind) + ".msh")
-#     Mesh.TensorMesh.writeModelUBC(prob.mesh,
-#                                   work_dir + out_dir + "Tile" + str(ind) + ".sus", prob.mapping() * model)
-

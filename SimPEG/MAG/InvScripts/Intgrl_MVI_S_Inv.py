@@ -15,15 +15,11 @@ import time
 
 if __name__ == '__main__':
     # Define the inducing field parameter
-    # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
-#    work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
-    work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
-    #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\SingleBlock\\Simpeg\\"
-    #work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\"
-#    work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
-    # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\Airborne"
+    # work_dir = "C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Synthetic\\Nut_Cracker\\"
+    # work_dir = "C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Synthetic\\Triple_Block_lined\\"
+    work_dir = "C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Synthetic\\Block_Gaussian_topo\\"
     meshType = 'TreeMesh'
-    #work_dir = "C:\\Users\\DominiqueFournier\\Desktop\\Magnetics\\"
+    #work_dir = "C:\\\Users\\DominiqueFournier\\Desktop\\Magnetics\\"
     out_dir = "SimPEG_MVIS\\"
     input_file = "SimPEG_MAG.inp"
 
@@ -32,6 +28,7 @@ if __name__ == '__main__':
     # Read in the input file which included all parameters at once
     # (mesh, topo, model, survey, inv param, etc.)
     driver = PF.MagneticsDriver.MagneticsDriver_Inv(work_dir + "\\" + input_file)
+
     os.system('mkdir ' + work_dir+out_dir)
     #%% Access the mesh and survey information
     meshInput = driver.mesh
@@ -98,7 +95,7 @@ if __name__ == '__main__':
     idenMap = Maps.IdentityMap(nP=3*nC)
 
     # Create the forward model operator
-    prob = PF.Magnetics.MagneticVector(mesh, chiMap=idenMap,
+    prob = PF.Magnetics.MagneticIntegral(mesh, chiMap=idenMap, modelType='vector',
                                          actInd=actv, parallelized=True)
 
     # Explicitely set starting model
@@ -142,20 +139,20 @@ if __name__ == '__main__':
     dmis.W = 1./survey.std
 
     # Add directives to the inversion
-    opt = Optimization.ProjectedGNCG(maxIter=7, lower=-10., upper=10.,
+    opt = Optimization.ProjectedGNCG(maxIter=15, lower=-10., upper=10.,
                                      maxIterCG=20, tolCG=1e-3)
 
     invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
     betaest = Directives.BetaEstimate_ByEig()
 
-    # Here is where the norms are applied
+    # This Directive controls the update for sparsity
     IRLS = Directives.Update_IRLS(f_min_change=1e-3,
                                   minGNiter=1)
 
-    update_Jacobi = Directives.UpdateJacobiPrecond()
+    update_Jacobi = Directives.UpdatePreconditioner()
     targetMisfit = Directives.TargetMisfit()
 
-    saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
+    saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap, vector=True)
     saveModel.fileName = work_dir + out_dir + 'MVI_C'
     inv = Inversion.BaseInversion(invProb,
                                   directiveList=[betaest, IRLS, update_Jacobi,
@@ -169,13 +166,13 @@ if __name__ == '__main__':
 
     amp =  (np.sum(np.c_[x, y, z]**2., axis=1))**0.5
 
-    if isinstance(mesh, Mesh.TreeMesh):
-        Mesh.TreeMesh.writeUBC(mesh, work_dir + out_dir + 'OctreeMesh.msh',
-                           models={work_dir + out_dir + 'MVI_C_amp.sus': amp})
-    else:
-        mesh.writeModelUBC(work_dir+out_dir + 'MVI_C_amp.sus', amp)
+    # if isinstance(mesh, Mesh.TreeMesh):
+    #     Mesh.TreeMesh.writeUBC(mesh, work_dir + out_dir + 'OctreeMesh.msh',
+    #                        models={work_dir + out_dir + 'MVI_C_amp.sus': amp})
+    # else:
+    #     mesh.writeModelUBC(work_dir+out_dir + 'MVI_C_amp.sus', amp)
 
-    PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MVI_C_pred.pre', survey, invProb.dpred)
+    Utils.io_utils.writeUBCmagneticsObservations(work_dir+out_dir + 'MVI_C_pred.pre', survey, invProb.dpred)
 
     #mstart = PF.Magnetics.readVectorModel(mesh, work_dir + 'mviinv_019.fld')
     #mstart = Utils.matutils.xyz2atp(mstart.reshape((nC,3),order='F'))
@@ -195,6 +192,7 @@ if __name__ == '__main__':
 
     # Create a regularization
     reg_a = Regularization.Sparse(mesh, indActive=actv, mapping=wires.amp)
+
     reg_a.norms = np.c_[driver.lpnorms[:4]].T
     if driver.eps is not None:
         reg_a.eps_p = driver.eps[0]
@@ -250,9 +248,9 @@ if __name__ == '__main__':
     # Special directive specific to the mag amplitude problem. The sensitivity
     # weights are update between each iteration.
     ProjSpherical = Directives.ProjSpherical()
-    update_SensWeight = Directives.UpdateSensWeighting()
-    update_Jacobi = Directives.UpdateJacobiPrecond()
-    saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
+    update_SensWeight = Directives.UpdateSensitivityWeights()
+    update_Jacobi = Directives.UpdatePreconditioner()
+    saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap, vector=True)
     saveModel.fileName = work_dir+out_dir + 'MVI_S'
 
     inv = Inversion.BaseInversion(invProb,
@@ -265,49 +263,49 @@ if __name__ == '__main__':
     #%%
     print('Total runtime: ' + str(time.time()-tstart))
 
-    if isinstance(mesh, Mesh.TreeMesh):
-        Mesh.TreeMesh.writeUBC(
-                mesh, work_dir + out_dir + 'OctreeMesh.msh',
-                models={
-                    work_dir + out_dir + 'MVI_S_amp.sus': actvMap * (mrec_MVI_S[:nC])
-                }
-        )
-        Mesh.TreeMesh.writeUBC(
-                mesh, work_dir + out_dir + 'OctreeMesh.msh',
-                models={
-                    work_dir + out_dir + 'MVI_S_theta.sus': actvMap * (mrec_MVI_S[nC:2*nC])
-                }
-        )
-        Mesh.TreeMesh.writeUBC(
-                mesh, work_dir + out_dir + 'OctreeMesh.msh',
-                models={
-                    work_dir + out_dir + 'MVI_S_phi.sus': actvMap * (mrec_MVI_S[2*nC:])
-                }
-        )
-    else:
-        Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_amp.sus',
-                                      actvMap * (mrec_MVI_S[:nC]))
-        Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_theta.sus',
-                                      actvMap * (mrec_MVI_S[nC:2*nC]))
-        Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_phi.sus',
-                                      actvMap * (mrec_MVI_S[2*nC:]))
+    # if isinstance(mesh, Mesh.TreeMesh):
+    #     Mesh.TreeMesh.writeUBC(
+    #             mesh, work_dir + out_dir + 'OctreeMesh.msh',
+    #             models={
+    #                 work_dir + out_dir + 'MVI_S_amp.sus': actvMap * (mrec_MVI_S[:nC])
+    #             }
+    #     )
+    #     Mesh.TreeMesh.writeUBC(
+    #             mesh, work_dir + out_dir + 'OctreeMesh.msh',
+    #             models={
+    #                 work_dir + out_dir + 'MVI_S_theta.sus': actvMap * (mrec_MVI_S[nC:2*nC])
+    #             }
+    #     )
+    #     Mesh.TreeMesh.writeUBC(
+    #             mesh, work_dir + out_dir + 'OctreeMesh.msh',
+    #             models={
+    #                 work_dir + out_dir + 'MVI_S_phi.sus': actvMap * (mrec_MVI_S[2*nC:])
+    #             }
+    #     )
+    # else:
+    #     Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_amp.sus',
+    #                                   actvMap * (mrec_MVI_S[:nC]))
+    #     Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_theta.sus',
+    #                                   actvMap * (mrec_MVI_S[nC:2*nC]))
+    #     Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_phi.sus',
+    #                                   actvMap * (mrec_MVI_S[2*nC:]))
 
-        Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_l2_amp.sus',
-                                      actvMap * (invProb.l2model[:nC]))
-        Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_l2_theta.sus',
-                                      actvMap * (invProb.l2model[nC:2*nC]))
-        Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_l2_phi.sus',
-                                      actvMap * (invProb.l2model[2*nC:]))
+    #     Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_l2_amp.sus',
+    #                                   actvMap * (invProb.l2model[:nC]))
+    #     Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_l2_theta.sus',
+    #                                   actvMap * (invProb.l2model[nC:2*nC]))
+    #     Mesh.TensorMesh.writeModelUBC(mesh, work_dir+out_dir + 'MVI_S_l2_phi.sus',
+    #                                   actvMap * (invProb.l2model[2*nC:]))
 
-        vec_xyz = Utils.matutils.atp2xyz(invProb.l2model.reshape((nC, 3), order='F'))
+    #     vec_xyz = Utils.matutils.atp2xyz(invProb.l2model.reshape((nC, 3), order='F'))
 
-        vec_x = actvMap * vec_xyz[:nC]
-        vec_y = actvMap * vec_xyz[nC:2*nC]
-        vec_z = actvMap * vec_xyz[2*nC:]
+    #     vec_x = actvMap * vec_xyz[:nC]
+    #     vec_y = actvMap * vec_xyz[nC:2*nC]
+    #     vec_z = actvMap * vec_xyz[2*nC:]
 
-        vec = np.c_[vec_x, vec_y, vec_z]
+    #     vec = np.c_[vec_x, vec_y, vec_z]
 
-        PF.MagneticsDriver.writeVectorUBC(mesh,
-                                          work_dir+out_dir + 'MVI_S_l2_VEC.fld', vec)
+    #     PF.MagneticsDriver.writeVectorUBC(mesh,
+    #                                       work_dir+out_dir + 'MVI_S_l2_VEC.fld', vec)
 
-    PF.Magnetics.writeUBCobs(work_dir+out_dir + 'MVI_S_pred.pre', survey, invProb.dpred)
+    Utils.io_utils.writeUBCmagneticsObservations(work_dir+out_dir + 'MVI_S_pred.pre', survey, invProb.dpred)
