@@ -15,12 +15,13 @@ import matplotlib.pyplot as plt
 import csv as reader
 
 # # USER INPUTS # #
-workDir = "C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Kevitsa\\Kevitsa\\Modeling\\MAG\\Airborne"
-dFile = "VTEM_FLT40m_IGRF53550nT.dat"
-dType = 'MAG'
-method = ('radius', 75)#('random', 0.2)  # #
+# workDir = "C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Kevitsa\\Kevitsa\\Modeling\\MAG\\Airborne"
+workDir = "C:\\Users\\DominiqueFournier\\Desktop\\Workspace\\Paolo\\"
+dFile = "Obs.grv"
+dType = 'GRAV'
+method = ('radius', 1000)#('random', 0.2)  # #
 
-dFileOut = 'VTEM_FLT75m_IGRF53550nT.dat'
+dFileOut = 'Obs_FLT1km.grv'
 
 # # SCRIPT STARTS HERE # #
 if dType == 'MAG':
@@ -102,13 +103,13 @@ if dType == 'MAG':
 
 elif dType == 'GRAV':
 
-    rxLoc = BaseGrav.RxObs(locXYZ[indx, :])
-    srcField = BaseGrav.SrcField([rxLoc])
-    survey_dwnS = BaseGrav.LinearSurvey_dwnS(srcField)
+    rxLoc = PF.BaseGrav.RxObs(locXYZ[indx, :])
+    srcField = PF.BaseGrav.SrcField([rxLoc])
+    survey_dwnS = PF.BaseGrav.LinearSurvey(srcField)
     survey_dwnS.dobs = survey.dobs[indx]
     survey_dwnS.std = survey.std[indx]
 
-    Utils.io_utils.writeUBCgravityObservations(workDir + '\\' + dFileOut, survey_dwnS)
+    Utils.io_utils.writeUBCgravityObservations(workDir + '\\' + dFileOut, survey_dwnS, survey_dwnS.dobs)
 
 elif dType == 'XYZ':
 

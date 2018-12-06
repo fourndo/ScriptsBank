@@ -2,6 +2,7 @@
 from SimPEG import Mesh, Directives, Maps, InvProblem, Optimization, Utils
 from SimPEG import DataMisfit, Inversion, Regularization, mkvc
 import SimPEG.PF as PF
+from SimPEG.Utils import sdiag, speye, kron3
 import pylab as plt
 import os
 import numpy as np
@@ -9,18 +10,19 @@ from matplotlib.patches import Rectangle
 
 # work_dir = 'C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Synthetic\\SingleBlock\\GRAV\\'
 # work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\GRAV\\'
-# work_dir = "C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Hayward\\"
-work_dir = "C:\\Users\\DominiqueFournier\\Desktop\\Workspace\\Paolo\\"
+# work_dir = ".\\"
+work_dir = 'C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Synthetic\\SingleBlock\\GRAV\\'
+#
 inpFile = 'SimPEG_GRAV.inp'
 out_dir = "SimPEG_Grav_TileInv\\"
 dsep = os.path.sep
 
-padLen = 25000
-maxRAM = 5.0
-n_cpu = 8
+padLen = 2000
+maxRAM = 2
+n_cpu = 12
 
-octreeObs = [10, 10, 10, 10]  # Octree levels below observation points
-octreeTopo = [0, 1]
+octreeObs = [5, 10, 5, 5, 3]  # Octree levels below observation points
+octreeTopo = [0, 0, 2]
 
 meshType = 'TREE'
 
@@ -222,8 +224,44 @@ for tt in range(X1.shape[0]):
     else:
         ComboMisfit += dmis
 
-# print('Sum of all problems:' + str(probSize*1e-6) + ' Mb')
-# Scale global weights for regularization
+# Load the rotation parameters and create gradients
+# mx = mesh.readModelUBC(work_dir + 'NormalX.dat')
+# my = mesh.readModelUBC(work_dir + 'NormalY.dat')
+# mz = mesh.readModelUBC(work_dir + 'NormalZ.dat')
+
+# vec = np.c_[mx, my, mz]
+
+# nC = mesh.nC
+# atp = Utils.matutils.xyz2atp(vec)
+
+# theta = atp[nC:2*nC]
+# phi = atp[2*nC:]
+
+theta = np.ones(mesh.nC) * 45
+phi = np.ones(mesh.nC) * 0
+
+indActive = np.zeros(mesh.nC, dtype=bool)
+indActive[actv] = True
+
+print("Building operators")
+Pac = Utils.speye(mesh.nC)[:, indActive]
+
+Dx1 = Regularization.getDiffOpRot(mesh, np.deg2rad(0.), theta, phi, 'X')
+Dy1 = Regularization.getDiffOpRot(mesh, np.deg2rad(0.), theta, phi, 'Y')
+Dz1 = Regularization.getDiffOpRot(mesh, np.deg2rad(0.), theta, phi, 'Z')
+
+Dx1 = Pac.T * Dx1 * Pac
+Dy1 = Pac.T * Dy1 * Pac
+Dz1 = Pac.T * Dz1 * Pac
+
+
+Dx2 = Regularization.getDiffOpRot(mesh, np.deg2rad(0.), theta, phi, 'X', forward=False)
+Dy2 = Regularization.getDiffOpRot(mesh, np.deg2rad(0.), theta, phi, 'Y', forward=False)
+Dz2 = Regularization.getDiffOpRot(mesh, np.deg2rad(0.), theta, phi, 'Z', forward=False)
+
+Dx2 = Pac.T * Dx2 * Pac
+Dy2 = Pac.T * Dy2 * Pac
+Dz2 = Pac.T * Dz2 * Pac
 
 # Check if global mesh has regions untouched by local problem
 actvGlobal = wrGlobal != 0
@@ -238,20 +276,66 @@ wrGlobal = (wrGlobal/np.max(wrGlobal))
 #%% Create a regularization
 actvMap = Maps.InjectActiveCells(mesh, actv, 0)
 actv = np.all([actv, actvMap*actvGlobal], axis=0)
-actvMap = Maps.InjectActiveCells(mesh, actv, -100)
+actvMap = Maps.InjectActiveCells(mesh, actv, 0)
 idenMap = Maps.IdentityMap(nP=int(np.sum(actv)))
-reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
-reg.norms = np.c_[driver.lpnorms].T
+# reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
+# reg.norms = np.c_[driver.lpnorms].T
 
-if driver.eps is not None:
-    reg.eps_p = driver.eps[0]
-    reg.eps_q = driver.eps[1]
+# if driver.eps is not None:
+#     reg.eps_p = driver.eps[0]
+#     reg.eps_q = driver.eps[1]
 
-reg.cell_weights = wrGlobal
-reg.mref = np.zeros(mesh.nC)[actv]
+# reg.cell_weights = wrGlobal
+# reg.mref = np.zeros(mesh.nC)[actv]
+
+nC = actv.sum()
+
+reg1 = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap,
+                            gradientType='component')
+reg1.norms = np.c_[driver.lpnorms].T
+# reg1.alpha_x = 1#((Dx1.max() - Dx1.min())/2)**-2.
+# reg1.alpha_y = 3#((Dy1.max() - Dy1.min())/2)**-2.
+# reg1.alpha_z = 4
+# reg1.alpha_y = 4
+# reg1.eps_p = 1e-3
+# reg1.eps_q = 1e-3
+reg1.cell_weights = wrGlobal
+reg1.mref = np.zeros(mesh.nC)[actv]
+
+reg1.objfcts[1].regmesh._cellDiffxStencil = Dx1
+reg1.objfcts[1].regmesh._aveCC2Fx = speye(nC)
+
+reg1.objfcts[2].regmesh._cellDiffyStencil = Dy1
+reg1.objfcts[2].regmesh._aveCC2Fy = speye(nC)
+
+reg1.objfcts[3].regmesh._cellDiffzStencil = Dz1
+reg1.objfcts[3].regmesh._aveCC2Fz = speye(nC)
+
+reg2 = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap,
+                            gradientType='component')
+reg2.norms = np.c_[driver.lpnorms].T
+# reg1.alpha_x = 1#((Dx1.max() - Dx1.min())/2)**-2.
+# reg1.alpha_y = 3#((Dy1.max() - Dy1.min())/2)**-2.
+# reg2.alpha_z = 4
+# reg2.alpha_y = 4
+# reg2.eps_p = 1e-3
+reg2.cell_weights = wrGlobal
+reg2.mref = np.zeros(mesh.nC)[actv]
+
+
+reg2.objfcts[1].regmesh._cellDiffxStencil = Dx2
+reg2.objfcts[1].regmesh._aveCC2Fx = speye(nC)
+
+reg2.objfcts[2].regmesh._cellDiffyStencil = Dy2
+reg2.objfcts[2].regmesh._aveCC2Fy = speye(nC)
+
+reg2.objfcts[3].regmesh._cellDiffzStencil = Dz2
+reg2.objfcts[3].regmesh._aveCC2Fz = speye(nC)
+
+reg= reg1 + reg2
 
 # Add directives to the inversion
-opt = Optimization.ProjectedGNCG(maxIter=20, lower=-10, upper=10.,
+opt = Optimization.ProjectedGNCG(maxIter=40, lower=-10, upper=10.,
                                  maxIterLS=20, maxIterCG=20, tolCG=1e-4)
 invProb = InvProblem.BaseInvProblem(ComboMisfit, reg, opt)
 betaest = Directives.BetaEstimate_ByEig(beta0_ratio=1e0)
@@ -260,7 +344,7 @@ betaest = Directives.BetaEstimate_ByEig(beta0_ratio=1e0)
 # Use pick a treshold parameter empirically based on the distribution of
 #  model parameters
 IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=1,
-                              maxIRLSiter=10)
+                              maxIRLSiter=20)
 
 IRLS.target = driver.survey.nD
 update_Jacobi = Directives.UpdatePreconditioner()
@@ -302,10 +386,10 @@ else:
 Utils.io_utils.writeUBCgravityObservations(
     work_dir+out_dir + "Predicted_lp.pre", survey, dpred
     )
-Utils.io_utils.writeUBCgravityObservations(
-    work_dir + out_dir + 'Predicted_l2.pre', survey,
-    survey.dpred(invProb.l2model)
-    )
+# Utils.io_utils.writeUBCgravityObservations(
+#     work_dir + out_dir + 'Predicted_l2.pre', survey,
+#     survey.dpred(invProb.l2model)
+#     )
 
 # ## OLD
 # tiles = range(X1.shape[0])

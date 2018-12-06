@@ -284,7 +284,7 @@ reg.cell_weights = wrGlobal
 reg.mref = np.zeros(mesh.nC)[actv]
 
 # Add directives to the inversion
-opt = Optimization.ProjectedGNCG(maxIter=1, lower=0., upper=10.,
+opt = Optimization.ProjectedGNCG(maxIter=10, lower=0., upper=10.,
                                  maxIterLS=20, maxIterCG=10, tolCG=1e-4)
 invProb = InvProblem.BaseInvProblem(ComboMisfit, reg, opt)
 betaest = Directives.BetaEstimate_ByEig()
@@ -292,7 +292,7 @@ betaest = Directives.BetaEstimate_ByEig()
 # Here is where the norms are applied
 # Use pick a treshold parameter empirically based on the distribution of
 #  model parameters
-IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=3,
+IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=1,
                               maxIRLSiter=10)
 
 IRLS.target = driver.survey.nD

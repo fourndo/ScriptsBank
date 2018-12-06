@@ -18,10 +18,10 @@ conda install -c clinicalgraphics vtk
 """
 
 
-work_dir = 'C:/Users/DominiqueFournier/Dropbox/UBC/ResearchDomFournier/Paper_II_StructuralConstraints/Notebook/'
+work_dir = 'C:/Users/DominiqueFournier/Desktop/Workspace/Paolo/'
 
-mshfile = 'Mesh_20m.msh'
-outFile = 'TopoFold_20m.den'
+mshfile = 'meshWide.msh'
+outFile = 'BasementModel.den'
 # Load mesh file
 mesh = Mesh.TensorMesh.readUBC(work_dir + mshfile)
 
@@ -29,16 +29,15 @@ mesh = Mesh.TensorMesh.readUBC(work_dir + mshfile)
 #[B,M,dobs] = PF.BaseMag.readUBCmagObs(obsfile)
 
 # Read in topo surface
-topsurf = work_dir + "Topo.ts" #work_dir+'CDED_Lake_Coarse.ts'
-geosurf = [[work_dir+'Fold_Tilted_noProp_top.ts', True, False],
-           [work_dir+'Fold_Tilted_noProp.ts', True, False]]
+topsurf = None #work_dir + "Topo.ts" #work_dir+'CDED_Lake_Coarse.ts'
+geosurf = [[work_dir+'Basement_TOP_GOCAD_ASCII.ts', True, True]]
 
 # Background density
 bkgr = 0
 airc = -100
 
 # Units
-vals = np.asarray([0.15, 0, 3, 4, 5, 6, 7])
+vals = np.asarray([1, 2, 3, 4, 5, 6, 7])
 
 #%% Script starts here
 # # Create a grid of observations and offset the z from topo
@@ -50,7 +49,9 @@ model = np.ones(mesh.nC) * bkgr
 
 
 def read_GOCAD_ts(tsfile):
-    """Read GOCAD triangulated surface (*.ts) file
+    """
+
+    Read GOCAD triangulated surface (*.ts) file
     INPUT:
     tsfile: Triangulated surface
 
@@ -60,52 +61,57 @@ def read_GOCAD_ts(tsfile):
             is important and describes the normal
             n = cross( (P2 - P1 ) , (P3 - P1) )
 
-
-    Created on Jan 13th, 2016
-
     Author: @fourndo
+
+
+    .. note::
+
+        Remove all attributes from the GoCAD surface before exporting it!
+
     """
 
     fid = open(tsfile, 'r')
     line = fid.readline()
 
     # Skip all the lines until the vertices
-    while re.match('TFACE', line) == None:
-        line = fid.readline()
+    VRTX, TRGL = [], []
+    while 'END' not in line:
 
-    line = fid.readline()
-    vrtx = []
+        while 'VRTX' not in line:
+            line = fid.readline()
 
-    # Run down all the vertices and save in array
-    while re.match('VRTX', line):
-        l_input = re.split('[\s*]', line)
-        temp = np.array(l_input[2:5])
-        vrtx.append(temp.astype(np.float))
+        vrtx = []
+        # Run down all the vertices and save in array
+        while np.any(['VRTX' in line, 'PVRTX' in line]):
+            l_input = re.split('[\s*]', line)
+            temp = np.array(l_input[3:6])
 
-        # Read next line
-        line = fid.readline()
+            vrtx.append(temp.astype(np.float))
 
-    vrtx = np.asarray(vrtx)
+            # Read next line
+            line = fid.readline()
 
-    # Skip lines to the triangles
-    while re.match('TRGL', line) == None:
-        line = fid.readline()
+        VRTX += [np.asarray(vrtx)]
 
-    # Run down the list of triangles
-    trgl = []
+        # Skip lines to the triangles
+        while 'TRGL' not in line:
+            line = fid.readline()
 
-    # Run down all the vertices and save in array
-    while re.match('TRGL', line):
-        l_input = re.split('[\s*]', line)
-        temp = np.array(l_input[1:4])
-        trgl.append(temp.astype(np.int))
+        # Run down the list of triangles
+        trgl = []
 
-        # Read next line
-        line = fid.readline()
+        # Run down all the vertices and save in array
+        while 'TRGL' in line:
+            l_input = re.split('[\s*]', line)
+            temp = np.array(l_input[1:4])
+            trgl.append(temp.astype(np.int))
 
-    trgl = np.asarray(trgl)
+            # Read next line
+            line = fid.readline()
 
-    return vrtx, trgl
+        TRGL += [np.asarray(trgl)]
+
+    return VRTX, TRGL
 
 
 def gocad2vtk(gcFile, mesh, bcflag, inflag):
@@ -116,6 +122,7 @@ def gocad2vtk(gcFile, mesh, bcflag, inflag):
     """
     print("Reading GOCAD ts file...")
     vrtx, trgl = read_GOCAD_ts(gcFile)
+    vrtx, trgl = np.vstack(vrtx), np.vstack(trgl)
     # Adjust the index
     trgl = trgl - 1
 
