@@ -18,19 +18,20 @@ conda install -c clinicalgraphics vtk
 """
 
 
-work_dir = 'C:/Users/DominiqueFournier/Desktop/Workspace/Paolo/'
+work_dir = 'C:/Users/DominiqueFournier/Dropbox/Projects/Kevitsa/Kevitsa/Data/Kevitsa_Gocad/'
 
-mshfile = 'meshWide.msh'
-outFile = 'BasementModel.den'
+mshfile = 'C:/Users/DominiqueFournier/Dropbox/Projects/Kevitsa/Kevitsa/Modeling/MAG/Mesh_global_50m_v3.msh'
+outFile = 'Contacts.mod'
 # Load mesh file
-mesh = Mesh.TensorMesh.readUBC(work_dir + mshfile)
 
+mesh = Mesh.TensorMesh.readUBC(mshfile)
+# mesh = Mesh.TreeMesh.readUBC(mshfile)
 # Load in observation file
 #[B,M,dobs] = PF.BaseMag.readUBCmagObs(obsfile)
 
 # Read in topo surface
 topsurf = None #work_dir + "Topo.ts" #work_dir+'CDED_Lake_Coarse.ts'
-geosurf = [[work_dir+'Basement_TOP_GOCAD_ASCII.ts', True, True]]
+geosurf = [[work_dir+'UBC_Faults_B.ts', False, False]]
 
 # Background density
 bkgr = 0
@@ -79,13 +80,14 @@ def read_GOCAD_ts(tsfile):
 
         while 'VRTX' not in line:
             line = fid.readline()
+            if 'END\n' in line:
+                return VRTX, TRGL
 
         vrtx = []
         # Run down all the vertices and save in array
         while np.any(['VRTX' in line, 'PVRTX' in line]):
             l_input = re.split('[\s*]', line)
-            temp = np.array(l_input[3:6])
-
+            temp = np.array(l_input[2:5])
             vrtx.append(temp.astype(np.float))
 
             # Read next line
@@ -120,7 +122,7 @@ def gocad2vtk(gcFile, mesh, bcflag, inflag):
     mesh with in the structure.
 
     """
-    print("Reading GOCAD ts file...")
+    print("Reading GOCAD ts file...", bcflag, inflag)
     vrtx, trgl = read_GOCAD_ts(gcFile)
     vrtx, trgl = np.vstack(vrtx), np.vstack(trgl)
     # Adjust the index

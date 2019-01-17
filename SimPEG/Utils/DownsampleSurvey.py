@@ -19,9 +19,9 @@ import csv as reader
 workDir = "C:\\Users\\DominiqueFournier\\Desktop\\Workspace\\Paolo\\"
 dFile = "Obs.grv"
 dType = 'GRAV'
-method = ('radius', 1000)#('random', 0.2)  # #
+method = ('radius', 5000)#('random', 0.2)  # #
 
-dFileOut = 'Obs_FLT1km.grv'
+dFileOut = 'Obs_FLT5km.grv'
 
 # # SCRIPT STARTS HERE # #
 if dType == 'MAG':

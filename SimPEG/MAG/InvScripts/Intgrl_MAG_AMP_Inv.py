@@ -29,7 +29,7 @@ import os
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Triple_Block_lined\\"
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
 work_dir = "C:\\Users\\DominiqueFournier\\Desktop\\Craig\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Block_Gaussian_topo\\"
+work_dir = "C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Synthetic\\Block_Gaussian_topo\\"
 
 out_dir = "SimPEG_AMP_Inv\\"
 input_file = "SimPEG_MAG.inp"
@@ -70,7 +70,7 @@ prob.solverOpts['accuracyTol'] = 1e-4
 survey.pair(prob)
 
 # Create a regularization function, in this case l2l2
-reg = Regularization.Simple(mesh, indActive=surf)
+reg = Regularization.Sparse(mesh, indActive=surf)
 reg.mref = np.zeros(nC)
 
 # Specify how the optimization will proceed, set susceptibility bounds to inf

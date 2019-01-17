@@ -43,15 +43,19 @@ work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\TKC\\DIGHEM_TMI\\"
 
 out_dir = "SimPEG_Susc_TileInv\\"
 input_file = "SimPEG_MAG.inp"
-padLen = 2000
+
+dsep = os.path.sep
+
+
+padLen = 1000
 maxRAM = 0.1
-maxNpoints = 500
 n_cpu = 8
 
-octreeObs = [5, 5, 3, 3, 3]  # Octree levels below observation points
-octreeTopo = [0, 1]
+octreeObs = [5, 20, 5]  # Octree levels below observation points
+octreeTopo = [0, 0, 3]
 
 meshType = 'TREE'
+
 
 # %%
 # Read in the input file which included all parameters at once
@@ -63,8 +67,17 @@ os.system('if not exist ' + work_dir + out_dir + ' mkdir ' + work_dir+out_dir)
 # Access the mesh and survey information
 meshInput = driver.mesh
 survey = driver.survey
-topo = driver.topo
 rxLoc = survey.srcField.rxList[0].locs
+
+topo = None
+if driver.topofile is not None:
+    topo = np.genfromtxt(driver.basePath + driver.topofile,
+                         skip_header=1)
+else:
+    # Grab the top coordinate and make a flat topo
+    indTop = meshInput.gridCC[:, 2] == meshInput.vectorCCz[-1]
+    topo = meshInput.gridCC[indTop, :]
+    topo[:, 2] += meshInput.hz.min()/2. + 1e-8
 
 # # TILE THE PROBLEM
 # Define core mesh properties
@@ -128,8 +141,8 @@ usedRAM = np.inf
 count = 0
 while usedRAM > maxRAM:
     print("Tiling:" + str(count))
-    count += 1
-    tiles = Utils.modelutils.tileSurveyPoints(rxLoc, np.ceil(rxLoc.shape[0]/count))
+
+    tiles = Utils.modelutils.tileSurveyPoints(rxLoc, count)
 
     X1, Y1 = tiles[0][:, 0], tiles[0][:, 1]
     X2, Y2 = tiles[1][:, 0], tiles[1][:, 1]
@@ -159,7 +172,7 @@ while usedRAM > maxRAM:
     nChunks = n_cpu # Number of chunks
     cSa, cSb = int(nD/nChunks), int(nC/nChunks) # Chunk sizes
     usedRAM = nD * nC * 8. * 1e-9
-
+    count += 1
     print(nD, nC, usedRAM)
 
 # Plot data and tiles
@@ -237,6 +250,7 @@ def createLocalProb(rxLoc, wrGlobal, lims, ind):
 
     del meshLocal
 
+
     # Create combo misfit function
     return dmis, wrGlobal
 
@@ -273,19 +287,12 @@ actvMap = Maps.InjectActiveCells(mesh, actv, -100)
 idenMap = Maps.IdentityMap(nP=int(np.sum(actv)))
 reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
 reg.norms = np.c_[driver.lpnorms].T
-
-if driver.eps is not None:
-    reg.eps_p = driver.eps[0]
-    reg.eps_q = driver.eps[1]
-
-reg.eps_p = 1e-3
-reg.eps_q = 1e-3
 reg.cell_weights = wrGlobal
-reg.mref = np.zeros(mesh.nC)[actv]
+reg.mref = np.ones(mesh.nC)[actv] * np.mean(driver.mref)
 
 # Add directives to the inversion
-opt = Optimization.ProjectedGNCG(maxIter=10, lower=0., upper=10.,
-                                 maxIterLS=20, maxIterCG=10, tolCG=1e-4)
+opt = Optimization.ProjectedGNCG(maxIter=30, lower=0., upper=10.,
+                                 maxIterLS=20, maxIterCG=20, tolCG=1e-4)
 invProb = InvProblem.BaseInvProblem(ComboMisfit, reg, opt)
 betaest = Directives.BetaEstimate_ByEig()
 

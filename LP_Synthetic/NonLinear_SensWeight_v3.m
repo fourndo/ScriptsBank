@@ -405,7 +405,7 @@ for ii = 1 : size(x_0,1)
         dm = m_out-m;
         
 
-        width = 4*((m(1)-m_out(1))^2 + (m(2)-m_out(2))^2)^0.25 / pi;
+        width = 4*((m(1)-m_out(1))^2 + (m(2)-m_out(2))^2)^0.25 / pi+1e-8;
         plot([m(1) m_out(1)], [m(2) m_out(2)], 'r', 'LineWidth',width)
         
 
