@@ -33,13 +33,13 @@ import os
 
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Kevitsa\\Modeling\\MAG\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\\Research\\Synthetic\\Block_Gaussian_topo\\"
-# work_dir = "C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Synthetic\\Nut_Cracker\\"
+work_dir = "C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Synthetic\\Nut_Cracker\\"
 #work_dir = "C:\\Egnyte\\Private\\dominiquef\\Projects\\4559_CuMtn_ZTEM\\Modeling\\MAG\\A1_Fenton\\"
 # work_dir = 'C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Kevitsa\\Kevitsa\\Modeling\\MAG\\Airborne\\'
 # work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\CraigModel\\MAG\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Yukon\\Modeling\\MAG\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Triple_Block_lined\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\TKC\\DIGHEM_TMI\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\TKC\\DIGHEM_TMI\\"
 
 out_dir = "SimPEG_Susc_TileInv\\"
 input_file = "SimPEG_MAG.inp"
@@ -48,11 +48,11 @@ dsep = os.path.sep
 
 
 padLen = 1000
-maxRAM = 0.1
-n_cpu = 8
+maxRAM = .01
+n_cpu = 4
 
-octreeObs = [5, 20, 5]  # Octree levels below observation points
-octreeTopo = [0, 0, 3]
+octreeObs = [2,0] #[5, 20, 5]  # Octree levels below observation points
+octreeTopo = [0,1] #[0, 0, 3]
 
 meshType = 'TREE'
 
@@ -135,22 +135,24 @@ else:
 
 
 wrGlobal = np.zeros(int(actv.sum()))
-
+actvMap = Maps.InjectActiveCells(mesh, actv, 1e-8)
 # Loop over different tile size and break problem until memory usage is preserved
 usedRAM = np.inf
 count = 0
 while usedRAM > maxRAM:
     print("Tiling:" + str(count))
 
-    tiles = Utils.modelutils.tileSurveyPoints(rxLoc, count)
+    tiles, binCount = Utils.modelutils.tileSurveyPoints(rxLoc, count)
+
+    # Grab the smallest bin and generate a temporary mesh
+    indMin = np.argmin(binCount)
 
     X1, Y1 = tiles[0][:, 0], tiles[0][:, 1]
     X2, Y2 = tiles[1][:, 0], tiles[1][:, 1]
 
-    ind_t = np.all([rxLoc[:, 0] >= tiles[0][0, 0], rxLoc[:, 0] <= tiles[1][0, 0],
-                    rxLoc[:, 1] >= tiles[0][0, 1], rxLoc[:, 1] <= tiles[1][0, 1],
+    ind_t = np.all([rxLoc[:, 0] >= tiles[0][indMin, 0], rxLoc[:, 0] <= tiles[1][indMin, 0],
+                    rxLoc[:, 1] >= tiles[0][indMin, 1], rxLoc[:, 1] <= tiles[1][indMin, 1],
                     surveyMask], axis=0)
-
     meshLocal = Utils.modelutils.meshBuilder(
         rxLoc, h, padDist, meshType='TREE', meshGlobal=meshInput,
         verticalAlignment='center'
@@ -226,19 +228,17 @@ def createLocalProb(rxLoc, wrGlobal, lims, ind):
 
     actv_t = np.ones(meshLocal.nC, dtype='bool')
 
-    Mesh.TreeMesh.writeUBC(
-          meshLocal, work_dir + out_dir + 'OctreeMesh' + str(tt) + '.msh',
-          models={work_dir + out_dir + 'Active' + str(tt) + '.act': actv_t}
-        )
-
-    print(meshLocal.nC)
     # Create reduced identity map
     tileMap = Maps.Tile((mesh, actv), (meshLocal, actv_t))
 
+    actv_t = tileMap.activeLocal
+
+    print(actv_t.sum(), meshLocal.nC)
     # Create the forward model operator
     prob = PF.Magnetics.MagneticIntegral(
-        meshLocal, chiMap=tileMap, actInd=actv_t, parallelized=True,
-        Jpath=work_dir + out_dir + "Tile" + str(ind) + ".zarr")
+        meshLocal, chiMap=tileMap, actInd=actv_t, parallelized='dask',
+        Jpath=work_dir + out_dir + "Tile" + str(ind) + ".zarr",
+        n_cpu=n_cpu)
 
     survey_t.pair(prob)
 
@@ -246,7 +246,24 @@ def createLocalProb(rxLoc, wrGlobal, lims, ind):
     dmis = DataMisfit.l2_DataMisfit(survey_t)
     dmis.W = 1./survey_t.std
 
-    wrGlobal += prob.getJtJdiag(np.ones(tileMap.P.shape[1]), W=dmis.W)
+    wr = prob.getJtJdiag(np.ones(tileMap.P.shape[1]), W=dmis.W)
+    localMap = Maps.InjectActiveCells(meshLocal, actv_t, 1e-8)
+    Mesh.TreeMesh.writeUBC(
+                      mesh, work_dir + out_dir + 'OctreeMesh' + str(tt) + '.msh',
+                      models={work_dir + out_dir + 'Wr_' + str(tt) + '.act': actvMap * wr}
+                    )
+
+    Mesh.TreeMesh.writeUBC(
+                      meshLocal, work_dir + out_dir + 'OctreeMesh' + str(tt) + '.msh',
+                      models={work_dir + out_dir + 'Wr_' + str(tt) + '.act': localMap * tileMap * wr}
+                    )
+#    localMap = Maps.InjectActiveCells(meshLocal, actv_t, 1e-8)
+#    Mesh.TreeMesh.writeUBC(
+#                      meshLocal, work_dir + out_dir + 'OctreeMesh' + str(tt) + '.msh',
+#                      models={work_dir + out_dir + 'Wr_' + str(tt) + '.act': localMap*wr}
+#                    )
+#
+    wrGlobal += wr
 
     del meshLocal
 
@@ -280,11 +297,20 @@ if actvGlobal.sum() < actv.sum():
 wrGlobal = wrGlobal[actvGlobal]**0.5
 wrGlobal = (wrGlobal/np.max(wrGlobal))
 
+
+
 #%% Create a regularization
 actvMap = Maps.InjectActiveCells(mesh, actv, 0)
 actv = np.all([actv, actvMap*actvGlobal], axis=0)
-actvMap = Maps.InjectActiveCells(mesh, actv, -100)
+actvMap = Maps.InjectActiveCells(mesh, actv, 1e-8)
 idenMap = Maps.IdentityMap(nP=int(np.sum(actv)))
+
+Mesh.TreeMesh.writeUBC(
+          mesh, work_dir + out_dir + 'OctreeMeshGlobal.msh',
+          models={work_dir + out_dir + 'SensWeights.mod': actvMap * wrGlobal}
+        )
+
+
 reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
 reg.norms = np.c_[driver.lpnorms].T
 reg.cell_weights = wrGlobal

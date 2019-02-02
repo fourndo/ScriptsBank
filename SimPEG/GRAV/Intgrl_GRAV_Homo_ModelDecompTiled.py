@@ -1,44 +1,45 @@
 #%%
 from SimPEG import Mesh, Directives, Maps, InvProblem, Optimization, Utils
-from SimPEG import DataMisfit, Inversion, Regularization, mkvc
+from SimPEG import DataMisfit, Inversion, Regularization
 import SimPEG.PF as PF
 import pylab as plt
 import os
 import numpy as np
-from matplotlib.patches import Rectangle
-from SimPEG.ObjectiveFunction import ComboObjectiveFunction
 from scipy.spatial import cKDTree
+from matplotlib.patches import Rectangle
 
 if __name__ == '__main__':
-    work_dir = "C:\\Users\\DominiqueFournier\\Desktop\\Workspace\\Paolo\\Local\\"
-    inpFile = 'SimPEG_GRAV.inp'
-    out_dir = "SimPEG_GRAV_TileInv\\"
+    work_dir = "C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Synthetic\\Block_Gaussian_topo\\GRAV\\"
+    inpfile = 'SimPEG_GRAV.inp'
+    out_dir = "SimPEG_GRAV_ModelDecomp\\"
     dsep = os.path.sep
 
-    padLen = 1000
-    maxRAM = 1.0
+    padLen = 200
+    maxRAM = 0.05
     n_cpu = 4
 
     octreeObs = [5, 5, 3, 3, 3]  # Octree levels below observation points
     octreeTopo = [0, 1]
-
+    ndv = -100
     meshType = 'TREE'
     tileProblem = True
-    os.system('mkdir ' + work_dir+out_dir)
     parallization = "dask" # "dask" ||  "multiprocessing"
 
-    #%% User input
-    # Plotting parameter
-    #%%
+    os.system('if not exist ' + work_dir + out_dir + ' mkdir ' + work_dir+out_dir)
+
+    # Choice for the homogeneous model
+    useMrefValues = True
+
     # Read input file
-    #[mshfile, obsfile, topofile, mstart, mref, wgtfile, chi, alphas, bounds, lpnorms] = PF.Gravity.read_GRAVinv_inp(work_dir + dsep + inpFile)
-    driver = PF.GravityDriver.GravityDriver_Inv(work_dir + dsep + inpFile)
+    driver = PF.GravityDriver.GravityDriver_Inv(work_dir + dsep + inpfile)
     meshInput = driver.mesh
     survey = driver.survey
+    actv = driver.activeCells
     topo = driver.topo
     rxLoc = survey.srcField.rxList[0].locs
 
-    tree = None  # cKDTree for the interpolation if necessary
+    # Tile the forward problem
+    tree = cKDTree(meshInput.gridCC)
 
     h = np.r_[meshInput.hx.min(), meshInput.hy.min(), meshInput.hz.min()]
 
@@ -83,11 +84,10 @@ if __name__ == '__main__':
         else:
             print("Interpolating the starting model")
 
-            tree = cKDTree(meshInput.gridCC)
             _, ind = tree.query(mesh.gridCC)
 
             m0 = driver.m0
-            m0[m0==-100] = 0
+            m0[m0 == ndv] = 0
             m0 = m0[ind]
 
         if isinstance(driver._mrefInput, float):
@@ -95,13 +95,10 @@ if __name__ == '__main__':
 
         else:
             print("Interpolating the reference model")
-
-            if tree is None:
-                tree = cKDTree(meshInput.gridCC)
-                _, ind = tree.query(mesh.gridCC)
+            _, ind = tree.query(mesh.gridCC)
 
             mref = driver.mref
-            mref[mref==-100] = 0
+            mref[mref == ndv] = 0
             mref = mref[ind]
 
         print("Writing global Octree to file" + work_dir + out_dir + 'OctreeMeshGlobal.msh')
@@ -110,6 +107,8 @@ if __name__ == '__main__':
               models={work_dir + out_dir + 'ActiveGlobal.act': actv}
             )
 
+        # Create new inteprolation tree for the tiles
+        tree = cKDTree(mesh.gridCC)
 
     else:
         mesh = meshInput
@@ -120,11 +119,41 @@ if __name__ == '__main__':
         m0 = driver.m0  # Starting model
         mref = driver.mref  # Starting model
 
-    wrGlobal = np.zeros(int(actv.sum()))
+    # Create active map to go from reduce set to full
+    fullMap = Maps.InjectActiveCells(mesh, actv, 0)
+
+    # Set the global homogeneous mapping
+    m0 = m0[actv]
+    mgeo = mref[actv]
+
+    # Get unique geo units
+    geoUnits = np.unique(mgeo).tolist()
+
+    # Compute an a median value for each homogeneous units
+    mUnit = np.asarray([np.median(mgeo[mgeo==unit]) for unit in geoUnits])
+
+
+
+    # Build list of indecies for the geounits
+    index = []
+    for unit in geoUnits:
+    #    if unit!=0:
+        index += [mgeo==unit]
+
+    nC = len(index)
+
+    # Creat reduced identity map
+    homogMap = Maps.SurjectUnits(index)
+
+    # Create a wire map to link the homogeneous and heterogeneous spaces
+    wires = Maps.Wires(('homo', nC), ('hetero', int(actv.sum())))
+
+    # Tile the problem
+    wrGlobal = np.zeros(int(nC + actv.sum()))
     if tileProblem:
 
-
-        # Loop over different tile size and break problem until memory usage is preserved
+        # Loop over different tile size and break
+        # problem fit in memory
         usedRAM = np.inf
         count = 0
         while usedRAM > maxRAM:
@@ -160,13 +189,13 @@ if __name__ == '__main__':
             )
 
             # Calculate approximate problem size
-            nD, nC = ind_t.sum()*1., meshLocal.nC*1.
+            nD_t, nC_t = ind_t.sum()*1., meshLocal.nC*1.
 
             nChunks = n_cpu # Number of chunks
-            cSa, cSb = int(nD/nChunks), int(nC/nChunks) # Chunk sizes
-            usedRAM = nD * nC * 8. * 1e-9
+            # cSa, cSb = int(nD_t/nChunks), int(nC_t/nChunks) # Chunk sizes
+            usedRAM = nD_t * nC_t * 8. * 1e-9
             count += 1
-            print(nD, nC, usedRAM, binCount.min())
+            print(nD_t, nC_t, usedRAM)
 
         # Plot data and tiles
         fig, ax1 = plt.figure(), plt.subplot()
@@ -181,7 +210,7 @@ if __name__ == '__main__':
         ax1.set_aspect('equal')
         plt.show()
 
-        def createLocalProb(rxLoc, wrGlobal, lims, ind):
+        def createLocalProb(rxLoc, wrGlobal, lims, tileID):
 
             # Grab the data for current tile
             ind_t = np.all([rxLoc[:, 0] >= lims[0], rxLoc[:, 0] <= lims[1],
@@ -220,19 +249,37 @@ if __name__ == '__main__':
 
             Mesh.TreeMesh.writeUBC(
                   meshLocal, work_dir + out_dir + 'OctreeMesh' + str(tt) + '.msh',
-                  models={work_dir + out_dir + 'Active' + str(tt) + '.act': actv_t}
+                  models={work_dir + out_dir + 'Active' + str(tileID) + '.act': actv_t}
                 )
 
-            print(meshLocal.nC)
             # Create reduced identity map
             tileMap = Maps.Tile((mesh, actv), (meshLocal, actv_t))
 
             actv_t = tileMap.activeLocal
 
+            # Interpolate the geo model
+            _, ind = tree.query(meshLocal.gridCC)
+
+            mgeo_t = ((fullMap * mgeo)[ind])[actv_t]
+
+            # # Get unique geo units
+            # geoUnits = np.unique(mgeo_t).tolist()
+
+            # Build list of indecies for the geounits
+            index = []
+            for unit in geoUnits:
+                index += [mgeo_t == unit]
+
+            # Creat reduced identity map
+            homogMap_t = Maps.SurjectUnits(index)
+
+            # Create Sum map
+            sumMap = Maps.SumMap([homogMap_t*wires.homo, tileMap*wires.hetero])
+
             # Create the forward model operator
-            prob =  PF.Gravity.GravityIntegral(
-                meshLocal, rhoMap=tileMap, actInd=actv_t, parallelized=parallization,
-                Jpath=work_dir + out_dir + "Tile" + str(ind) + ".zarr", n_cpu=n_cpu)
+            prob = PF.Gravity.GravityIntegral(
+                meshLocal, rhoMap=sumMap, actInd=actv_t, parallelized=parallization,
+                Jpath=work_dir + out_dir + "Tile" + str(tileID) + ".zarr", n_cpu=n_cpu)
 
             survey_t.pair(prob)
 
@@ -240,13 +287,12 @@ if __name__ == '__main__':
             dmis = DataMisfit.l2_DataMisfit(survey_t)
             dmis.W = 1./survey_t.std
 
-            wrGlobal += prob.getJtJdiag(np.ones(tileMap.P.shape[1]), W=dmis.W)
+            wrGlobal += prob.getJtJdiag(np.ones(wires.homo.shape[1]), W=dmis.W)
 
             del meshLocal
 
             # Create combo misfit function
             return dmis, wrGlobal
-
 
         for tt in range(X1.shape[0]):
 
@@ -266,8 +312,10 @@ if __name__ == '__main__':
         nC = int(actv.sum())
         idenMap = Maps.IdentityMap(nP=nC)
 
-        prob =  PF.Gravity.GravityIntegral(
-            mesh, rhoMap=idenMap, actInd=actv, parallelized=parallization,
+        sumMap = Maps.SumMap([homogMap*wires.homo, wires.hetero])
+
+        prob = PF.Gravity.GravityIntegral(
+            mesh, rhoMap=sumMap, actInd=actv, parallelized=parallization,
             Jpath=work_dir + out_dir + "Sensitivity.zarr", n_cpu=n_cpu)
 
         survey.pair(prob)
@@ -278,102 +326,109 @@ if __name__ == '__main__':
 
         wrGlobal += prob.getJtJdiag(np.ones(nC), W=ComboMisfit.W)
         actvGlobal = actv
-    # print('Sum of all problems:' + str(probSize*1e-6) + ' Mb')
-    # Scale global weights for regularization
 
-    # Check if global mesh has regions untouched by local problem
-    actvGlobal = wrGlobal != 0
-    if actvGlobal.sum() < actv.sum():
 
-        if isinstance(ComboMisfit, ComboObjectiveFunction):
-            for ind, dmis in enumerate(ComboMisfit.objfcts):
-                dmis.prob.rhoMap.index = actvGlobal
-                dmis.prob.rhoMap._P = None
-                dmis.prob._model = None
-                dmis.prob.gtgdiag = None
-        else:
-            ComboMisfit.prob.rhoMap.index = actvGlobal
-            ComboMisfit.prob.rhoMap._P = None
-            ComboMisfit.prob.model = np.zeros(actvGlobal.sum())
-            ComboMisfit.prob.gtgdiag = None
+    # Create augmented mstart and mref
+    mref = np.r_[mUnit, mgeo]
+    mstart = np.r_[mUnit*0., m0]
 
-    wrGlobal = wrGlobal[actvGlobal]**0.5
-    wrGlobal = (wrGlobal/np.max(wrGlobal))
+    # Create Sum map
+    sumMap = Maps.SumMap([homogMap*wires.homo, wires.hetero])
 
-    #%% Create a regularization
-    actvMap = Maps.InjectActiveCells(mesh, actv, 0)
 
-    actv = np.all([actv, actvMap*actvGlobal], axis=0)
-    actvMap = Maps.InjectActiveCells(mesh, actv, -100)
+    #%% Run inversion
+    # prob = PF.Gravity.GravityIntegral(mesh, rhoMap=sumMap, actInd=actv)
 
-    m0 = m0[actv]
-    mref = mref[actv]
+    # survey.pair(prob)
 
-    idenMap = Maps.IdentityMap(nP=int(np.sum(actv)))
-    reg = Regularization.Sparse(mesh, indActive=actv, mapping=idenMap)
-    reg.norms = np.c_[driver.lpnorms].T
+    #%%
+    # Load weighting  file
 
-    if driver.eps is not None:
-        reg.eps_p = driver.eps[0]
-        reg.eps_q = driver.eps[1]
+    # dmis = DataMisfit.l2_DataMisfit(survey)
+    # dmis.W = 1./survey.std
 
-    reg.cell_weights = wrGlobal
-    reg.mref = mref
+    # wr = prob.getJtJdiag(np.ones(int(nC + len(actv))), W=dmis.W)
+    wrGlobal[wires.homo.index] /= (np.max((wires.homo*wrGlobal)))
+    wrGlobal[wires.hetero.index] /= (np.max(wires.hetero*wrGlobal))
+    wrGlobal = wrGlobal**0.5
 
-    # Add directives to the inversion
-    opt = Optimization.ProjectedGNCG(maxIter=20, lower=-10, upper=10.,
-                                     maxIterLS=20, maxIterCG=20, tolCG=1e-4)
-    invProb = InvProblem.BaseInvProblem(ComboMisfit, reg, opt)
-    betaest = Directives.BetaEstimate_ByEig(beta0_ratio=1e0)
 
-    # Here is where the norms are applied
-    # Use pick a treshold parameter empirically based on the distribution of
-    #  model parameters
-    IRLS = Directives.Update_IRLS(f_min_change=1e-3, minGNiter=1,
-                                  maxIRLSiter=10)
+    ## Create a regularization
+    # For the homogeneous model
+    regMesh = Mesh.TensorMesh([nC])
 
-    IRLS.target = driver.survey.nD
+    reg_m1 = Regularization.Sparse(regMesh, mapping=wires.homo)
+    reg_m1.cell_weights = wires.homo*wrGlobal
+    reg_m1.mref = mref
+
+    # Regularization for the voxel model
+    reg_m2 = Regularization.Sparse(mesh, indActive=actv, mapping=wires.hetero)
+    reg_m2.cell_weights = wires.hetero*wrGlobal
+    reg_m2.norms = np.c_[driver.lpnorms].T
+    reg_m2.mref =  mref
+
+    reg = reg_m1 + reg_m2
+
+    opt = Optimization.ProjectedGNCG(maxIter=10, lower=driver.bounds[0],
+                                     upper=driver.bounds[1],
+                                     maxIterLS = 20, maxIterCG= 30,
+                                     tolCG = 1e-4)
+    invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
+
+    betaest = Directives.BetaEstimate_ByEig(beta0_ratio = 1.)
+    IRLS = Directives.Update_IRLS(f_min_change=1e-4, minGNiter=2)
     update_Jacobi = Directives.UpdatePreconditioner()
-    saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap, fileName=work_dir + out_dir + dsep + "GRAV_Tile")
-    inv = Inversion.BaseInversion(invProb,
-                                  directiveList=[betaest, saveModel,
-                                                 IRLS, update_Jacobi])
+    #saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap*sumMap)
+    #saveModel.fileName = work_dir + dsep + out_dir + 'GRAV'
 
-    # Run the inversion
-    mrec = inv.run(m0)
+    saveDict = Directives.SaveOutputDictEveryIteration()
+    inv = Inversion.BaseInversion(invProb, directiveList=[betaest, IRLS, saveDict,
+                                                          update_Jacobi])
+    # Run inversion
+    mrec = inv.run(mstart)
 
+    # Plot predicted
+#    pred = prob.fields(mrec)
 
-    ## Outputs
-    #if mesh._meshType == 'TENSOR':
-    #    Mesh.TensorMesh.writeUBC(mesh, work_dir + out_dir + "GRAV_Tile.msh")
-    #    Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + "GRAV_Tile_lp.sus",
-    #                                  actvMap*invProb.model)
-    #    Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + "GRAV_Tile_l2.sus",
-    #                                  actvMap*invProb.l2model)
-    #else:
-    #
-    #    if invProb.l2model is not None:
-    #        Mesh.TreeMesh.writeUBC(mesh, work_dir + out_dir + 'GRAV_Tile.msh',
-    #                               models={work_dir + out_dir + 'Model_l2.sus': actvMap*invProb.l2model})
-    #    Mesh.TreeMesh.writeUBC(mesh, work_dir + out_dir + 'GRAV_Tile.msh',
-    #                           models={work_dir + out_dir + 'Model_lp.sus': actvMap*mrec})
-    #
+    # PF.Gravity.plot_obs_2D(survey, 'Observed Data')
+#    print("Final misfit:" + str(np.sum(((survey.dobs-pred)/survey.std)**2.)))
+        # Create active map to go from reduce set to full
+    outMap = Maps.InjectActiveCells(mesh, actv, ndv)
 
-    # Get predicted data for each tile and write full predicted to file
-    if getattr(ComboMisfit, 'objfcts', None) is not None:
-        dpred = np.zeros(survey.nD)
-        for ind, dmis in enumerate(ComboMisfit.objfcts):
-            dpred[dmis.survey.ind] += dmis.survey.dpred(mrec)
-    else:
-        dpred = ComboMisfit.survey.dpred(mrec)
-        # PF.Magnetics.writeUBCobs(work_dir+out_dir + "Tile" + str(ind) + ".pre",
-        #                          survey, survey.dpred(mrec))
+    #%% Write result
+    # if getattr(invProb, 'l2model', None) is not None:
 
-    Utils.io_utils.writeUBCgravityObservations(
-        work_dir+out_dir + "Predicted_lp.pre", survey, dpred
-        )
-    #Utils.io_utils.writeUBCgravityObservations(
-    #    work_dir + out_dir + 'Predicted_l2.pre', survey,
-    #    survey.dpred(invProb.l2model)
-    #    )
+    #     m_l2 = actvMap*(sumMap*invProb.l2model)
+    #     Mesh.TensorMesh.writeModelUBC(mesh, work_dir + dsep + out_dir + 'Total_inv_l2l2.den', m_l2)
 
+    #     m_l2 = actvMap*(homogMap*wires.homo*invProb.l2model)
+    #     Mesh.TensorMesh.writeModelUBC(mesh, work_dir + dsep + out_dir + 'Homoge_inv_l2l2.den', m_l2)
+
+    #     m_l2 = actvMap*(wires.hetero*invProb.l2model)
+    #     Mesh.TensorMesh.writeModelUBC(mesh, work_dir + dsep + out_dir + 'Hetero_inv_l2l2.den', m_l2)
+
+    #     PF.Gravity.writeUBCobs(work_dir + out_dir + dsep + 'Predicted_l2.pre',
+    #                          survey, d=survey.dpred(invProb.l2model))
+
+if meshType == "TENSOR":
+    m_lp = outMap*(sumMap*invProb.model)
+    Mesh.TensorMesh.writeModelUBC(mesh, work_dir + dsep + out_dir + 'Total_inv_lp.den', m_lp)
+
+    m_lp = outMap*(homogMap*wires.homo*invProb.model)
+    Mesh.TensorMesh.writeModelUBC(mesh, work_dir + dsep + out_dir + 'Homoge_inv_lp.den', m_lp)
+
+    m_lp = outMap*(wires.hetero*invProb.model)
+    Mesh.TensorMesh.writeModelUBC(mesh, work_dir + dsep + out_dir + 'Hetero_inv_lp.den', m_lp)
+
+else:
+    m_lp = outMap*(sumMap*invProb.model)
+    Mesh.TreeMesh.writeUBC(mesh, work_dir + dsep + out_dir + "TreeMesh.msh", models={work_dir + dsep + out_dir + 'Total_inv_lp.den': m_lp})
+
+    m_lp = outMap*(homogMap*wires.homo*invProb.model)
+    Mesh.TreeMesh.writeUBC(mesh, work_dir + dsep + out_dir + "TreeMesh.msh", models={work_dir + dsep + out_dir + 'Homoge_inv_lp.den': m_lp})
+
+    m_lp = outMap*(wires.hetero*invProb.model)
+    Mesh.TreeMesh.writeUBC(mesh, work_dir + dsep + out_dir + "TreeMesh.msh", models={work_dir + dsep + out_dir + 'Hetero_inv_lp.den': m_lp})
+
+    PF.Gravity.writeUBCobs(work_dir + out_dir + dsep + 'Predicted_lp.pre',
+                             survey, d=invProb.dpred)
