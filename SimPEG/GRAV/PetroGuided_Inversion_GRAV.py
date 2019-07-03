@@ -11,25 +11,26 @@ from sklearn.mixture import GaussianMixture
 import copy
 import os
 
-workDir = '.\\'
-outDir = "SimPEG_GRAV_Homo_Inv\\"
+workDir = 'C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Synthetic\\Block_Gaussian_topo\\GRAV'
+# workDir = "C:\\Users\\DominiqueFournier\\Desktop\\Workspace\\Paolo"
+outDir = "SimPEG_GRAV_Petro_Inv\\"
+inpFile = "SimPEG_GRAV.inp"
 dsep = '\\'
 
-os.system('mkdir ' + workDir + outDir)
+os.system('mkdir ' + workDir + dsep + outDir)
 
 # Load data, mesh and topography files
-mesh = Mesh.TensorMesh.readUBC(workDir + dsep +  "meshWide.msh")
-survey = Utils.io_utils.readUBCgravityObservations(workDir + dsep + "Obs_FLT5km.grv")
-topo = np.genfromtxt(
-    workDir + dsep + "topography.txt", skip_header=1
-)
+driver = PF.GravityDriver.GravityDriver_Inv(workDir + dsep + inpFile)
+mesh = driver.mesh
+survey = driver.survey
+topo = driver.topo
 
 # Read the geological model
-geoModel = mesh.readModelUBC(workDir + dsep + "BasementModel.den")
+geoModel = mesh.readModelUBC(workDir + dsep + "Block_sphere_model.den")
 
 # Convert the unit to relative density
 m0 = geoModel.copy()
-m0[m0==1] = 0.2
+# m0[m0==1] = 0.1
 
 # Find the active cells (below topo)
 actv = Utils.surface2ind_topo(mesh, topo, 'N')
@@ -94,14 +95,15 @@ idenMap = Maps.IdentityMap(nP=nC)
 #%% Run inversion
 prob = PF.Gravity.GravityIntegral(
     mesh, rhoMap=idenMap, actInd=actv,
-    parallelized=True, Jpath=workDir + "\\sensitivity.zarr")
+    parallelized=True, Jpath=workDir + dsep + outDir + dsep + "sensitivity.zarr")
 
 survey.pair(prob)
 
 
-gtgdiag = prob.getJtJdiag(m0)
-wr = gtgdiag / gtgdiag.max()
+wr = prob.getJtJdiag(m0)
 wr = wr**0.5
+wr /= wr.max()
+
 
 
 # ## Create a regularization
@@ -137,7 +139,7 @@ dmis.W = 1./survey.std
 # IRLS = Directives.Update_IRLS(f_min_change=1e-4, minGNiter=1, betaSearch=False)
 # update_Jacobi = Directives.UpdatePreconditioner()
 # #saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap*sumMap)
-# #saveModel.fileName = work_dir + dsep + out_dir + 'GRAV'
+# #saveModel.fileName = workDir + dsep + out_dir + 'GRAV'
 
 # saveDict = Directives.SaveOutputDictEveryIteration()
 # inv = Inversion.BaseInversion(invProb, directiveList=[IRLS, saveDict,
@@ -149,10 +151,11 @@ dmis.W = 1./survey.std
 # m0 = np.median(ln_sigback) * np.ones(mapping.nP)
 # dmis = DataMisfit.l2_DataMisfit(survey)
 
-n = 2
+n = 3
 clf = GaussianMixture(
-    n_components=n,  covariance_type='tied', reg_covar=5e-3
+    n_components=n,  covariance_type='full', reg_covar=5e-3
 )
+
 clf.fit(m0.reshape(-1, 1))
 Utils.order_clusters_GM_weight(clf)
 print(clf.covariances_)
@@ -163,13 +166,14 @@ reg = Regularization.SimplePetroRegularization(
     GMmref=clf,  mesh=mesh,
     wiresmap=wires,
     maplist=[idenMap],
-    mref=m0,
+    mref=m0*0,
     indActive=actv,
+    cell_weights=wr
 )
-reg.cell_weights = wr
+
 reg.mrefInSmooth = False
 reg.approx_gradient = True
-gamma_petro = np.r_[1., 1.]
+gamma_petro = np.r_[1., 1., 1e-2]
 reg.gamma = gamma_petro
 
 opt = Optimization.ProjectedGNCG(
@@ -204,14 +208,14 @@ update_Jacobi = Directives.UpdatePreconditioner()
 saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
 saveModel.fileName = workDir + dsep + outDir + 'GRAV_Petro'
 inv = Inversion.BaseInversion(invProb,
-                              directiveList=[Alphas, beta,saveModel,
-                                             petrodir, 
+                              directiveList=[Alphas, beta, saveModel,
+                                             petrodir,
                                              targets, betaIt,
                                              MrefInSmooth,
                                              ])
 
 
-mcluster = inv.run(m0)
+mcluster = inv.run(m0**0*1e-4)
 
 # Plot predicted
 pred = prob.fields(mcluster)

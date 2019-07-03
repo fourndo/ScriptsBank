@@ -16,12 +16,12 @@ import csv as reader
 
 # # USER INPUTS # #
 # workDir = "C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Kevitsa\\Kevitsa\\Modeling\\MAG\\Airborne"
-workDir = "C:\\Users\\DominiqueFournier\\Desktop\\Workspace\\Paolo\\"
-dFile = "Obs.grv"
+workDir = r"C:\Users\DominiqueFournier\Dropbox\Projects\Kevitsa\Kevitsa\Modeling\GRAV"
+dFile = "gravKevitsa84_reproc_Drapped1p1m.grv"
 dType = 'GRAV'
-method = ('radius', 5000)#('random', 0.2)  # #
+method = ('radius', 25)#('random', 0.2)  # #
 
-dFileOut = 'Obs_FLT5km.grv'
+dFileOut = 'gravKevitsa84_reproc_Drapped1p1m_DwnS50m.grv'
 
 # # SCRIPT STARTS HERE # #
 if dType == 'MAG':

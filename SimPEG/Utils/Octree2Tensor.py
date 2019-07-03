@@ -1,29 +1,39 @@
 from SimPEG import Mesh, Utils
 from scipy.spatial import cKDTree
 import numpy as np
-
-workDir = "C:/Users/DominiqueFournier/Dropbox/Projects/Felder/Modeling/"
-
-modelFile = ["MVI_S_TOT_l2222.amp", "MVI_S_TOT_l0222.amp"]
-meshTensor = Mesh.TensorMesh.readUBC(workDir + "Mesh150.msh")
+import sys
 
 
-meshOctree = Mesh.TreeMesh.readUBC(workDir + "OctreeMesh.msh")
+meshOctreeFile = sys.argv[1]
+modelOctreeFile = sys.argv[2]
+meshTensorFile = sys.argv[3]
+ndv = np.asarray(sys.argv[4]).astype(np.float)
 
+# workDir = "C:/Users/DominiqueFournier/Dropbox/Projects/Felder/Modeling/"
+
+# modelFile = ["MVI_S_TOT_l2222.amp", "MVI_S_TOT_l0222.amp"]
+meshTensor = Mesh.TensorMesh.readUBC(meshTensorFile)
+
+
+meshOctree = Mesh.TreeMesh.readUBC(meshOctreeFile)
+
+model = meshOctree.readModelUBC(modelOctreeFile)
+
+# indAct = model != np.asarray(ndv)
 
 tree = cKDTree(meshOctree.gridCC)
 
 dd, ind = tree.query(meshTensor.gridCC)
 
 
-for m in modelFile:
-    model = meshOctree.readModelUBC(workDir + m)
+mOut = np.ones(meshTensor.nC)*ndv
+mOut = model[ind]
 
-    mOut = np.zeros(meshTensor.nC)
-    mOut = model[ind]
-    mOut[mOut == 0] = -100
 
-    meshTensor.writeModelUBC(workDir + "TENSOR" + m, mOut)
+meshTensor.writeModelUBC(modelOctreeFile[:-4] + "_TENSOR" + modelOctreeFile[-4:], mOut)
+
+print("Export model file " + modelOctreeFile[:-4] + "_TENSOR" + modelOctreeFile[-4:] + " completed!" )
+
 # Model lp out
 # vec_xyz = Utils.matutils.atp2xyz(
 #     mrec_MVI_S.reshape((nC, 3), order='F')).reshape((nC, 3), order='F')

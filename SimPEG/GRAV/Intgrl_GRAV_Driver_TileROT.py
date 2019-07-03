@@ -225,20 +225,20 @@ for tt in range(X1.shape[0]):
         ComboMisfit += dmis
 
 # Load the rotation parameters and create gradients
-# mx = mesh.readModelUBC(work_dir + 'NormalX.dat')
-# my = mesh.readModelUBC(work_dir + 'NormalY.dat')
-# mz = mesh.readModelUBC(work_dir + 'NormalZ.dat')
+mx = mesh.readModelUBC(work_dir + 'NormalX.dat')
+my = mesh.readModelUBC(work_dir + 'NormalY.dat')
+mz = mesh.readModelUBC(work_dir + 'NormalZ.dat')
 
-# vec = np.c_[mx, my, mz]
+vec = np.c_[mx, my, mz]
 
-# nC = mesh.nC
-# atp = Utils.matutils.xyz2atp(vec)
+nC = mesh.nC
+atp = Utils.matutils.xyz2atp(vec)
 
-# theta = atp[nC:2*nC]
-# phi = atp[2*nC:]
+theta = atp[nC:2*nC]
+phi = atp[2*nC:]
 
-theta = np.ones(mesh.nC) * 45
-phi = np.ones(mesh.nC) * 0
+# theta = np.ones(mesh.nC) * 45
+# phi = np.ones(mesh.nC) * 0
 
 indActive = np.zeros(mesh.nC, dtype=bool)
 indActive[actv] = True

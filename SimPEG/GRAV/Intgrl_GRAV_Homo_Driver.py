@@ -8,7 +8,8 @@ import numpy as np
 
 #work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\SingleBlock\\GRAV\\'
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
-work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Block_Gaussian_topo\\GRAV\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Synthetic\\Block_Gaussian_topo\\GRAV\\"
+work_dir = "C:\\Users\\DominiqueFournier\\Desktop\\Workspace\\Paolo\\Local\\"
 #work_dir = "C:\\Users\\DominiqueFournier\\Desktop\\Demo\\"
 inpfile = 'SimPEG_GRAV.inp'
 out_dir = "SimPEG_GRAV_Homo_Inv\\"
@@ -24,8 +25,8 @@ mesh = driver.mesh
 survey = driver.survey
 actv = driver.activeCells
 
-m0 = driver.m0
-mgeo = driver.mref
+m0 = driver.m0[actv]
+mgeo = driver.mref[actv]
 
 # Get unique geo units
 geoUnits = np.unique(mgeo).tolist()
@@ -47,7 +48,7 @@ nC = len(index)
 actvMap = Maps.InjectActiveCells(mesh, actv, -100)
 
 # Creat reduced identity map
-homogMap = Maps.Homogenize(index)
+homogMap = Maps.SurjectUnits(index)
 
 
 
@@ -67,52 +68,35 @@ homogMap = Maps.Homogenize(index)
 # PF.Gravity.plot_obs_2D(survey.srcField.rxList[0].locs, survey.dobs,'Observed Data')
 
 #%% Run inversion
-prob = PF.Gravity.GravityIntegral(mesh, rhoMap=homogMap, actInd=actv)
+prob = PF.Gravity.GravityIntegral(
+        mesh, rhoMap=homogMap, actInd=actv, parallelized='dask',
+        Jpath=work_dir + out_dir + "Sensitivity.zarr", n_cpu=4
+)
 
 survey.pair(prob)
 
-# Load weighting  file
-if driver.wgtfile is None:
-    # wr = PF.Magnetics.get_dist_wgt(mesh, rxLoc, actv, 3., np.min(mesh.hx)/4.)
-    # wr = wr**2.
+dmis = DataMisfit.l2_DataMisfit(survey)
+dmis.W = 1./survey.std
 
-    # Make depth weighting
-    wr = np.zeros(nC)
-    for ii in range(survey.nD):
-        wr += ((prob.F[ii, :]*prob.rhoMap.deriv(m0))/survey.std[ii])**2.
-#    
-#    scale = Utils.mkvc(homogMap.P.sum(axis=0))
-#    for ii in range(nC):
-#        wr[ii] *= scale[ii]
-    wr = (wr/np.max(wr))
-    wr = wr
-
-else:
-    wr = Mesh.TensorMesh.readModelUBC(mesh, work_dir + dsep + wgtfile)
-    wr = wr[actv]
-    wr = wr**2.
-
-
-
-Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + 'SensWeights.den',
-                              actvMap*(homogMap.P*wr))
-
+wr = prob.getJtJdiag(np.ones(nC), W=dmis.W)**0.5
+wr = wr/np.max(wr)
+    
 idenMap = Maps.IdentityMap(nP=nC)
 regMesh = Mesh.TensorMesh([nC])
 
 # Create a regularization
 reg = Regularization.Sparse(regMesh, mapping=idenMap)
-reg.norms = driver.lpnorms
+reg.norms = np.c_[driver.lpnorms].T
 
 if driver.eps is not None:
     reg.eps_p = driver.eps[0]
     reg.eps_q = driver.eps[1]
 
 reg.cell_weights = wr#driver.cell_weights*mesh.vol**0.5
-reg.mref = np.zeros(nC)
+reg.alpha_x, reg.alpha_y, reg.alpha_z= 0, 0, 0
+reg.mref = np.r_[-0.1, -0.05]
 
-dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.W = 1./survey.std
+
 
 # Write out the predicted file and generate the forward operator
 #pred = prob.fields(m0)
@@ -128,12 +112,12 @@ invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
 
 betaest = Directives.BetaEstimate_ByEig(beta0_ratio = 1.)
 IRLS = Directives.Update_IRLS(f_min_change=1e-4, minGNiter=2)
-update_Jacobi = Directives.UpdateJacobiPrecond()
-#saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap)
-#saveModel.fileName = work_dir + dsep + out_dir + 'GRAV'
+update_Jacobi = Directives.UpdatePreconditioner()
+saveModel = Directives.SaveUBCModelEveryIteration(mapping=actvMap*homogMap)
+saveModel.fileName = work_dir + dsep + out_dir + 'GRAV_homogeneous'
 
-saveDict = Directives.SaveOutputDictEveryIteration()
-inv = Inversion.BaseInversion(invProb, directiveList=[betaest, IRLS, saveDict,
+#saveDict = Directives.SaveOutputDictEveryIteration()
+inv = Inversion.BaseInversion(invProb, directiveList=[betaest, IRLS, saveModel,
                                                       update_Jacobi])
 # Run inversion
 mrec = inv.run(mstart)
@@ -152,9 +136,6 @@ if getattr(invProb, 'l2model', None) is not None:
 
 m_out = actvMap*homogMap*mrec
 Mesh.TensorMesh.writeModelUBC(mesh, work_dir + dsep + out_dir + 'SimPEG_inv_lplq.den', m_out)
-
-#PF.Gravity.writeUBCobs(work_dir + out_dir + dsep + 'Predicted_l2.pre',
-#                         survey, d=survey.dpred(invProb.l2model))
 
 PF.Gravity.writeUBCobs(work_dir + out_dir + dsep + 'Predicted_lp.pre',
                          survey, d=invProb.dpred)

@@ -1,4 +1,11 @@
-#%%
+###############################################################################
+# Gravity inversion
+# -----------------
+#
+# This scripts runs a gravity inversion on a tensor mesh. It
+#
+#
+
 from SimPEG import Mesh, Directives, Maps, InvProblem, Optimization, Utils
 from SimPEG import DataMisfit, Inversion, Regularization
 import SimPEG.PF as PF
@@ -10,7 +17,7 @@ import numpy as np
 if __name__ == '__main__':
 
     #work_dir = 'C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\SingleBlock\\GRAV\\'
-    work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Block_Gaussian_topo\\GRAV\\"
+    work_dir = ".\\Tester\\"
 #    work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\FORGE\\SyntheticModel\\"
     inpfile = 'SimPEG_GRAV.inp'
     out_dir = "SimPEG_GRAV_Inv\\"

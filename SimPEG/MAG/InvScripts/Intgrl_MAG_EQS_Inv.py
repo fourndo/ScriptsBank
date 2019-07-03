@@ -1,21 +1,9 @@
 """
 
-This script runs an Magnetic Amplitude Inversion (MAI) from TMI data.
-Magnetic amplitude data are weakly sensitive to the orientation of
-magnetization, and can therefore better recover the location and geometry of
-magnetic bodies in the presence of remanence. The algorithm is inspired from
-Li & Shearer (2008), with an added iterative sensitivity weighting strategy to
-counter the vertical streatchin that the old code had
+This script runs an equivalent source (ES) layer from TMI data.
+The same layer is used to forwward x,y,z and amplitude field data.
 
-This is done in three parts:
-
-1- TMI data are inverted for an equivalent source layer.
-
-2-The equivalent source layer is used to predict component data -> amplitude
-
-3- Amplitude data are inverted in 3-D for an effective susceptibility model
-
-Created on December 7th, 2016
+Created on January 16th, 2019
 
 @author: fourndo@gmail.com
 
@@ -27,12 +15,13 @@ import matplotlib.pyplot as plt
 import os
 
 #work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Modelling\\Synthetic\\Triple_Block_lined\\"
-# work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Synthetic\\Nut_Cracker\\"
+#work_dir = "C:\\Users\\DominiqueFournier\\Dropbox\\Projects\\Synthetic\\Nut_Cracker\\"
+work_dir = "C:\\Users\\DominiqueFournier\\ownCloud\\Research\\Osborne\\Inversion\\UTM\\"
 # work_dir = "C:\\Users\\DominiqueFournier\\Downloads\\Mages_01\\Mages_01\\"
 # work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\FORGE\\"
-work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\"
-out_dir = "SimPEG_AMP_Inv\\"
-input_file = "MB_100m_input_file.inp"
+# work_dir = "C:\\Users\\DominiqueFournier\\Documents\\GIT\\InnovationGeothermal\\"
+out_dir = "SimPEG_MAG_ES_Inv\\"
+input_file = "SimPEG_MAG.inp"
 # %%
 # Read in the input file which included all parameters at once
 # (mesh, topo, model, survey, inv param, etc.)
@@ -52,8 +41,6 @@ survey = driver.survey
 active = driver.activeCells
 surf = PF.MagneticsDriver.actIndFull2layer(mesh, active)
 
-# Get the layer of cells directyl below topo
-#surf = Utils.actIndFull2layer(mesh, active)
 nC = len(surf)  # Number of active cells
 
 # Create active map to go from reduce set to full
@@ -63,21 +50,28 @@ surfMap = Maps.InjectActiveCells(mesh, surf, -100)
 idenMap = Maps.IdentityMap(nP=nC)
 
 # Create static map
-prob = PF.Magnetics.MagneticIntegral(mesh, chiMap=idenMap, actInd=surf, equiSourceLayer=True)
+prob = PF.Magnetics.MagneticIntegral(
+    mesh, chiMap=idenMap, actInd=surf,
+    parallelized=True,
+    Jpath=work_dir + out_dir + "Sensitivity.zarr",
+    equiSourceLayer=True)
 prob.solverOpts['accuracyTol'] = 1e-4
 
 # Pair the survey and problem
 survey.pair(prob)
 
-wr = np.zeros(prob.F.shape[1])
-for ii in range(survey.nD):
-    wr += (prob.F[ii, :]/survey.std[ii])**2.
+# Define misfit function (obs-calc)
+dmis = DataMisfit.l2_DataMisfit(survey)
+dmis.W = 1./survey.std
 
+wr = prob.getJtJdiag(np.ones(nC), W=dmis.W)
 wr = (wr/np.max(wr))
 wr = wr**0.5
 
 # Create a regularization function, in this case l2l2
-reg = Regularization.Simple(mesh, indActive=surf)
+reg = Regularization.Sparse(
+    mesh, indActive=surf, mapping=Maps.IdentityMap(nP=nC)
+)
 reg.mref = np.zeros(nC)
 reg.cell_weights = wr
 
@@ -86,15 +80,11 @@ opt = Optimization.ProjectedGNCG(maxIter=25, lower=-np.inf,
                                  upper=np.inf, maxIterLS=20,
                                  maxIterCG=20, tolCG=1e-3)
 
-# Define misfit function (obs-calc)
-dmis = DataMisfit.l2_DataMisfit(survey)
-dmis.W = 1./survey.std
-
 # Create the default L2 inverse problem from the above objects
 invProb = InvProblem.BaseInvProblem(dmis, reg, opt)
 
 # Specify how the initial beta is found
-betaest = Directives.BetaEstimate_ByEig()
+betaest = Directives.BetaEstimate_ByEig(beta0_ratio = 1e-2)
 
 # Beta schedule for inversion
 betaSchedule = Directives.BetaSchedule(coolingFactor=2., coolingRate=1)
@@ -103,16 +93,16 @@ betaSchedule = Directives.BetaSchedule(coolingFactor=2., coolingRate=1)
 # try to fit as much as possible of the signal, we don't want to lose anything
 targetMisfit = Directives.TargetMisfit(chifact=0.1)
 
+saveModel = Directives.SaveUBCModelEveryIteration(mapping=surfMap)
+saveModel.fileName = work_dir + out_dir + 'EquivalentSource'
+
 # Put all the parts together
 inv = Inversion.BaseInversion(invProb,
-                              directiveList=[betaest, betaSchedule, targetMisfit])
+                              directiveList=[betaest, betaSchedule, saveModel, targetMisfit])
 
 # Run the equivalent source inversion
 mstart = np.zeros(nC)
 mrec = inv.run(mstart)
-
-# Ouput result
-Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + "EquivalentSource.sus", surfMap*mrec)
 
 
 # %% STEP 2: COMPUTE AMPLITUDE DATA
@@ -120,21 +110,46 @@ Mesh.TensorMesh.writeModelUBC(mesh, work_dir + out_dir + "EquivalentSource.sus",
 # components of the field and add them up: |B| = ( Bx**2 + Bx**2 + Bx**2 )**0.5
 
 # Won't store the sensitivity and output 'xyz' data.
-prob.forwardOnly = True
-pred_x = prob.Intrgl_Fwr_Op(m=mrec, recType='x')
-pred_y = prob.Intrgl_Fwr_Op(m=mrec, recType='y')
-pred_z = prob.Intrgl_Fwr_Op(m=mrec, recType='z')
+prob = PF.Magnetics.MagneticIntegral(
+    mesh, chiMap=idenMap, actInd=surf,
+    parallelized=True, rxType='xyz',
+    Jpath=work_dir + out_dir + "SensitivityXYZ.zarr",
+    equiSourceLayer=True)
 
+survey.unpair()
+survey.pair(prob)
+xyz = prob.fields(mrec)
 ndata = survey.nD
 
-d_amp = np.sqrt(pred_x**2. +
-                pred_y**2. +
-                pred_z**2.)
+d_amp = np.sqrt(xyz[::3]**2. +
+                xyz[1::3]**2. +
+                xyz[2::3]**2.)
 
 rxLoc = survey.srcField.rxList[0].locs
-# PF.Magnetics.plot_obs_2D(rxLoc,survey.dobs,varstr='TMI Data')
-# PF.Magnetics.plot_obs_2D(rxLoc,damp,varstr='Amplitude Data')
+
+plt.figure()
+ax1 = plt.subplot(2, 2, 1)
+Utils.PlotUtils.plot2Ddata(rxLoc, xyz[::3], ax=ax1)
+ax1 = plt.subplot(2, 2, 2)
+Utils.PlotUtils.plot2Ddata(rxLoc, xyz[1::3], ax=ax1)
+ax1 = plt.subplot(2, 2, 3)
+Utils.PlotUtils.plot2Ddata(rxLoc, xyz[2::3], ax=ax1)
+ax1 = plt.subplot(2, 2, 4)
+Utils.PlotUtils.plot2Ddata(rxLoc, d_amp, ax=ax1)
 
 # Write data out
-PF.Magnetics.writeUBCobs(work_dir + out_dir + 'Amplitude_data.obs', survey, d_amp)
-PF.Magnetics.writeUBCobs(work_dir + out_dir + 'Predicted_data.obs', survey, invProb.dpred)
+Utils.io_utils.writeUBCmagneticsObservations(
+    work_dir + out_dir + 'Bx.obs', survey, xyz[::3]
+)
+Utils.io_utils.writeUBCmagneticsObservations(
+    work_dir + out_dir + 'By.obs', survey, xyz[1::3]
+)
+Utils.io_utils.writeUBCmagneticsObservations(
+    work_dir + out_dir + 'Bz.obs', survey, xyz[2::3]
+)
+Utils.io_utils.writeUBCmagneticsObservations(
+    work_dir + out_dir + 'Amplitude.obs', survey, d_amp
+)
+Utils.io_utils.writeUBCmagneticsObservations(
+    work_dir + out_dir + 'Predicted.obs', survey, invProb.dpred
+)
