@@ -26,6 +26,9 @@ from dask.distributed import Client
 import multiprocessing
 import sys
 
+# NEED TO ADD ALPHA VALUES
+# NEED TO ADD REFERENCE
+# NEED TO ADD STARTING
 
 dsep = os.path.sep
 input_file = sys.argv[1]
@@ -58,15 +61,11 @@ else:
 parallelized = 'dask'
 meshType = 'TREE'
 tileProblem = True
-meshInput = None
+
 topo = False
 ndv = -100
 
-
-
 os.system('mkdir ' + outDir)
-
-
 # Deal with the data
 if input_dict["data_type"].lower() == 'ubc_grav':
 
@@ -96,14 +95,14 @@ else:
 
     assert False, "PF Inversion only implemented for 'data_type' 'ubc_grav' | 'ubc_mag' | 'ftmg' "
 
-
 if survey.std is None:
 
     survey.std = survey.dobs * 0 + 10 #
 
-
-if "mesh" in list(input_dict.keys()):
-    meshInput = Mesh.TensorMesh.readUBC(workDir + input_dict["mesh"])
+if "mesh_file" in list(input_dict.keys()):
+    meshInput = Mesh.TreeMesh.readUBC(workDir + input_dict["mesh_file"])
+else:
+    meshInput = None
 
 if "topography" in list(input_dict.keys()):
     topo = np.genfromtxt(workDir + input_dict["topography"],
@@ -173,6 +172,11 @@ if "octree_levels_padding" in list(input_dict.keys()):
 else:
     octree_levels_padding = [2, 2]
 
+if "alphas" in list(input_dict.keys()):
+    alphas = input_dict["alphas"]
+else:
+    alphas = [1, 1, 1, 1]
+
 if len(octree_levels_padding) < len(octree_levels_obs):
     octree_levels_padding += octree_levels_obs[len(octree_levels_padding):]
 
@@ -212,28 +216,34 @@ surveyMask = np.ones(rxLoc.shape[0], dtype='bool')
 
 # Create first mesh outside the parallel process
 
-print("Creating Global Octree")
-mesh = meshutils.mesh_builder_xyz(
-    newTopo, core_cell_size,
-    padding_distance=padding_distance,
-    mesh_type='TREE', base_mesh=meshInput,
-    depth_core=depth_core
-    )
 
-if topo is not None:
+if meshInput is None:
+    print("Creating Global Octree")
+    mesh = meshutils.mesh_builder_xyz(
+        newTopo, core_cell_size,
+        padding_distance=padding_distance,
+        mesh_type='TREE', base_mesh=meshInput,
+        depth_core=depth_core
+        )
+
+    if topo is not None:
+        mesh = meshutils.refine_tree_xyz(
+            mesh, topo, method='surface',
+            octree_levels=octree_levels_topo, finalize=False
+        )
+
     mesh = meshutils.refine_tree_xyz(
-        mesh, topo, method='surface',
-        octree_levels=octree_levels_topo, finalize=False
+        mesh, rxLoc, method='surface',
+        max_distance=max_distance,
+        octree_levels=octree_levels_obs,
+        octree_levels_padding=octree_levels_padding,
+        finalize=True,
     )
 
-mesh = meshutils.refine_tree_xyz(
-    mesh, rxLoc, method='surface',
-    max_distance=max_distance,
-    octree_levels=octree_levels_obs,
-    octree_levels_padding=octree_levels_padding,
-    finalize=True,
-)
+else:
+    mesh = meshInput
 
+print("Calculating active cells from topo")
 # Compute active cells
 activeCells = Utils.surface2ind_topo(mesh, topo, gridLoc='CC')
 
@@ -241,6 +251,12 @@ Mesh.TreeMesh.writeUBC(
       mesh, outDir + 'OctreeMeshGlobal.msh',
       models={outDir + 'ActiveSurface.act': activeCells}
     )
+
+if "adjust_clearance" in list(input_dict.keys()):
+
+    print("Forming cKDTree for clearance calculations")
+    tree = cKDTree(mesh.gridCC[activeCells, :])
+
 
 # Get the layer of cells directly below topo
 nC = int(activeCells.sum())  # Number of active cells
@@ -274,24 +290,27 @@ while usedRAM > max_ram:
     ind_t = tileIDs == tile_numbers[indMax]
 
     # Create the mesh and refine the same as the global mesh
-    meshLocal = meshutils.mesh_builder_xyz(
-        newTopo, core_cell_size, padding_distance=padding_distance, mesh_type='TREE', base_mesh=meshInput,
-        depth_core=depth_core
-    )
-
-    if topo is not None:
-        meshLocal = meshutils.refine_tree_xyz(
-            meshLocal, topo, method='surface',
-            octree_levels=octree_levels_topo, finalize=False
+    if count > 1:
+        meshLocal = meshutils.mesh_builder_xyz(
+            newTopo, core_cell_size, padding_distance=padding_distance, mesh_type='TREE', base_mesh=meshInput,
+            depth_core=depth_core
         )
 
-    meshLocal = meshutils.refine_tree_xyz(
-        meshLocal, rxLoc[ind_t, :], method='surface',
-        max_distance=max_distance,
-        octree_levels=octree_levels_obs,
-        octree_levels_padding=octree_levels_padding,
-        finalize=True,
-    )
+        if topo is not None:
+            meshLocal = meshutils.refine_tree_xyz(
+                meshLocal, topo, method='surface',
+                octree_levels=octree_levels_topo, finalize=False
+            )
+
+        meshLocal = meshutils.refine_tree_xyz(
+            meshLocal, rxLoc[ind_t, :], method='surface',
+            max_distance=max_distance,
+            octree_levels=octree_levels_obs,
+            octree_levels_padding=octree_levels_padding,
+            finalize=True,
+        )
+    else:
+        meshLocal = mesh
 
     tileLayer = Utils.surface2ind_topo(meshLocal, topo)
 
@@ -318,8 +337,8 @@ while usedRAM > max_ram:
 #        ax1.set_aspect('equal')
 #        plt.show()
 nTiles = X1.shape[0]
-print(survey.srcField.param)
-def createLocalProb(rxLoc, wrGlobal, ind_t, ind):
+
+def createLocalProb(rxLoc, wrGlobal, ind_t, ind, singleMesh):
     # createLocalProb(rxLoc, wrGlobal, lims, ind)
     # Generate a problem, calculate/store sensitivities for
     # given data points
@@ -349,31 +368,36 @@ def createLocalProb(rxLoc, wrGlobal, ind_t, ind):
         survey_t = PF.BaseMag.LinearSurvey(srcField, components=survey.components)
 
         dataInd = np.kron(ind_t, np.ones(len(survey.components))).astype('bool')
-        print(survey.dobs[:13])
+
         survey_t.dobs = survey.dobs[dataInd]
         survey_t.std = survey.std[dataInd]
         survey_t.ind = ind_t
 
-        Utils.io_utils.writeUBCmagneticsObservations(outDir + "Tile" + str(ind) + '.dat', survey_t, survey_t.dobs)
-
-    meshLocal = meshutils.mesh_builder_xyz(
-        newTopo, core_cell_size, padding_distance=padding_distance, mesh_type='TREE', base_mesh=meshInput,
-        depth_core=depth_core
-    )
-
-    if topo is not None:
-        meshLocal = meshutils.refine_tree_xyz(
-            meshLocal, topo, method='surface',
-            octree_levels=octree_levels_topo, finalize=False
+        # Utils.io_utils.writeUBCmagneticsObservations(outDir + "Tile" + str(ind) + '.dat', survey_t, survey_t.dobs)
+    if singleMesh is False:
+        meshLocal = meshutils.mesh_builder_xyz(
+            newTopo, core_cell_size, padding_distance=padding_distance, mesh_type='TREE', base_mesh=meshInput,
+            depth_core=depth_core
         )
 
-    meshLocal = meshutils.refine_tree_xyz(
-        meshLocal, rxLoc[ind_t, :], method='surface',
-        max_distance=max_distance,
-        octree_levels=octree_levels_obs,
-        octree_levels_padding=octree_levels_padding,
-        finalize=True,
-    )
+        if topo is not None:
+            meshLocal = meshutils.refine_tree_xyz(
+                meshLocal, topo, method='surface',
+                octree_levels=octree_levels_topo, finalize=False
+            )
+
+        meshLocal = meshutils.refine_tree_xyz(
+            meshLocal, rxLoc[ind_t, :], method='surface',
+            max_distance=max_distance,
+            octree_levels=octree_levels_obs,
+            octree_levels_padding=octree_levels_padding,
+            finalize=True,
+        )
+    else:
+
+        print("Using global mesh")
+        meshLocal = mesh
+
 
     # Need to find a way to compute sensitivities only for intersecting cells
     activeCells_t = np.ones(meshLocal.nC, dtype='bool')  # meshUtils.modelutils.activeTopoLayer(meshLocal, topo)
@@ -388,7 +412,24 @@ def createLocalProb(rxLoc, wrGlobal, ind_t, ind):
 
     activeCells_t = tileMap.activeLocal
 
-    print(activeCells_t.sum(), meshLocal.nC)
+    if "adjust_clearance" in list(input_dict.keys()):
+
+        print("Setting Z values of data to respect clearance height")
+
+        r, c_ind = tree.query(survey_t.rxLoc)
+        dz = input_dict["adjust_clearance"]
+
+        z = mesh.gridCC[activeCells, 2][c_ind] + mesh.h_gridded[activeCells, 2][c_ind]/2 + dz
+        survey_t.srcField.rxList[0].locs[:, 2] = z
+
+    if input_dict["inversion_type"].lower() == 'grav':
+
+        Utils.io_utils.writeUBCgravityObservations(outDir + 'Survey_Tile' + str(ind) +'.dat', survey_t, survey_t.dobs)
+
+    elif input_dict["inversion_type"].lower() == 'mag':
+
+        Utils.io_utils.writeUBCmagneticsObservations(outDir + 'Survey_Tile' + str(ind) +'.dat', survey_t, survey_t.dobs)
+
     if input_dict["inversion_type"].lower() == 'grav':
         prob = PF.Gravity.GravityIntegral(
             meshLocal, rhoMap=tileMap, actInd=activeCells_t,
@@ -439,11 +480,12 @@ def createLocalProb(rxLoc, wrGlobal, ind_t, ind):
     return dmis
 
 # Loop through the tiles and generate all sensitivities
+print("Number of tiles:" + str(nTiles))
 for tt in range(nTiles):
 
     print("Tile " + str(tt+1) + " of " + str(X1.shape[0]))
 
-    dmis = createLocalProb(rxLoc, wrGlobal, tileIDs==tile_numbers[tt], tt)
+    dmis = createLocalProb(rxLoc, wrGlobal, tileIDs==tile_numbers[tt], tt, nTiles==1)
 
     # Add the problems to a Combo Objective function
     if tt == 0:
@@ -471,7 +513,13 @@ wrGlobal = (wrGlobal/np.max(wrGlobal))
 
 if input_dict["inversion_type"].lower() in ['grav', 'mag']:
     # Create a regularization function
-    reg = Regularization.Sparse(mesh, indActive=activeCells, mapping=idenMap)
+    reg = Regularization.Sparse(
+        mesh, indActive=activeCells, mapping=idenMap,
+        alpha_s=alphas[0],
+        alpha_x=alphas[1],
+        alpha_y=alphas[2],
+        alpha_z=alphas[3]
+        )
     reg.norms = np.c_[model_norms].T
     reg.mref = np.zeros(nC)
     reg.cell_weights = wrGlobal
@@ -487,19 +535,19 @@ else:
 
     # Create a regularization
     reg_p = Regularization.Sparse(mesh, indActive=activeCells, mapping=wires.p)
-    reg_p.alpha_s = 3
+    reg_p.alphas = alphas
     reg_p.cell_weights = (wires.p * wrGlobal)
     reg_p.norms = np.c_[2, 2, 2, 2]
     reg_p.mref = mref
 
     reg_s = Regularization.Sparse(mesh, indActive=activeCells, mapping=wires.s)
-    reg_s.alpha_s = 3
+    reg_s.alphas = alphas
     reg_s.cell_weights = (wires.s * wrGlobal)
     reg_s.norms = np.c_[2, 2, 2, 2]
     reg_s.mref = mref
 
     reg_t = Regularization.Sparse(mesh, indActive=activeCells, mapping=wires.t)
-    reg_t.alpha_s = 3
+    reg_t.alphas = alphas
     reg_t.cell_weights = (wires.t * wrGlobal)
     reg_t.norms = np.c_[2, 2, 2, 2]
     reg_t.mref = mref
