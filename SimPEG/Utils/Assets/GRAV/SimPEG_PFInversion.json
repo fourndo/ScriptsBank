@@ -1,6 +1,0 @@
-{
-	"dataFile": ["GRAV","gzfor3d.grv"],
-	"targetChi": 1.0,
-	"topography": "Gaussian.topo",
-	"octreeCellSize": [20,20,20]
-}
